@@ -35,15 +35,15 @@
   --topbar-h:      60px;
   --radius:        12px;
   --radius-sm:     8px;
-  --shadow-sm:     0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-  --shadow:        0 4px 16px rgba(0,0,0,.08);
+  --shadow-sm:     0 2px 8px rgba(0,0,0,.09), 0 0 0 1px rgba(0,0,0,.04);
+  --shadow:        0 6px 24px rgba(0,0,0,.12);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: var(--font);
-  background: var(--gray-100);
+  background: #ECEAE7;
   color: var(--gray-800);
   font-size: 14px;
   line-height: 1.6;
@@ -346,10 +346,10 @@ body {
    ============================================================ */
 .main-content {
   flex: 1;
-  padding: 28px 32px;
+  padding: 32px 36px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
   overflow-y: auto;
 }
 
@@ -359,7 +359,7 @@ body {
 .top-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 20px;
+  gap: 22px;
 }
 
 @media (max-width: 900px) { .top-row { grid-template-columns: 1fr 1fr; } }
@@ -369,15 +369,15 @@ body {
 .panel-serving {
   background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
   border-radius: var(--radius);
-  padding: 20px 22px;
+  padding: 26px 28px;
   color: var(--white);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 6px 20px rgba(249,115,22,.28);
+  box-shadow: 0 8px 28px rgba(249,115,22,.32);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 140px;
+  min-height: 160px;
 }
 
 .panel-serving::after  { content:''; position:absolute; right:-16px; top:-16px; width:90px; height:90px; border-radius:50%; background:rgba(255,255,255,.08); pointer-events:none; }
@@ -396,11 +396,11 @@ body {
   background: var(--white);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius);
-  padding: 20px 22px;
+  padding: 26px 28px;
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  min-height: 140px;
+  min-height: 160px;
 }
 
 .queue-count { font-size: 28px; font-weight: 700; color: var(--orange); line-height: 1; margin-top: 6px; }
@@ -450,11 +450,11 @@ body {
   background: var(--white);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
-  padding: 13px 15px;
+  padding: 18px 20px;
   box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 14px;
 }
 
 .stat-chip-icon {
@@ -474,7 +474,7 @@ body {
   background: var(--white);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius);
-  padding: 24px;
+  padding: 28px;
   box-shadow: var(--shadow-sm);
 }
 
@@ -493,7 +493,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
+  padding: 18px 24px;
   border-bottom: 1px solid var(--gray-100);
   gap: 12px;
   flex-wrap: wrap;
@@ -520,8 +520,8 @@ body {
 
 .queue-table { width: 100%; border-collapse: collapse; }
 .queue-table thead tr { background: var(--gray-50); }
-.queue-table th { padding: 10px 20px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--gray-400); border-bottom: 1px solid var(--gray-100); white-space: nowrap; }
-.queue-table td { padding: 13px 20px; font-size: 13px; font-weight: 500; color: var(--gray-800); border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+.queue-table th { padding: 12px 24px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--gray-400); border-bottom: 1px solid var(--gray-100); white-space: nowrap; }
+.queue-table td { padding: 15px 24px; font-size: 13px; font-weight: 500; color: var(--gray-800); border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
 .queue-table tbody tr:last-child td { border-bottom: none; }
 .queue-table tbody tr:hover td { background: var(--gray-50); }
 .empty-row td { text-align: center; color: var(--gray-400); padding: 48px 20px; font-size: 13px; }
@@ -615,7 +615,7 @@ body {
 .antrian-layout {
   display: grid;
   grid-template-columns: 1fr 300px;
-  gap: 22px;
+  gap: 24px;
   align-items: start;
 }
 
@@ -789,8 +789,8 @@ body {
 .rekap-card {
   background: white;
   border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm);
-  padding: 16px;
+  border-radius: var(--radius);
+  padding: 22px 24px;
   box-shadow: var(--shadow-sm);
 }
 
