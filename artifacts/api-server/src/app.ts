@@ -25,21 +25,48 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Static assets
+// ===========================
+// Static assets (CSS, JS, gambar)
+// ===========================
 app.use("/css", express.static(path.join(publicDir, "css")));
 app.use("/js",  express.static(path.join(publicDir, "js")));
 
-// API routes
+// ===========================
+// API Routes — semua endpoint backend
+// ===========================
 app.use("/api", router);
 
-// Web pages
-const sendPage = (_req: express.Request, res: express.Response) =>
-  res.sendFile(path.join(publicDir, "index.html"));
+// ===========================
+// Web Pages — masing-masing halaman punya file HTML sendiri
+// ===========================
 
-app.get("/",          (_req, res) => res.redirect("/login"));
-app.get("/login",     sendPage);
-app.get("/dashboard", sendPage);
-app.get("/antrian",   sendPage);
-app.get("/notif",     sendPage);
+// Redirect root ke halaman login
+app.get("/", (_req, res) => res.redirect("/login"));
+
+// Halaman login (juga register — dalam satu file)
+app.get("/login", (_req, res) =>
+  res.sendFile(path.join(publicDir, "login.html"))
+);
+
+// Dashboard Teller — tiga halaman, satu file HTML
+// Navigasi antar halaman diurus oleh teller.js di sisi browser
+app.get("/dashboard", (_req, res) =>
+  res.sendFile(path.join(publicDir, "teller.html"))
+);
+app.get("/antrian", (_req, res) =>
+  res.sendFile(path.join(publicDir, "teller.html"))
+);
+app.get("/notif", (_req, res) =>
+  res.sendFile(path.join(publicDir, "teller.html"))
+);
+
+// Dashboard CS — dua halaman, satu file HTML
+// Navigasi antar halaman diurus oleh cs.js di sisi browser
+app.get("/cs",      (_req, res) =>
+  res.sendFile(path.join(publicDir, "cs.html"))
+);
+app.get("/cs/buat", (_req, res) =>
+  res.sendFile(path.join(publicDir, "cs.html"))
+);
 
 export default app;
