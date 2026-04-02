@@ -1,0 +1,577 @@
+/* =====================================================
+   Sistem Antrian Bank - Dashboard Teller
+   ===================================================== */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --blue: #1a73e8;
+  --blue-dark: #1558b0;
+  --blue-light: #e8f0fe;
+  --blue-lighter: #f0f6ff;
+  --green: #1e8e3e;
+  --green-light: #e6f4ea;
+  --red: #d93025;
+  --red-light: #fce8e6;
+  --orange: #f29900;
+  --orange-light: #fef7e0;
+  --gray-50: #f8f9fa;
+  --gray-100: #f1f3f4;
+  --gray-200: #e8eaed;
+  --gray-400: #9aa0a6;
+  --gray-600: #5f6368;
+  --gray-800: #3c4043;
+  --gray-900: #202124;
+  --white: #ffffff;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--gray-50);
+  color: var(--gray-900);
+  min-height: 100vh;
+}
+
+/* ========================
+   Utilitas
+   ======================== */
+
+.hidden { display: none !important; }
+
+.page { display: none; }
+.page.active { display: block; }
+
+/* ========================
+   Tombol
+   ======================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--blue);
+  color: var(--white);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--blue-dark);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--blue);
+  border: 1.5px solid var(--blue);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: var(--blue-light);
+}
+
+.btn-danger {
+  background: var(--red);
+  color: var(--white);
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #b3261e;
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+.btn-full {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Tombol Panggil Berikutnya */
+.btn-panggil {
+  width: 100%;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--blue) 0%, #1558b0 100%);
+  color: var(--white);
+  font-size: 20px;
+  font-weight: 700;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(26, 115, 232, 0.4);
+  transition: all 0.2s ease;
+  letter-spacing: 0.3px;
+}
+
+.btn-panggil:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(26, 115, 232, 0.5);
+}
+
+.btn-panggil:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-panggil:disabled {
+  background: var(--gray-400);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.panggil-icon {
+  font-size: 22px;
+}
+
+/* ========================
+   Login Page
+   ======================== */
+
+#login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+}
+
+#login-page.active {
+  display: flex;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 420px;
+  padding: 20px;
+}
+
+.login-card {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: var(--shadow-lg);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.bank-logo {
+  font-size: 48px;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.login-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 4px;
+}
+
+.login-header p {
+  color: var(--gray-600);
+  font-size: 14px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.form-group input {
+  padding: 12px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.form-group input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+}
+
+.error-msg {
+  padding: 10px 14px;
+  background: var(--red-light);
+  color: var(--red);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ========================
+   Navbar
+   ======================== */
+
+.navbar {
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-200);
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.bank-icon {
+  font-size: 22px;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.teller-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-600);
+}
+
+.status-badge {
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: default;
+}
+
+.status-online {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.status-offline {
+  background: var(--red-light);
+  color: var(--red);
+}
+
+/* ========================
+   Main Content
+   ======================== */
+
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ========================
+   Current Section (atas)
+   ======================== */
+
+.current-section {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .current-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Card nomor yang sedang dilayani */
+.current-card {
+  background: linear-gradient(135deg, var(--blue) 0%, #1558b0 100%);
+  color: var(--white);
+  border-radius: var(--radius);
+  padding: 24px 32px;
+  text-align: center;
+  min-width: 180px;
+  box-shadow: 0 4px 15px rgba(26, 115, 232, 0.3);
+}
+
+.current-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.85;
+  margin-bottom: 8px;
+}
+
+.current-number {
+  font-size: 64px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.current-info {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+/* Card filter */
+.filter-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+}
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--gray-600);
+}
+
+.select-input {
+  padding: 10px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--gray-900);
+  background: var(--white);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.select-input:focus {
+  border-color: var(--blue);
+}
+
+.total-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  background: var(--blue-light);
+  color: var(--blue);
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  justify-content: center;
+}
+
+/* Feedback panggil */
+.feedback-msg {
+  margin-top: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.feedback-success {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.feedback-error {
+  background: var(--red-light);
+  color: var(--red);
+}
+
+/* ========================
+   Queue Section (tabel)
+   ======================== */
+
+.queue-section {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auto-refresh-hint {
+  font-size: 12px;
+  color: var(--gray-400);
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.queue-table thead th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--gray-600);
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.queue-table thead th:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.queue-table thead th:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.queue-table tbody tr {
+  border-bottom: 1px solid var(--gray-100);
+  transition: background 0.15s;
+}
+
+.queue-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.queue-table tbody tr:hover {
+  background: var(--blue-lighter);
+}
+
+.queue-table tbody td {
+  padding: 14px 16px;
+  color: var(--gray-800);
+  vertical-align: middle;
+}
+
+/* Nomor antrian */
+.antrian-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--blue-light);
+  color: var(--blue);
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+/* Badge layanan */
+.layanan-badge {
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.layanan-tabungan {
+  background: var(--blue-light);
+  color: var(--blue);
+}
+
+.layanan-kredit {
+  background: var(--orange-light);
+  color: var(--orange);
+}
+
+.layanan-umum {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+/* Empty state */
+.empty-row td {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--gray-400);
+  font-size: 15px;
+}
+
+/* Loading */
+.loading-row td {
+  text-align: center;
+  padding: 40px;
+  color: var(--gray-400);
+  font-style: italic;
+}

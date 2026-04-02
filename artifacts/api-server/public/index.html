@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Teller - Sistem Antrian Bank</title>
+  <link rel="stylesheet" href="/api/dashboard/css/style.css" />
+</head>
+<body>
+
+  <!-- Halaman Login -->
+  <div id="login-page" class="page active">
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-header">
+          <div class="bank-logo">🏦</div>
+          <h1>Sistem Antrian Bank</h1>
+          <p>Dashboard Teller</p>
+        </div>
+        <form id="login-form" class="login-form">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="teller@bank.com" required />
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="••••••••" required />
+          </div>
+          <div id="login-error" class="error-msg hidden"></div>
+          <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+            Masuk
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Halaman Dashboard -->
+  <div id="dashboard-page" class="page">
+    <!-- Header / Navbar -->
+    <header class="navbar">
+      <div class="navbar-brand">
+        <span class="bank-icon">🏦</span>
+        <span>Sistem Antrian Bank</span>
+      </div>
+      <div class="navbar-right">
+        <span id="teller-name" class="teller-name"></span>
+        <span id="wa-status" class="status-badge status-offline" title="Status WhatsApp">WA</span>
+        <button class="btn btn-outline btn-sm" id="logout-btn">Keluar</button>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Sedang Dilayani -->
+      <section class="current-section">
+        <div class="current-card">
+          <div class="current-label">Sedang Dilayani</div>
+          <div id="current-number" class="current-number">—</div>
+          <div id="current-info" class="current-info">Belum ada antrian dipanggil</div>
+        </div>
+
+        <!-- Filter Layanan -->
+        <div class="filter-card">
+          <label class="filter-label">Filter Layanan</label>
+          <select id="layanan-filter" class="select-input">
+            <option value="">Semua Layanan</option>
+            <option value="Tabungan">Tabungan</option>
+            <option value="Kredit">Kredit</option>
+            <option value="Umum">Umum</option>
+          </select>
+          <div id="total-badge" class="total-badge">0 menunggu</div>
+        </div>
+
+        <!-- Tombol Panggil -->
+        <button id="panggil-btn" class="btn btn-panggil">
+          <span class="panggil-icon">📢</span>
+          Panggil Berikutnya
+        </button>
+        <div id="panggil-feedback" class="feedback-msg hidden"></div>
+      </section>
+
+      <!-- Tabel Antrian -->
+      <section class="queue-section">
+        <div class="section-header">
+          <h2 class="section-title">Daftar Antrian Menunggu</h2>
+          <div class="section-actions">
+            <span class="auto-refresh-hint">⟳ Auto-refresh setiap 5 detik</span>
+            <button class="btn btn-outline btn-sm" id="refresh-btn">Refresh</button>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="queue-table">
+            <thead>
+              <tr>
+                <th>No. Antrian</th>
+                <th>Nama Nasabah</th>
+                <th>Layanan</th>
+                <th>Waktu Ambil</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="queue-tbody">
+              <tr class="empty-row">
+                <td colspan="5">Memuat data...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/api/dashboard/js/dashboard.js"></script>
+</body>
+</html>
