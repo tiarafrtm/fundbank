@@ -19,6 +19,7 @@ export async function initWhatsApp(): Promise<void> {
       DisconnectReason,
       useMultiFileAuthState,
       Browsers,
+      fetchLatestBaileysVersion,
     } = await import("@whiskeysockets/baileys");
     const { Boom } = await import("@hapi/boom");
     const path = await import("path");
@@ -28,7 +29,11 @@ export async function initWhatsApp(): Promise<void> {
       path.join(process.cwd(), "wa_session"),
     );
 
+    const { version, isLatest } = await fetchLatestBaileysVersion();
+    logger.info({ version, isLatest }, "Versi WhatsApp Web digunakan");
+
     const sock = makeWASocket({
+      version,
       auth: state,
       browser: Browsers.ubuntu("Dashboard Bank"),
       printQRInTerminal: false,
