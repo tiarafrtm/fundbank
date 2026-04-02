@@ -102,10 +102,13 @@ function showApp() {
   loginPage.classList.remove('active');
   dashboardPage.classList.add('active');
   const nama = tellerProfile?.nama ?? 'Teller';
-  sbUserName.textContent    = nama;
+  sbUserName.textContent      = nama;
   sbAvatarInitial.textContent = nama.charAt(0).toUpperCase();
-  history.pushState({}, '', '/dashboard');
-  navigateTo('dashboard');
+
+  // Tentukan halaman awal dari URL path
+  const pathPage = { '/antrian': 'antrian', '/notif': 'notif' }[window.location.pathname] ?? 'dashboard';
+  navigateTo(pathPage);
+
   refreshInterval = setInterval(() => {
     if (currentPage === 'dashboard') loadStatistik();
     if (currentPage === 'antrian')  { loadQueueData(); loadAntrianAll(); }
@@ -124,17 +127,28 @@ topbarToggle?.addEventListener('click', () => sidebar.classList.toggle('collapse
 // ===== Navigation =====
 const pageTitles = { dashboard: 'Dashboard', antrian: 'Antrian', notif: 'Test Notif WA' };
 
+const pageUrls = { dashboard: '/dashboard', antrian: '/antrian', notif: '/notif' };
+
 function navigateTo(page) {
   currentPage = page;
+
+  // Update URL
+  history.pushState({}, '', pageUrls[page] || '/dashboard');
+
+  // Update nav highlight
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.page === page);
   });
+
+  // Show correct sub-page
   document.querySelectorAll('.sub-page').forEach(el => el.classList.remove('active'));
   const subPage = document.getElementById('page-' + page);
   if (subPage) subPage.classList.add('active');
+
   pageTitle.textContent = pageTitles[page] || page;
 
-  if (qrPollInterval) { clearInterval(qrPollInterval); qrPollInterval = null; }
+  // Stop QR polling when leaving notif page
+  if (qrPollInterval && page !== 'notif') { clearInterval(qrPollInterval); qrPollInterval = null; }
 
   if (page === 'dashboard') loadStatistik();
   if (page === 'antrian')   { loadQueueData(); loadAntrianAll(); }

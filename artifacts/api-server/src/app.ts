@@ -39,5 +39,7 @@ const sendPage = (_req: express.Request, res: express.Response) =>
 app.get("/",          (_req, res) => res.redirect("/login"));
 app.get("/login",     sendPage);
 app.get("/dashboard", sendPage);
+app.get("/antrian",   sendPage);
+app.get("/notif",     sendPage);
 
 export default app;
