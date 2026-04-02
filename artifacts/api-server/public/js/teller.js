@@ -552,7 +552,7 @@ async function fetchQR() {
     } else {
       waConnectedView?.classList.add('hidden');
       waQrView?.classList.remove('hidden');
-      if (error) { waErrorBanner.textContent = '⚠ ' + error; waErrorBanner?.classList.remove('hidden'); }
+      if (error) { waErrorBanner.textContent = 'Error: ' + error; waErrorBanner?.classList.remove('hidden'); }
       else { waErrorBanner?.classList.add('hidden'); }
       if (qr) {
         qrLoading?.classList.add('hidden');
