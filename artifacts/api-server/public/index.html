@@ -4,51 +4,57 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard Teller - Sistem Antrian Bank</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/api/dashboard/css/style.css" />
 </head>
 <body>
 
   <!-- Halaman Login -->
   <div id="login-page" class="page active">
-    <div class="login-container">
-      <div class="login-card">
-        <div class="login-header">
-          <div class="bank-logo">🏦</div>
+    <div class="auth-layout">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <div class="brand-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2"/>
+              <path d="M16 7V5a2 2 0 0 0-4 0v2"/>
+              <path d="M12 12v4"/>
+              <path d="M9 12h6"/>
+            </svg>
+          </div>
           <h1>Sistem Antrian Bank</h1>
           <p>Dashboard Teller</p>
         </div>
 
-        <!-- Tab Login / Daftar -->
         <div class="auth-tabs">
           <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Masuk</button>
           <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Daftar</button>
         </div>
 
         <!-- Form Login -->
-        <form id="login-form" class="login-form">
+        <form id="login-form" class="auth-form">
           <div class="form-group">
             <label for="email">Email</label>
-            <input type="email" id="email" placeholder="teller@bank.com" required />
+            <input type="email" id="email" placeholder="nama@bank.com" required />
           </div>
           <div class="form-group">
             <label for="password">Password</label>
-            <input type="password" id="password" placeholder="••••••••" required />
+            <input type="password" id="password" placeholder="Masukkan password" required />
           </div>
-          <div id="login-error" class="error-msg hidden"></div>
-          <button type="submit" class="btn btn-primary btn-full" id="login-btn">
-            Masuk
-          </button>
+          <div id="login-error" class="alert alert-error hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block" id="login-btn">Masuk</button>
         </form>
 
         <!-- Form Daftar -->
-        <form id="register-form" class="login-form hidden">
+        <form id="register-form" class="auth-form hidden">
           <div class="form-group">
             <label for="reg-nama">Nama Lengkap</label>
-            <input type="text" id="reg-nama" placeholder="Nama Teller" required />
+            <input type="text" id="reg-nama" placeholder="Nama lengkap" required />
           </div>
           <div class="form-group">
             <label for="reg-email">Email</label>
-            <input type="email" id="reg-email" placeholder="email@bank.com" required />
+            <input type="email" id="reg-email" placeholder="nama@bank.com" required />
           </div>
           <div class="form-group">
             <label for="reg-no-hp">Nomor HP</label>
@@ -56,14 +62,12 @@
           </div>
           <div class="form-group">
             <label for="reg-password">Password</label>
-            <input type="password" id="reg-password" placeholder="Min. 8 karakter" required minlength="8" />
+            <input type="password" id="reg-password" placeholder="Minimal 8 karakter" required minlength="8" />
           </div>
-          <div id="register-error" class="error-msg hidden"></div>
-          <div id="register-success" class="success-msg hidden"></div>
-          <button type="submit" class="btn btn-primary btn-full" id="register-btn">
-            Daftar Akun
-          </button>
-          <p class="register-note">* Setelah daftar, hubungi admin untuk aktivasi role teller</p>
+          <div id="register-error" class="alert alert-error hidden"></div>
+          <div id="register-success" class="alert alert-success hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block" id="register-btn">Buat Akun</button>
+          <p class="auth-note">Setelah mendaftar, hubungi admin untuk aktivasi akses teller.</p>
         </form>
       </div>
     </div>
@@ -71,49 +75,64 @@
 
   <!-- Halaman Dashboard -->
   <div id="dashboard-page" class="page">
+
+    <!-- Navbar -->
     <header class="navbar">
-      <div class="navbar-brand">
-        <span class="bank-icon">🏦</span>
-        <span>Sistem Antrian Bank</span>
+      <div class="navbar-left">
+        <div class="nav-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2"/>
+            <path d="M16 7V5a2 2 0 0 0-4 0v2"/>
+            <path d="M12 12v4"/><path d="M9 12h6"/>
+          </svg>
+        </div>
+        <span class="nav-title">Sistem Antrian Bank</span>
       </div>
       <div class="navbar-right">
-        <span id="teller-name" class="teller-name"></span>
-        <span id="wa-status" class="status-badge status-offline" title="Status WhatsApp">WA</span>
-        <button class="btn btn-outline btn-sm" id="logout-btn">Keluar</button>
+        <span id="teller-name" class="nav-user"></span>
+        <span id="wa-status" class="wa-dot wa-offline" title="Status WhatsApp"></span>
+        <button class="btn btn-ghost btn-sm" id="logout-btn">Keluar</button>
       </div>
     </header>
 
-    <main class="main-content">
-      <section class="current-section">
-        <div class="current-card">
-          <div class="current-label">Sedang Dilayani</div>
-          <div id="current-number" class="current-number">—</div>
-          <div id="current-info" class="current-info">Belum ada antrian dipanggil</div>
+    <main class="main">
+
+      <!-- Row atas: 3 panel -->
+      <div class="top-row">
+
+        <!-- Panel: Sedang Dilayani -->
+        <div class="panel panel-serving">
+          <p class="panel-label">Sedang Dilayani</p>
+          <div id="current-number" class="serving-number">—</div>
+          <p id="current-info" class="serving-info">Belum ada antrian dipanggil</p>
         </div>
 
-        <div class="filter-card">
-          <label class="filter-label">Filter Layanan</label>
+        <!-- Panel: Filter -->
+        <div class="panel panel-filter">
+          <p class="panel-label">Filter Layanan</p>
           <select id="layanan-filter" class="select-input">
             <option value="">Semua Layanan</option>
             <option value="Tabungan">Tabungan</option>
             <option value="Kredit">Kredit</option>
             <option value="Umum">Umum</option>
           </select>
-          <div id="total-badge" class="total-badge">0 menunggu</div>
+          <div id="total-badge" class="queue-count">0 menunggu</div>
         </div>
 
-        <button id="panggil-btn" class="btn btn-panggil">
-          <span class="panggil-icon">📢</span>
-          Panggil Berikutnya
-        </button>
-        <div id="panggil-feedback" class="feedback-msg hidden"></div>
-      </section>
+        <!-- Panel: Tombol Panggil -->
+        <div class="panel panel-action">
+          <button id="panggil-btn" class="btn-panggil">Panggil Berikutnya</button>
+          <div id="panggil-feedback" class="feedback hidden"></div>
+        </div>
 
-      <section class="queue-section">
-        <div class="section-header">
-          <h2 class="section-title">Daftar Antrian Menunggu</h2>
-          <div class="section-actions">
-            <span class="auto-refresh-hint">⟳ Auto-refresh setiap 5 detik</span>
+      </div>
+
+      <!-- Tabel Antrian -->
+      <div class="panel panel-table">
+        <div class="table-header">
+          <h2>Daftar Antrian Menunggu</h2>
+          <div class="table-actions">
+            <span class="refresh-hint">Auto-refresh setiap 5 detik</span>
             <button class="btn btn-outline btn-sm" id="refresh-btn">Refresh</button>
           </div>
         </div>
@@ -136,7 +155,8 @@
             </tbody>
           </table>
         </div>
-      </section>
+      </div>
+
     </main>
   </div>
 

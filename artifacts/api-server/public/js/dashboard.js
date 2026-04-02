@@ -78,7 +78,7 @@ function layananBadge(layanan) {
 // ========== Helper: Tampilkan Feedback ==========
 function showFeedback(msg, isError = false) {
   panggilFeedback.textContent = msg;
-  panggilFeedback.className = 'feedback-msg ' + (isError ? 'feedback-error' : 'feedback-success');
+  panggilFeedback.className = 'feedback ' + (isError ? 'feedback-error' : 'feedback-success');
   panggilFeedback.classList.remove('hidden');
   setTimeout(() => panggilFeedback.classList.add('hidden'), 4000);
 }
@@ -249,7 +249,7 @@ function renderQueueTable(antrian) {
   if (!antrian || antrian.length === 0) {
     queueTbody.innerHTML = `
       <tr class="empty-row">
-        <td colspan="5">🎉 Tidak ada antrian yang menunggu saat ini</td>
+        <td colspan="5">Tidak ada antrian yang menunggu saat ini</td>
       </tr>
     `;
     return;
@@ -291,16 +291,16 @@ panggilBtn.addEventListener('click', async () => {
     const result = await apiRequest('PUT', '/antrian/panggil', layanan ? { layanan } : {});
 
     if (result.success) {
-      showFeedback(`✅ ${result.message}`);
+      showFeedback(result.message);
       await loadQueueData();
     } else {
-      showFeedback(`❌ ${result.message}`, true);
+      showFeedback(result.message, true);
     }
   } catch (err) {
-    showFeedback('❌ Terjadi kesalahan koneksi', true);
+    showFeedback('Terjadi kesalahan koneksi', true);
   } finally {
     panggilBtn.disabled = false;
-    panggilBtn.innerHTML = '<span class="panggil-icon">📢</span> Panggil Berikutnya';
+    panggilBtn.textContent = 'Panggil Berikutnya';
   }
 });
 
@@ -326,8 +326,7 @@ async function checkNotifStatus() {
     const result = await apiRequest('GET', '/notif/status');
     if (result.success) {
       const waConnected = result.data.whatsapp_connected;
-      waStatusEl.textContent = 'WA';
-      waStatusEl.className = 'status-badge ' + (waConnected ? 'status-online' : 'status-offline');
+      waStatusEl.className = 'wa-dot ' + (waConnected ? 'wa-online' : 'wa-offline');
       waStatusEl.title = waConnected ? 'WhatsApp Terhubung' : 'WhatsApp Belum Terhubung';
     }
   } catch (err) {}
