@@ -43,7 +43,7 @@
 
 body {
   font-family: var(--font);
-  background: #ECEAE7;
+  background: var(--gray-100);
   color: var(--gray-800);
   font-size: 14px;
   line-height: 1.6;
@@ -52,7 +52,11 @@ body {
 
 .hidden { display: none !important; }
 .sub-page        { display: none; }
-.sub-page.active { display: block; }
+.sub-page.active {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
 
 /* ============================================================
    TATA LETAK
@@ -349,7 +353,7 @@ body {
   padding: 32px 36px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 32px;
   overflow-y: auto;
 }
 
