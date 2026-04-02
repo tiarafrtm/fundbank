@@ -60,13 +60,10 @@ app.get("/notif", (_req, res) =>
   res.sendFile(path.join(publicDir, "teller.html"))
 );
 
-// Dashboard CS — dua halaman, satu file HTML
-// Navigasi antar halaman diurus oleh cs.js di sisi browser
-app.get("/cs",      (_req, res) =>
-  res.sendFile(path.join(publicDir, "cs.html"))
-);
-app.get("/cs/buat", (_req, res) =>
-  res.sendFile(path.join(publicDir, "cs.html"))
-);
+// Dashboard CS — semua halaman diarahkan ke cs.html, navigasi diurus cs.js
+app.get("/cs",         (_req, res) => res.sendFile(path.join(publicDir, "cs.html")));
+app.get("/cs/antrian", (_req, res) => res.sendFile(path.join(publicDir, "cs.html")));
+app.get("/cs/notif",   (_req, res) => res.sendFile(path.join(publicDir, "cs.html")));
+app.get("/cs/buat",    (_req, res) => res.sendFile(path.join(publicDir, "cs.html")));
 
 export default app;
