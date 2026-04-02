@@ -72,3 +72,21 @@ export async function anyStaffMiddleware(
   }
   next();
 }
+
+export async function nasabahMiddleware(
+  req: Request, res: Response, next: NextFunction,
+): Promise<void> {
+  const user = await resolveUser(req, res);
+  if (!user) return;
+  // Nasabah mobile: role "nasabah" di app_metadata atau user_metadata
+  const role = user.app_metadata?.role ?? user.user_metadata?.role ?? "";
+  if (role !== "nasabah") {
+    res.status(403).json({
+      success: false,
+      message: "Akses ditolak. Endpoint ini hanya untuk pengguna aplikasi mobile",
+      data: {},
+    });
+    return;
+  }
+  next();
+}

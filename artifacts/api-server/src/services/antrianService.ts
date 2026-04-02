@@ -118,9 +118,21 @@ export async function panggilBerikutnya(layanan?: string): Promise<{
       }
 
       // Kirim pesan WhatsApp via Baileys
-      if (profile?.no_hp) {
-        const pesanWA = `Halo ${profile.nama}, antrian Anda nomor *${nomorAntrian}* akan segera dipanggil. Mohon segera menuju ruang tunggu bank. Terima kasih.`;
-        await sendWhatsAppMessage(profile.no_hp, pesanWA);
+      const noHp = profile?.no_hp ?? targetNotif.no_hp_nasabah;
+      const namaNasabah = profile?.nama ?? targetNotif.nama_nasabah ?? "Nasabah";
+      const layananDisplay =
+        targetNotif.layanan === "CS" ? "Customer Service" : targetNotif.layanan;
+
+      if (noHp) {
+        const pesanWA =
+          `Halo, ${namaNasabah}!\n\n` +
+          `Kami informasikan bahwa nomor antrian Anda *${nomorAntrian}* ` +
+          `di layanan ${layananDisplay} akan segera dipanggil.\n\n` +
+          `Harap segera menuju loket yang tersedia.\n\n` +
+          `Klik untuk lihat status antrian:\n` +
+          `bankantrian://queue?ticket=${nomorAntrian}\n\n` +
+          `— Bank ABC, Cabang Sudirman`;
+        await sendWhatsAppMessage(noHp, pesanWA);
       }
 
       // Tandai bahwa notifikasi sudah dikirim

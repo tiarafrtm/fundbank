@@ -3,6 +3,7 @@ import healthRouter from "./health";
 import authRouter from "./auth";
 import antrianRouter from "./antrian";
 import notifRouter from "./notif";
+import mobileRouter from "./mobile";
 
 const router: IRouter = Router();
 
@@ -17,5 +18,8 @@ router.use("/antrian", antrianRouter);
 
 // Notif routes: /api/notif/*
 router.use("/notif", notifRouter);
+
+// Mobile app routes: /api/mobile/*
+router.use("/mobile", mobileRouter);
 
 export default router;

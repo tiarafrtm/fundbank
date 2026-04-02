@@ -25,7 +25,14 @@ export async function getStatistik(req: Request, res: Response): Promise<void> {
     const selesai    = items.filter(i => i.status === "selesai").length;
     const batal      = items.filter(i => i.status === "batal").length;
 
-    const perLayanan = ["Tabungan", "Kredit", "Umum"].map(l => ({
+    // Tampilkan semua layanan yang memiliki antrian hari ini
+    const semuaLayanan = [...new Set(items.map(i => i.layanan))];
+    const urutan = ["Teller", "CS", "Tabungan", "Kredit", "Umum"];
+    const layananTerurut = [
+      ...urutan.filter(l => semuaLayanan.includes(l)),
+      ...semuaLayanan.filter(l => !urutan.includes(l)),
+    ];
+    const perLayanan = layananTerurut.map(l => ({
       layanan: l,
       total: items.filter(i => i.layanan === l).length,
       selesai: items.filter(i => i.layanan === l && i.status === "selesai").length,
@@ -216,20 +223,22 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Ambil nomor yang sedang dilayani saat ini
-    const { data: sedangDilayani } = await supabaseAdmin
+    // Ambil nomor yang sedang dipanggil/dilayani (filter layanan jika ada)
+    let dipanggilQuery = supabaseAdmin
       .from("antrian")
       .select(`*, profiles (nama, no_hp)`)
       .eq("status", "dipanggil")
       .order("called_at", { ascending: false })
-      .limit(1)
-      .single();
+      .limit(5);
+    if (layanan) dipanggilQuery = dipanggilQuery.eq("layanan", layanan as string);
+    const { data: dipanggilData } = await dipanggilQuery;
 
     res.json({
       success: true,
       message: "Daftar antrian berhasil diambil",
       data: {
-        sedang_dilayani: sedangDilayani ?? null,
+        sedang_dilayani: dipanggilData?.[0] ?? null,
+        antrian_dipanggil: dipanggilData ?? [],
         antrian_menunggu: data,
         total_menunggu: data?.length ?? 0,
       },

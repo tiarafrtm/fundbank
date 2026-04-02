@@ -73,11 +73,14 @@ function formatWaktu(iso) {
 // Buat badge HTML untuk jenis layanan
 function layananBadge(layanan) {
   const kelas = {
+    Teller:   'layanan-teller',
+    CS:       'layanan-cs',
     Tabungan: 'layanan-tabungan',
     Kredit:   'layanan-kredit',
     Umum:     'layanan-umum',
   }[layanan] || 'layanan-umum';
-  return `<span class="layanan-badge ${kelas}">${layanan}</span>`;
+  const label = layanan === 'CS' ? 'Customer Service' : layanan;
+  return `<span class="layanan-badge ${kelas}">${label}</span>`;
 }
 
 // Buat badge HTML untuk status antrian

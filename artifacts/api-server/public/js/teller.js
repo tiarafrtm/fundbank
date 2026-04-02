@@ -23,13 +23,15 @@ const queueTbody           = document.getElementById('queue-tbody');
 const panggilBtn           = document.getElementById('panggil-btn');
 const panggilFeedback      = document.getElementById('panggil-feedback');
 const totalBadge           = document.getElementById('total-badge');
-const layananFilter        = document.getElementById('layanan-filter');
 const refreshBtn           = document.getElementById('refresh-btn');
 const antrianTbody         = document.getElementById('antrian-tbody');
 const antrianStats         = document.getElementById('antrian-stats');
 const antrianFilterStatus  = document.getElementById('antrian-filter-status');
 const antrianFilterLayanan = document.getElementById('antrian-filter-layanan');
 const antrianRefreshBtn    = document.getElementById('antrian-refresh-btn');
+
+// Layanan counter Teller (hardcoded — queue mobile dibuat dgn layanan "Teller")
+const COUNTER_LAYANAN = 'Teller';
 
 // Elemen halaman Notif WA
 const testWaBtn       = document.getElementById('test-wa-btn');
@@ -186,10 +188,7 @@ function renderLayananCards(perLayanan, totalAll) {
 // ANTRIAN: DAFTAR MENUNGGU
 // ===========================
 async function loadQueueData() {
-  const layanan = layananFilter?.value;
-  const endpoint = layanan
-    ? `/antrian/list?layanan=${encodeURIComponent(layanan)}`
-    : '/antrian/list';
+  const endpoint = `/antrian/list?layanan=${encodeURIComponent(COUNTER_LAYANAN)}`;
 
   try {
     const result = await api('GET', endpoint);
@@ -243,9 +242,8 @@ panggilBtn?.addEventListener('click', async () => {
   panggilBtn.disabled = true;
   panggilBtn.textContent = 'Memanggil...';
 
-  const layanan = layananFilter.value || undefined;
   try {
-    const result = await api('PUT', '/antrian/panggil', layanan ? { layanan } : {});
+    const result = await api('PUT', '/antrian/panggil', { layanan: COUNTER_LAYANAN });
 
     if (result.success) {
       tampilFeedback(result.message);

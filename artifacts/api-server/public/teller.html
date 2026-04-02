@@ -177,16 +177,11 @@
               <p id="current-info" class="serving-info">Belum ada antrian dipanggil</p>
             </div>
 
-            <!-- Kartu filter -->
+            <!-- Kartu jumlah menunggu -->
             <div class="panel-filter">
-              <p class="panel-label">Filter Layanan</p>
-              <select id="layanan-filter" class="select-input">
-                <option value="">Semua Layanan</option>
-                <option value="Tabungan">Tabungan</option>
-                <option value="Kredit">Kredit</option>
-                <option value="Umum">Umum</option>
-              </select>
-              <div id="total-badge" class="queue-count">0 menunggu</div>
+              <p class="panel-label">Antrian Teller</p>
+              <div id="total-badge" class="queue-count" style="margin-top:8px;">0 menunggu</div>
+              <p style="font-size:11px;color:var(--gray-400);margin-top:8px;">Nasabah mengambil nomor via aplikasi mobile</p>
             </div>
 
             <!-- Kartu aksi -->
@@ -240,10 +235,8 @@
                   <option value="batal">Batal</option>
                 </select>
                 <select id="antrian-filter-layanan" class="select-input select-sm">
+                  <option value="Teller">Teller</option>
                   <option value="">Semua Layanan</option>
-                  <option value="Tabungan">Tabungan</option>
-                  <option value="Kredit">Kredit</option>
-                  <option value="Umum">Umum</option>
                 </select>
                 <button class="btn btn-outline btn-sm" id="antrian-refresh-btn">Perbarui</button>
               </div>

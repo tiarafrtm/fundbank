@@ -16,8 +16,13 @@ const waStatusEl   = document.getElementById('wa-status');
 const waLabel      = document.getElementById('wa-label');
 
 // Elemen Antrian
-const queueTbody   = document.getElementById('queue-tbody');
-const refreshBtn   = document.getElementById('refresh-btn');
+const currentNumberEl = document.getElementById('current-number');
+const currentInfoEl   = document.getElementById('current-info');
+const queueTbody      = document.getElementById('queue-tbody');
+const panggilBtn      = document.getElementById('panggil-btn');
+const panggilFeedback = document.getElementById('panggil-feedback');
+const totalBadge      = document.getElementById('total-badge');
+const refreshBtn      = document.getElementById('refresh-btn');
 
 // Elemen Notif WA
 const waConnectedView = document.getElementById('wa-connected-view');
@@ -31,6 +36,9 @@ const waDisconnectBtn = document.getElementById('wa-disconnect-btn');
 const pairingPhone    = document.getElementById('pairing-phone');
 const pairingBtn      = document.getElementById('pairing-btn');
 const pairingResult   = document.getElementById('pairing-result');
+
+// Layanan counter CS (hardcoded — queue mobile dibuat dgn layanan "CS")
+const COUNTER_LAYANAN = 'CS';
 
 // ===========================
 // STATE
@@ -70,7 +78,7 @@ function navigateTo(page) {
   }
 
   if (page === 'beranda') loadStatistik();
-  if (page === 'antrian') { loadQueueData(); resetFormBuat(); }
+  if (page === 'antrian') loadQueueData();
   if (page === 'notif')   startQRPolling();
 }
 
@@ -120,7 +128,7 @@ async function loadStatistik() {
   } catch {}
 }
 
-const layananColors = { Tabungan: '#2563eb', Kredit: '#ea580c', Umum: '#16a34a' };
+const layananColors = { Teller: '#2563eb', CS: '#ea580c', Tabungan: '#2563eb', Kredit: '#ea580c', Umum: '#16a34a' };
 
 function renderLayananCards(perLayanan, totalAll) {
   const grid = document.getElementById('layanan-grid');
@@ -156,7 +164,7 @@ function renderLayananCards(perLayanan, totalAll) {
 async function loadQueueData() {
   if (!queueTbody) return;
   try {
-    const result = await api('GET', '/antrian/list');
+    const result = await api('GET', `/antrian/list?layanan=${encodeURIComponent(COUNTER_LAYANAN)}`);
     if (!result.success) {
       if (result.message?.includes('Token')) {
         clearSession(); window.location.href = '/login';
@@ -164,9 +172,24 @@ async function loadQueueData() {
       return;
     }
 
-    const items = result.data.antrian_menunggu ?? [];
+    const items    = result.data.antrian_menunggu ?? [];
+    const dipanggil = result.data.antrian_dipanggil ?? [];
+
+    // Panel sedang dilayani
+    if (dipanggil.length > 0) {
+      const aktif = dipanggil[0];
+      if (currentNumberEl) currentNumberEl.textContent = aktif.nomor_antrian;
+      if (currentInfoEl)   currentInfoEl.textContent   = getNamaNasabah(aktif);
+    } else {
+      if (currentNumberEl) currentNumberEl.textContent = '—';
+      if (currentInfoEl)   currentInfoEl.textContent   = 'Belum ada antrian dipanggil';
+    }
+
+    // Badge jumlah menunggu
+    if (totalBadge) totalBadge.textContent = `${items.length} menunggu`;
+
     if (!items.length) {
-      queueTbody.innerHTML = `<tr class="empty-row"><td colspan="5">Tidak ada antrian menunggu saat ini</td></tr>`;
+      queueTbody.innerHTML = `<tr class="empty-row"><td colspan="5">Tidak ada antrian CS menunggu saat ini</td></tr>`;
       return;
     }
 
@@ -186,6 +209,38 @@ async function loadQueueData() {
 refreshBtn?.addEventListener('click', () => { loadQueueData(); });
 
 // ===========================
+// ANTRIAN: PANGGIL BERIKUTNYA
+// ===========================
+function tampilFeedback(msg, isError = false) {
+  if (!panggilFeedback) return;
+  panggilFeedback.textContent = msg;
+  panggilFeedback.className = 'feedback ' + (isError ? 'feedback-error' : 'feedback-ok');
+  panggilFeedback.classList.remove('hidden');
+  setTimeout(() => panggilFeedback.classList.add('hidden'), 4000);
+}
+
+panggilBtn?.addEventListener('click', async () => {
+  panggilBtn.disabled = true;
+  panggilBtn.textContent = 'Memanggil...';
+
+  try {
+    const result = await api('PUT', '/antrian/panggil', { layanan: COUNTER_LAYANAN });
+
+    if (result.success) {
+      tampilFeedback(result.message);
+      loadQueueData();
+    } else {
+      tampilFeedback(result.message || 'Tidak ada antrian tersedia', true);
+    }
+  } catch {
+    tampilFeedback('Terjadi kesalahan koneksi', true);
+  } finally {
+    panggilBtn.disabled = false;
+    panggilBtn.textContent = 'Panggil Berikutnya';
+  }
+});
+
+// ===========================
 // ANTRIAN: BATALKAN
 // ===========================
 async function batalAntrian(id, nomor) {
@@ -200,69 +255,6 @@ async function batalAntrian(id, nomor) {
     }
   } catch { alert('Terjadi kesalahan koneksi'); }
 }
-
-// ===========================
-// ANTRIAN: BUAT BARU
-// ===========================
-function resetFormBuat() {
-  const tiketSection = document.getElementById('tiket-section');
-  const formBuat     = document.getElementById('form-buat');
-  const buatBtn      = document.getElementById('buat-btn');
-  const resultEl     = document.getElementById('buat-result');
-
-  if (tiketSection) tiketSection.classList.add('hidden');
-  if (formBuat)     formBuat.style.display = '';
-  if (buatBtn)      buatBtn.classList.remove('hidden');
-  if (resultEl)     resultEl.classList.add('hidden');
-
-  const nama    = document.getElementById('cs-nama');
-  const nohp    = document.getElementById('cs-nohp');
-  const layanan = document.getElementById('cs-layanan');
-  if (nama)    nama.value    = '';
-  if (nohp)    nohp.value    = '';
-  if (layanan) layanan.value = 'Tabungan';
-}
-
-document.getElementById('buat-btn')?.addEventListener('click', async () => {
-  const nama     = document.getElementById('cs-nama').value.trim();
-  const no_hp    = document.getElementById('cs-nohp').value.trim();
-  const layanan  = document.getElementById('cs-layanan').value;
-  const resultEl = document.getElementById('buat-result');
-  const buatBtn  = document.getElementById('buat-btn');
-
-  if (!nama) { showAlert(resultEl, 'Nama nasabah wajib diisi', 'error'); return; }
-
-  buatBtn.disabled = true;
-  buatBtn.textContent = 'Membuat...';
-
-  try {
-    const result = await api('POST', '/antrian/ambil', {
-      nama, no_hp: no_hp || undefined, layanan,
-    });
-
-    if (!result.success) {
-      showAlert(resultEl, result.message || 'Gagal membuat antrian', 'error');
-      return;
-    }
-
-    const nomorAntrian = result.data.nomor_antrian ?? result.data.antrian?.nomor_antrian;
-    document.getElementById('tiket-nomor').textContent   = nomorAntrian ?? '—';
-    document.getElementById('tiket-layanan').textContent = `Layanan: ${layanan}`;
-    document.getElementById('tiket-nama').textContent    = `Nasabah: ${nama}`;
-
-    document.getElementById('form-buat').style.display = 'none';
-    document.getElementById('tiket-section').classList.remove('hidden');
-    loadQueueData();
-    loadStatistik();
-  } catch {
-    showAlert(resultEl, 'Terjadi kesalahan koneksi', 'error');
-  } finally {
-    buatBtn.disabled = false;
-    buatBtn.textContent = 'Buat Antrian';
-  }
-});
-
-document.getElementById('buat-lagi-btn')?.addEventListener('click', resetFormBuat);
 
 // ===========================
 // WA: STATUS TOPBAR

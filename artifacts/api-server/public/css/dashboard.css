@@ -459,6 +459,8 @@ body {
 .antrian-number { font-weight: 700; color: var(--orange); font-size: 15px; }
 
 .layanan-badge    { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.layanan-teller   { background: var(--blue-light);    color: #1D4ED8; }
+.layanan-cs       { background: var(--orange-soft);   color: var(--orange-dark); }
 .layanan-tabungan { background: var(--blue-light);    color: #1D4ED8; }
 .layanan-kredit   { background: var(--orange-soft);   color: var(--orange-dark); }
 .layanan-umum     { background: var(--success-light); color: #15803D; }
