@@ -27,12 +27,11 @@ export async function register(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
-    options: {
-      data: { nama, no_hp, role: "nasabah" },
-    },
+    email_confirm: true,
+    user_metadata: { nama, no_hp, role: "nasabah" },
   });
 
   if (authError || !authData.user) {
