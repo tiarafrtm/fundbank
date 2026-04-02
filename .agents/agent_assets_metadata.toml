@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "jIOfNrkct4Gt1XH0iGUv-"
+uri = "file://MOBILE_APP_GUIDE.md"
+type = "text"
+title = "Panduan Mobile App & API Schema"
