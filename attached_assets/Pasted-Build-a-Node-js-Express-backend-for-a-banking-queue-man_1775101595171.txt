@@ -1,0 +1,123 @@
+Build a Node.js + Express backend for a banking queue management system with the following specifications:
+
+## Tech Stack
+- Runtime: Node.js
+- Framework: Express.js
+- Database & Auth: Supabase
+- Push Notification: OneSignal
+- WhatsApp Notification: Baileys (whatsapp-web.js alternative, unofficial)
+- Frontend Admin (Teller): HTML + CSS + Vanilla JS (served by Express)
+
+## Project Structure
+project/
+├── src/
+│   ├── config/
+│   │   ├── supabase.js
+│   │   └── onesignal.js
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── antrianController.js
+│   │   └── notifController.js
+│   ├── routes/
+│   │   ├── auth.js
+│   │   ├── antrian.js
+│   │   └── notif.js
+│   ├── services/
+│   │   ├── onesignalService.js
+│   │   ├── waService.js
+│   │   └── antrianService.js
+│   ├── middleware/
+│   │   └── authMiddleware.js
+│   └── app.js
+├── public/
+│   ├── index.html        ← halaman teller (web dashboard)
+│   ├── css/
+│   │   └── style.css
+│   └── js/
+│       └── dashboard.js
+├── .env.example
+├── package.json
+└── index.js
+
+## Database Schema (Supabase)
+
+### Table: profiles
+- id (uuid, FK to auth.users)
+- nama (text)
+- no_hp (text)
+- role (text) → 'nasabah' or 'teller'
+- onesignal_player_id (text)
+- created_at (timestamp)
+
+### Table: antrian
+- id (uuid)
+- user_id (uuid, FK to profiles)
+- nomor_antrian (integer)
+- layanan (text) → e.g. 'Tabungan', 'Kredit', 'Umum'
+- status (text) → 'menunggu', 'dipanggil', 'selesai', 'batal'
+- notif_sent (boolean, default false)
+- created_at (timestamp)
+- called_at (timestamp, nullable)
+
+## API Endpoints
+
+### Auth
+- POST /api/auth/register → register nasabah (nama, email, password, no_hp)
+- POST /api/auth/login → login, return JWT token
+- GET /api/auth/me → get current user profile
+
+### Antrian
+- POST /api/antrian/ambil → nasabah ambil nomor antrian (body: layanan, onesignal_player_id)
+- GET /api/antrian/status → nasabah cek posisi antrian mereka
+- GET /api/antrian/list → teller lihat semua antrian yang menunggu
+- PUT /api/antrian/panggil → teller panggil nomor berikutnya (auto trigger notifikasi)
+- PUT /api/antrian/selesai/:id → teller tandai antrian selesai
+
+## Notification Logic
+When teller calls next queue (PUT /api/antrian/panggil):
+1. Update current antrian status to 'dipanggil'
+2. Find nasabah whose queue position is exactly 3 numbers ahead
+3. If found AND notif_sent is false:
+   a. Send push notification via OneSignal
+   b. Send WhatsApp message via Baileys
+   c. Update notif_sent to true
+
+## Notification Messages
+Push Notif title: "Segera Bersiap!"
+Push Notif message: "Antrian Anda nomor [X] akan segera dipanggil. Silakan menuju ruang tunggu."
+
+WhatsApp message:
+"Halo [nama], antrian Anda nomor *[X]* akan segera dipanggil. Mohon segera menuju ruang tunggu bank. Terima kasih."
+
+## Web Dashboard (Teller)
+Create a clean, modern web dashboard at public/index.html:
+- Login page for teller
+- After login, show:
+  - Current number being served
+  - Button "Panggil Berikutnya" (big, prominent)
+  - Table of waiting queue (nomor, nama nasabah, layanan, waktu ambil)
+  - Button "Selesai" per row
+  - Real-time update every 5 seconds (polling)
+- Design: clean white background, blue accent color (#1a73e8), responsive
+
+## Environment Variables (.env.example)
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_KEY=your_supabase_service_key
+ONESIGNAL_APP_ID=your_onesignal_app_id
+ONESIGNAL_API_KEY=your_onesignal_api_key
+PORT=3000
+
+## Additional Requirements
+- Use dotenv for environment variables
+- Use cors middleware
+- Add basic error handling middleware
+- Baileys WA: on server start, initialize WA connection and show QR code in terminal for scanning
+- Add comments in Bahasa Indonesia for each function so it's easy to understand
+- package.json scripts: "start": "node index.js", "dev": "nodemon index.js"
+
+## Important Notes
+- Supabase Auth handles JWT automatically, use Supabase client to verify tokens in middleware
+- For Baileys, use the latest version (@whiskeysockets/baileys)
+- Keep all responses in JSON format: { success: true/false, message: "", data: {} }
+- The web dashboard is only for teller role, protect it with login
