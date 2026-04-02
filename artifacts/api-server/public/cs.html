@@ -350,36 +350,36 @@
 
             <div class="panel qr-panel">
               <p class="panel-label">Koneksi WhatsApp</p>
+
+              <!-- Status: Terhubung -->
               <div id="wa-connected-view" class="wa-connected hidden">
                 <div class="wa-connected-icon">
                   <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
                 <p class="wa-connected-text">WhatsApp Terhubung</p>
                 <p class="wa-connected-sub">Pesan siap dikirim ke nasabah</p>
-                <button class="btn btn-outline btn-sm" id="wa-disconnect-btn" style="margin-top:12px;">Putuskan Koneksi</button>
               </div>
-              <div id="wa-qr-view">
-                <div id="wa-error-banner" class="alert alert-warning hidden" style="margin-bottom:12px;"></div>
-                <p class="qr-instruction">Pindai kode QR ini menggunakan <strong>WhatsApp</strong> di ponsel Anda.</p>
-                <p class="qr-steps">Buka WhatsApp → Perangkat Tertaut → Tautkan Perangkat Baru</p>
-                <div class="qr-box" id="qr-box">
-                  <div class="qr-loading" id="qr-loading">
-                    <div class="spinner"></div>
-                    <span id="qr-loading-text">Menunggu kode QR...</span>
+
+              <!-- Status: Belum terhubung -->
+              <div id="wa-qr-view" class="hidden">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:28px 16px;text-align:center;">
+                  <div style="width:52px;height:52px;border-radius:50%;background:var(--gray-100);display:flex;align-items:center;justify-content:center;">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2">
+                      <path d="M18.36 6.64A9 9 0 1 1 5.64 5.64"/><path d="M12 2v4"/>
+                    </svg>
                   </div>
-                  <img id="qr-img" class="qr-img hidden" alt="Kode QR WhatsApp" />
+                  <p style="font-size:14px;font-weight:600;color:var(--gray-700);">WhatsApp Belum Terhubung</p>
+                  <p style="font-size:13px;color:var(--gray-500);line-height:1.6;">
+                    Koneksi WhatsApp dikelola oleh Teller.<br/>
+                    Hubungi Teller atau admin untuk menghubungkan.
+                  </p>
                 </div>
-                <p class="qr-hint" id="qr-hint">Kode QR akan diperbarui otomatis</p>
-                <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--gray-200);">
-                  <p style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;">Atau gunakan Kode Pairing</p>
-                  <p style="font-size:13px;color:var(--gray-500);margin-bottom:10px;">Masukkan nomor dengan kode negara, contoh: <code style="background:var(--gray-100);padding:1px 5px;border-radius:4px;">628123456789</code></p>
-                  <div style="display:flex;gap:8px;">
-                    <input type="tel" id="pairing-phone" placeholder="628xxxxxxxxxx"
-                      style="flex:1;padding:9px 13px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:var(--font);font-size:13.5px;color:var(--gray-800);background:var(--gray-50);outline:none;" />
-                    <button class="btn btn-outline btn-sm" id="pairing-btn">Minta Kode</button>
-                  </div>
-                  <div id="pairing-result" class="alert hidden" style="margin-top:10px;"></div>
-                </div>
+              </div>
+
+              <!-- Loading awal -->
+              <div id="wa-status-loading" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:32px;color:var(--gray-400);font-size:13px;">
+                <div class="spinner"></div>
+                <span>Memeriksa status...</span>
               </div>
             </div>
 

@@ -7,15 +7,18 @@ import {
   disconnectWa,
   pairingCode,
 } from "../controllers/notifController";
-import { tellerMiddleware } from "../middleware/authMiddleware";
+import { tellerMiddleware, anyStaffMiddleware } from "../middleware/authMiddleware";
 
 const router: IRouter = Router();
 
-router.get("/status",           tellerMiddleware, statusNotif);
+// Bisa diakses Teller DAN CS
+router.get("/status",           anyStaffMiddleware, statusNotif);
+router.post("/test-push",       anyStaffMiddleware, testPushNotif);
+router.post("/test-wa",         anyStaffMiddleware, testWhatsApp);
+
+// Khusus Teller (manajemen koneksi WhatsApp)
 router.get("/wa/qr",            tellerMiddleware, getWaQR);
 router.post("/wa/disconnect",   tellerMiddleware, disconnectWa);
 router.post("/wa/pairing-code", tellerMiddleware, pairingCode);
-router.post("/test-push",       tellerMiddleware, testPushNotif);
-router.post("/test-wa",         tellerMiddleware, testWhatsApp);
 
 export default router;

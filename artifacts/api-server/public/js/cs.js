@@ -59,21 +59,12 @@ const testWaBtn       = document.getElementById('test-wa-btn');
 const waResult        = document.getElementById('wa-result');
 const testPushBtn     = document.getElementById('test-push-btn');
 const pushResult      = document.getElementById('push-result');
-const waConnectedView = document.getElementById('wa-connected-view');
-const waQrView        = document.getElementById('wa-qr-view');
-const qrImg           = document.getElementById('qr-img');
-const qrLoading       = document.getElementById('qr-loading');
-const qrLoadingText   = document.getElementById('qr-loading-text');
-const qrHint          = document.getElementById('qr-hint');
-const waErrorBanner   = document.getElementById('wa-error-banner');
-const waDisconnectBtn = document.getElementById('wa-disconnect-btn');
-const pairingPhone    = document.getElementById('pairing-phone');
-const pairingBtn      = document.getElementById('pairing-btn');
-const pairingResult   = document.getElementById('pairing-result');
+const waConnectedView  = document.getElementById('wa-connected-view');
+const waQrView         = document.getElementById('wa-qr-view');
+const waStatusLoading  = document.getElementById('wa-status-loading');
 
 let currentPage         = 'dashboard';
 let refreshInterval     = null;
-let qrPollInterval      = null;
 let layaniTimerStart    = null;
 let layaniTimerInterval = null;
 let currentLayaniId     = null;
@@ -122,12 +113,10 @@ function navigateTo(page) {
 
   if (pageTitle) pageTitle.textContent = pageTitles[page] || page;
 
-  if (page !== 'notif' && qrPollInterval) { clearInterval(qrPollInterval); qrPollInterval = null; }
-
   if (page === 'dashboard') { loadStatistik(); loadQueueData(); }
   if (page === 'antrian')   loadAntrianPage();
   if (page === 'riwayat')   loadRiwayat();
-  if (page === 'notif')     startQRPolling();
+  if (page === 'notif')     loadWAStatus();
 }
 
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -468,8 +457,30 @@ riwayatRefreshBtn?.addEventListener('click', loadRiwayat);
 riwayatFilterStatus?.addEventListener('change', loadRiwayat);
 
 // ===========================
-// WA STATUS
+// WA STATUS (CS: read-only)
 // ===========================
+async function loadWAStatus() {
+  if (waStatusLoading) waStatusLoading.style.display = 'flex';
+  waConnectedView?.classList.add('hidden');
+  waQrView?.classList.add('hidden');
+  try {
+    const result = await api('GET', '/notif/status');
+    const connected = result.success && result.data.whatsapp_connected;
+    if (waBadgeEl) waBadgeEl.className = 'badge-wa ' + (connected ? '' : 'badge-wa-offline');
+    if (waLabelEl) waLabelEl.textContent = connected ? 'WhatsApp Terhubung' : 'WhatsApp';
+    if (waDotSide) waDotSide.style.background = connected ? '#22C55E' : '#A8A29E';
+    if (waStatusLoading) waStatusLoading.style.display = 'none';
+    if (connected) {
+      waConnectedView?.classList.remove('hidden');
+    } else {
+      waQrView?.classList.remove('hidden');
+    }
+  } catch {
+    if (waStatusLoading) waStatusLoading.style.display = 'none';
+    waQrView?.classList.remove('hidden');
+  }
+}
+
 async function checkWAStatus() {
   try {
     const result = await api('GET', '/notif/status');
@@ -480,73 +491,6 @@ async function checkWAStatus() {
     if (waDotSide) waDotSide.style.background = connected ? '#22C55E' : '#A8A29E';
   } catch {}
 }
-
-// ===========================
-// WA QR POLLING
-// ===========================
-function startQRPolling() {
-  fetchQR();
-  qrPollInterval = setInterval(fetchQR, 4000);
-}
-
-async function fetchQR() {
-  try {
-    const result = await api('GET', '/notif/wa/qr');
-    if (!result.success) return;
-    const { connected, qr, status, error } = result.data;
-
-    if (waBadgeEl) waBadgeEl.className = 'badge-wa ' + (connected ? '' : 'badge-wa-offline');
-    if (waLabelEl) waLabelEl.textContent = connected ? 'WhatsApp Terhubung' : 'WhatsApp';
-    if (waDotSide) waDotSide.style.background = connected ? '#22C55E' : '#A8A29E';
-
-    if (connected) {
-      waConnectedView?.classList.remove('hidden');
-      waQrView?.classList.add('hidden');
-      if (qrPollInterval) { clearInterval(qrPollInterval); qrPollInterval = null; }
-    } else {
-      waConnectedView?.classList.add('hidden');
-      waQrView?.classList.remove('hidden');
-      if (error) { if (waErrorBanner) { waErrorBanner.textContent = 'Error: ' + error; waErrorBanner.classList.remove('hidden'); } }
-      else { waErrorBanner?.classList.add('hidden'); }
-      if (qr) {
-        qrLoading?.classList.add('hidden');
-        if (qrImg) { qrImg.src = qr; qrImg.classList.remove('hidden'); }
-        if (qrHint) qrHint.textContent = 'QR diperbarui otomatis. Scan sebelum kedaluwarsa.';
-      } else {
-        qrLoading?.classList.remove('hidden');
-        if (qrImg) qrImg.classList.add('hidden');
-        if (qrLoadingText) qrLoadingText.textContent = status === 'error' ? 'Koneksi gagal — coba kode pairing' : 'Menunggu QR code...';
-      }
-    }
-  } catch {}
-}
-
-pairingBtn?.addEventListener('click', async () => {
-  const phone = pairingPhone?.value?.trim();
-  if (!phone) { showAlert(pairingResult, 'Nomor HP wajib diisi', 'error'); return; }
-  pairingBtn.disabled = true; pairingBtn.textContent = 'Memproses...';
-  try {
-    const result = await api('POST', '/notif/wa/pairing-code', { phone_number: phone });
-    if (result.success) {
-      showAlert(pairingResult, `Kode pairing: <strong style="font-size:20px;letter-spacing:3px;font-family:monospace">${result.data.code}</strong><br><small>Masukkan di WhatsApp → Perangkat Tertaut</small>`, 'success', true);
-    } else { showAlert(pairingResult, result.message, 'error'); }
-  } catch { showAlert(pairingResult, 'Gagal meminta kode pairing', 'error'); }
-  finally { pairingBtn.disabled = false; pairingBtn.textContent = 'Minta Kode'; }
-});
-
-waDisconnectBtn?.addEventListener('click', async () => {
-  if (!confirm('Putuskan koneksi WhatsApp?')) return;
-  waDisconnectBtn.disabled = true; waDisconnectBtn.textContent = 'Memutuskan...';
-  try {
-    await api('POST', '/notif/wa/disconnect');
-    waConnectedView?.classList.add('hidden');
-    waQrView?.classList.remove('hidden');
-    qrLoading?.classList.remove('hidden');
-    if (qrImg) qrImg.classList.add('hidden');
-    startQRPolling();
-  } catch {}
-  finally { waDisconnectBtn.disabled = false; waDisconnectBtn.textContent = 'Putuskan & Reset QR'; }
-});
 
 testWaBtn?.addEventListener('click', async () => {
   const phone   = document.getElementById('wa-phone').value;
