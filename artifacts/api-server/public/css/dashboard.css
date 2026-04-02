@@ -251,8 +251,13 @@ body {
 }
 
 .sb-user-info { flex: 1; min-width: 0; opacity: 1; transition: opacity .18s; }
-.sidebar.collapsed .sb-user-info { opacity: 0; }
-.sidebar.collapsed .btn-logout   { opacity: 0; width: 0; padding: 0; pointer-events: none; overflow: hidden; }
+
+/* Collapsed: avatar saja, ditampilkan di tengah tanpa cropping */
+.sidebar.collapsed .sidebar-footer      { padding: 10px 6px; }
+.sidebar.collapsed .sb-user             { padding: 6px; justify-content: center; gap: 0; }
+.sidebar.collapsed .sb-user-info        { opacity: 0; width: 0; overflow: hidden; pointer-events: none; }
+.sidebar.collapsed .wa-dot-side         { opacity: 0; width: 0; overflow: hidden; }
+.sidebar.collapsed .btn-logout          { opacity: 0; width: 0; padding: 0; pointer-events: none; overflow: hidden; }
 
 .sb-user-name { font-size: 12px; font-weight: 600; color: var(--gray-800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .sb-user-role { font-size: 10px; color: var(--gray-400); font-weight: 500; display: block; }
