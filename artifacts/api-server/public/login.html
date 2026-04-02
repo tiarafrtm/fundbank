@@ -62,7 +62,7 @@
         </div>
         <div class="form-group">
           <label for="reg-email">Alamat Email</label>
-          <input type="email" id="reg-email" autocomplete="email" placeholder="nama@bank.com" required />
+          <input type="email" id="reg-email" autocomplete="email" placeholder="nama@cs.com" required />
         </div>
         <div class="form-group">
           <label for="reg-no-hp">Nomor Telepon</label>
@@ -81,7 +81,7 @@
         </div>
         <div class="form-group">
           <label for="reg-role">Jabatan</label>
-          <select id="reg-role" class="select-input" required>
+          <select id="reg-role" class="select-input" required onchange="updateEmailPlaceholder(this.value)">
             <option value="cs">Pelayanan Nasabah (CS)</option>
             <option value="teller">Teller</option>
           </select>
@@ -96,6 +96,11 @@
 
   <script src="/js/shared.js"></script>
   <script>
+    function updateEmailPlaceholder(role) {
+      const map = { cs: 'nama@cs.com', teller: 'nama@teller.com' };
+      document.getElementById('reg-email').placeholder = map[role] || 'nama@bank.com';
+    }
+
     function togglePw(id, btn) {
       const inp = document.getElementById(id);
       const show = btn.querySelector('.eye-show');
