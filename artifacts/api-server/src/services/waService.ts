@@ -1,6 +1,7 @@
 import { logger } from "../lib/logger";
 
-let waSocket: any = null;
+let sockInstance: any = null;       // socket aktif (sebelum/sesudah connect)
+let waSocket: any = null;           // hanya saat connection === 'open'
 let waConnected = false;
 let currentQRDataUrl: string | null = null;
 let connectionStatus: "connecting" | "qr_ready" | "connected" | "error" = "connecting";
@@ -30,9 +31,10 @@ export async function initWhatsApp(): Promise<void> {
     const sock = makeWASocket({
       auth: state,
       browser: Browsers.ubuntu("Dashboard Bank"),
-      connectTimeoutMs: 30000,
-      keepAliveIntervalMs: 10000,
+      printQRInTerminal: false,
     });
+
+    sockInstance = sock;
 
     sock.ev.on("creds.update", saveCreds);
 
@@ -41,7 +43,7 @@ export async function initWhatsApp(): Promise<void> {
 
       if (qr) {
         logger.info("QR Code diterima — generate data URL...");
-        reconnectDelay = 5000; // reset delay saat QR berhasil diterima
+        reconnectDelay = 5000;
         connectionStatus = "qr_ready";
         try {
           currentQRDataUrl = await QRCode.default.toDataURL(qr, {
@@ -60,11 +62,10 @@ export async function initWhatsApp(): Promise<void> {
         const statusCode = boom?.output?.statusCode;
         waConnected = false;
         waSocket = null;
+        sockInstance = null;
 
         if (statusCode === DisconnectReason.loggedOut) {
           logger.warn("WhatsApp logout — hapus wa_session untuk scan ulang.");
-          waConnected = false;
-          waSocket = null;
           currentQRDataUrl = null;
           connectionStatus = "error";
           connectionError = "Logged out dari WhatsApp. Klik Disconnect & Reset QR untuk scan ulang.";
@@ -73,16 +74,16 @@ export async function initWhatsApp(): Promise<void> {
 
         // Exponential backoff: max 60 detik
         reconnectDelay = Math.min(reconnectDelay * 1.5, 60000);
-        const delayDesc = reconnectDelay >= 60000 ? "60 detik" : `${Math.round(reconnectDelay / 1000)} detik`;
+        const delaySec = Math.round(reconnectDelay / 1000);
 
         if (statusCode === 405 || statusCode === 403) {
           connectionStatus = "error";
-          connectionError = `WhatsApp menolak koneksi dari server ini (kode: ${statusCode}). Coba deploy ke server lain, atau gunakan Pairing Code di bawah.`;
-          logger.warn(`WhatsApp menolak koneksi (${statusCode}). Retry dalam ${delayDesc}...`);
+          connectionError = `WhatsApp menolak koneksi dari server ini (kode: ${statusCode}). Gunakan Kode Pairing di bawah, atau deploy ke server lain.`;
+          logger.warn(`WhatsApp menolak koneksi (${statusCode}). Retry dalam ${delaySec} detik...`);
         } else {
           connectionStatus = "connecting";
           connectionError = null;
-          logger.info(`WhatsApp terputus (${statusCode ?? "unknown"}), reconnect dalam ${delayDesc}...`);
+          logger.info(`WhatsApp terputus (${statusCode ?? "unknown"}), reconnect dalam ${delaySec} detik...`);
         }
 
         if (reconnectTimer) clearTimeout(reconnectTimer);
@@ -95,13 +96,14 @@ export async function initWhatsApp(): Promise<void> {
         currentQRDataUrl = null;
         connectionStatus = "connected";
         connectionError = null;
-        reconnectDelay = 5000; // reset delay
+        reconnectDelay = 5000;
       }
     });
   } catch (error: any) {
     logger.error({ error }, "Gagal menginisialisasi WhatsApp");
     connectionStatus = "error";
     connectionError = error?.message ?? "Terjadi kesalahan tidak diketahui";
+    sockInstance = null;
 
     reconnectDelay = Math.min(reconnectDelay * 1.5, 60000);
     if (reconnectTimer) clearTimeout(reconnectTimer);
@@ -110,8 +112,19 @@ export async function initWhatsApp(): Promise<void> {
 }
 
 export async function requestPairingCode(phoneNumber: string): Promise<string> {
-  if (!waSocket) throw new Error("Socket WhatsApp belum siap");
-  const code = await waSocket.requestPairingCode(phoneNumber);
+  // Pairing code harus diminta sebelum koneksi terbuka, menggunakan sockInstance
+  const s = sockInstance;
+  if (!s) throw new Error("Socket WhatsApp belum siap. Tunggu beberapa detik lalu coba lagi.");
+
+  // Sesuai docs: cek apakah credentials belum registered
+  if (s.authState?.creds?.registered) {
+    throw new Error("Akun sudah terdaftar / sudah login.");
+  }
+
+  const clean = phoneNumber.replace(/\D/g, "");
+  logger.info({ clean }, "Meminta pairing code untuk nomor...");
+  const code = await s.requestPairingCode(clean);
+  logger.info({ code }, "Pairing code diterima dari WA");
   return code;
 }
 
@@ -139,6 +152,9 @@ export async function sendWhatsAppMessage(
 export async function disconnectWhatsApp(): Promise<void> {
   if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
   try { if (waSocket) await waSocket.logout(); } catch {}
+  try { if (sockInstance) sockInstance.end(undefined); } catch {}
+
+  sockInstance = null;
   waSocket = null;
   waConnected = false;
   currentQRDataUrl = null;
