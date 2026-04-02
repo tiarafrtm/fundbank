@@ -133,39 +133,42 @@ export async function statusAntrian(
   });
 }
 
-// Teller melihat semua antrian yang menunggu
+// Teller melihat semua antrian yang menunggu (atau semua status jika all=true)
 export async function listAntrian(req: Request, res: Response): Promise<void> {
-  const { layanan } = req.query;
+  const { layanan, status, all } = req.query;
+  const showAll = all === "true";
 
   try {
     let query = supabaseAdmin
       .from("antrian")
-      .select(
-        `
-        *,
-        profiles (nama, no_hp)
-      `,
-      )
-      .eq("status", "menunggu")
+      .select(`*, profiles (nama, no_hp)`)
+      .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
       .order("nomor_antrian", { ascending: true });
 
-    if (layanan) {
-      query = query.eq("layanan", layanan as string);
+    if (showAll) {
+      if (status) query = query.eq("status", status as string);
+    } else {
+      query = query.eq("status", "menunggu");
     }
 
-    const { data, error } = await query;
+    if (layanan) query = query.eq("layanan", layanan as string);
 
+    const { data, error } = await query;
     if (error) throw error;
+
+    if (showAll) {
+      res.json({
+        success: true,
+        message: "Daftar antrian berhasil diambil",
+        data: { antrian: data, total: data?.length ?? 0 },
+      });
+      return;
+    }
 
     // Ambil nomor yang sedang dilayani saat ini
     const { data: sedangDilayani } = await supabaseAdmin
       .from("antrian")
-      .select(
-        `
-        *,
-        profiles (nama, no_hp)
-      `,
-      )
+      .select(`*, profiles (nama, no_hp)`)
       .eq("status", "dipanggil")
       .order("called_at", { ascending: false })
       .limit(1)
@@ -245,22 +248,25 @@ export async function selesaiAntrian(
   });
 }
 
-// Membatalkan antrian (oleh nasabah atau teller)
+// Membatalkan antrian (teller bisa batalkan antrian siapapun)
 export async function batalAntrian(
   req: Request,
   res: Response,
 ): Promise<void> {
   const { id } = req.params;
   const user = (req as any).user;
+  const isTeller = user?.role === "teller";
 
-  const { data: antrian, error } = await supabaseAdmin
+  let query = supabaseAdmin
     .from("antrian")
     .update({ status: "batal" })
     .eq("id", id)
-    .eq("user_id", user.id) // Pastikan hanya pemilik yang bisa batal
-    .eq("status", "menunggu")
-    .select()
-    .single();
+    .eq("status", "menunggu");
+
+  // Nasabah hanya bisa batalkan antrian miliknya sendiri
+  if (!isTeller) query = query.eq("user_id", user.id);
+
+  const { data: antrian, error } = await query.select().single();
 
   if (error || !antrian) {
     res.status(404).json({
