@@ -29,12 +29,46 @@
 
 | Info | Detail |
 |------|--------|
-| **Base URL Produksi** | `https://<domain-produksi>` |
-| **Base URL Mobile** | `https://<domain>/api/mobile` |
+| **Base URL Development** | `https://56b2884a-4a9e-4d63-b066-04c90f2f004a-00-f0nkpniuy9wf.janeway.replit.dev` |
+| **Base URL Produksi** | `https://<domain-produksi>` ← diisi setelah deploy |
+| **Base URL Mobile** | `<Base URL>/api/mobile` |
 | **Format** | JSON (request & response) |
 | **Auth** | Bearer Token (JWT dari Supabase) |
 | **Content-Type** | `application/json` |
 | **Token Validity** | ±1 jam (perlu login ulang jika expired) |
+
+### Setup Testing di Android Studio (Tanpa Hosting)
+
+Backend sudah bisa diakses langsung dari Android Studio selama project Replit sedang berjalan — tidak perlu hosting terlebih dahulu.
+
+**Langkah 1 — Tambahkan izin internet di `AndroidManifest.xml`:**
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+```
+
+**Langkah 2 — Definisikan Base URL di Kotlin:**
+```kotlin
+object ApiConfig {
+    // Ganti dengan URL produksi setelah deploy
+    const val BASE_URL = "https://56b2884a-4a9e-4d63-b066-04c90f2f004a-00-f0nkpniuy9wf.janeway.replit.dev"
+}
+```
+
+**Langkah 3 — Setup Retrofit (contoh):**
+```kotlin
+val retrofit = Retrofit.Builder()
+    .baseUrl(ApiConfig.BASE_URL + "/")
+    .addConverterFactory(GsonConverterFactory.create())
+    .build()
+```
+
+> **Catatan penting saat testing:**
+> - Backend hanya aktif selama project Replit **sedang terbuka dan running**. Jangan tutup tab Replit saat testing.
+> - URL development di atas bisa berubah jika project di-restart setelah lama tidak aktif. Jika koneksi gagal, cek URL terbaru di halaman Replit.
+> - Untuk testing di emulator Android Studio, pastikan emulator terhubung ke internet (bukan airplane mode).
+> - Setelah siap production, deploy project ini untuk mendapatkan URL permanen (contoh: `https://nama-project.replit.app`).
+
+---
 
 ### Header Wajib untuk Endpoint yang Membutuhkan Login
 ```
