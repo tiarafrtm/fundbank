@@ -294,16 +294,30 @@
                 </div>
 
                 <div id="wa-qr-view">
+                  <!-- Error state -->
+                  <div id="wa-error-banner" class="alert alert-warning hidden" style="margin-bottom:12px;font-size:13px;line-height:1.5;"></div>
+
                   <p class="qr-instruction">Scan QR code ini menggunakan <strong>WhatsApp</strong> di HP Anda.</p>
                   <p class="qr-steps">Buka WhatsApp → Perangkat Tertaut → Tautkan Perangkat</p>
                   <div class="qr-box" id="qr-box">
                     <div class="qr-loading" id="qr-loading">
                       <div class="spinner"></div>
-                      <span>Menunggu QR code...</span>
+                      <span id="qr-loading-text">Menunggu QR code...</span>
                     </div>
                     <img id="qr-img" class="qr-img hidden" alt="WhatsApp QR Code" />
                   </div>
                   <p class="qr-hint" id="qr-hint">QR code akan diperbarui otomatis</p>
+
+                  <!-- Pairing code alternative -->
+                  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+                    <p style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Atau hubungkan via Kode Pairing</p>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Masukkan nomor HP (format internasional, misal: <code>628123456789</code>), lalu masukkan kode di WhatsApp → Perangkat Tertaut → Tautkan dengan nomor telepon.</p>
+                    <div style="display:flex;gap:8px;">
+                      <input type="tel" id="pairing-phone" placeholder="628xxxxxxxxxx" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);font-size:14px;" />
+                      <button class="btn btn-outline btn-sm" id="pairing-btn" style="white-space:nowrap;">Minta Kode</button>
+                    </div>
+                    <div id="pairing-result" class="alert hidden" style="margin-top:10px;font-size:14px;"></div>
+                  </div>
                 </div>
               </div>
 

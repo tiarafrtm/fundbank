@@ -127,6 +127,7 @@ body {
 .alert { padding: 10px 12px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; }
 .alert-error   { background: var(--danger-light);  color: var(--danger);  border: 1px solid #fecaca; }
 .alert-success { background: var(--success-light); color: var(--success); border: 1px solid #bbf7d0; }
+.alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
 
 /* ======================== App Layout ======================== */
 #dashboard-page.active { display: block; }

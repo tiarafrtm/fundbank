@@ -49,7 +49,12 @@ const waConnectedView = document.getElementById('wa-connected-view');
 const waQrView       = document.getElementById('wa-qr-view');
 const qrImg          = document.getElementById('qr-img');
 const qrLoading      = document.getElementById('qr-loading');
+const qrLoadingText  = document.getElementById('qr-loading-text');
 const qrHint         = document.getElementById('qr-hint');
+const waErrorBanner  = document.getElementById('wa-error-banner');
+const pairingPhone   = document.getElementById('pairing-phone');
+const pairingBtn     = document.getElementById('pairing-btn');
+const pairingResult  = document.getElementById('pairing-result');
 
 // ===== Auth Tab =====
 function switchTab(tab) {
@@ -222,11 +227,11 @@ function showFeedback(msg, isError = false) {
   panggilFeedback.classList.remove('hidden');
   setTimeout(() => panggilFeedback.classList.add('hidden'), 4000);
 }
-function showAlert(el, msg, type) {
-  el.textContent = msg;
-  el.className = 'alert alert-' + (type === 'success' ? 'success' : 'error');
+function showAlert(el, msg, type, persistent = false) {
+  el.innerHTML = msg;
+  el.className = 'alert alert-' + (type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'error');
   el.classList.remove('hidden');
-  setTimeout(() => el.classList.add('hidden'), 5000);
+  if (!persistent) setTimeout(() => el.classList.add('hidden'), 6000);
 }
 function escHtml(str) {
   const d = document.createElement('div'); d.textContent = str; return d.innerHTML;
@@ -414,7 +419,7 @@ async function fetchQR() {
   try {
     const result = await api('GET', '/notif/wa/qr');
     if (!result.success) return;
-    const { connected, qr } = result.data;
+    const { connected, qr, status, error } = result.data;
 
     waStatusEl.className = 'wa-dot ' + (connected ? 'wa-online' : 'wa-offline');
     waLabel.textContent  = connected ? 'WhatsApp Terhubung' : 'WhatsApp';
@@ -426,19 +431,48 @@ async function fetchQR() {
     } else {
       waConnectedView.classList.add('hidden');
       waQrView.classList.remove('hidden');
+
+      if (error) {
+        waErrorBanner.textContent = '⚠ ' + error;
+        waErrorBanner.classList.remove('hidden');
+      } else {
+        waErrorBanner.classList.add('hidden');
+      }
+
       if (qr) {
         qrLoading.classList.add('hidden');
         qrImg.src = qr;
         qrImg.classList.remove('hidden');
         qrHint.textContent = 'QR diperbarui otomatis. Scan sebelum kedaluwarsa.';
+      } else if (status === 'error') {
+        qrLoading.classList.remove('hidden');
+        qrImg.classList.add('hidden');
+        if (qrLoadingText) qrLoadingText.textContent = 'Koneksi gagal — gunakan kode pairing di bawah';
+        qrHint.textContent = '';
       } else {
         qrLoading.classList.remove('hidden');
         qrImg.classList.add('hidden');
+        if (qrLoadingText) qrLoadingText.textContent = 'Menunggu QR code...';
         qrHint.textContent = 'Menunggu QR code dari server...';
       }
     }
   } catch {}
 }
+
+pairingBtn?.addEventListener('click', async () => {
+  const phone = pairingPhone?.value?.trim();
+  if (!phone) { showAlert(pairingResult, 'Nomor HP wajib diisi', 'error'); return; }
+  pairingBtn.disabled = true; pairingBtn.textContent = 'Memproses...';
+  try {
+    const result = await api('POST', '/notif/wa/pairing-code', { phone_number: phone });
+    if (result.success) {
+      showAlert(pairingResult, `Kode pairing Anda: <strong style="font-size:20px;letter-spacing:3px;font-family:monospace">${result.data.code}</strong><br><span style="font-size:12px;opacity:0.8">Masukkan di WhatsApp → Perangkat Tertaut → Tautkan dengan nomor telepon</span>`, 'success', true);
+    } else {
+      showAlert(pairingResult, result.message, 'error');
+    }
+  } catch { showAlert(pairingResult, 'Gagal meminta kode pairing', 'error'); }
+  finally { pairingBtn.disabled = false; pairingBtn.textContent = 'Minta Kode'; }
+});
 
 waDisconnectBtn?.addEventListener('click', async () => {
   if (!confirm('Putuskan koneksi WhatsApp dan reset QR?')) return;

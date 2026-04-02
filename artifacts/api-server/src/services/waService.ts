@@ -3,11 +3,22 @@ import { logger } from "../lib/logger";
 let waSocket: any = null;
 let waConnected = false;
 let currentQRDataUrl: string | null = null;
+let connectionStatus: "connecting" | "qr_ready" | "connected" | "error" = "connecting";
+let connectionError: string | null = null;
+let reconnectDelay = 5000;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 export async function initWhatsApp(): Promise<void> {
   try {
-    const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } =
-      await import("@whiskeysockets/baileys");
+    connectionStatus = "connecting";
+    connectionError = null;
+
+    const {
+      default: makeWASocket,
+      DisconnectReason,
+      useMultiFileAuthState,
+      Browsers,
+    } = await import("@whiskeysockets/baileys");
     const { Boom } = await import("@hapi/boom");
     const path = await import("path");
     const QRCode = await import("qrcode");
@@ -16,60 +27,92 @@ export async function initWhatsApp(): Promise<void> {
       path.join(process.cwd(), "wa_session"),
     );
 
-    const sock = makeWASocket({ auth: state });
+    const sock = makeWASocket({
+      auth: state,
+      browser: Browsers.ubuntu("Dashboard Bank"),
+      connectTimeoutMs: 30000,
+      keepAliveIntervalMs: 10000,
+    });
 
     sock.ev.on("creds.update", saveCreds);
 
-    sock.ev.on(
-      "connection.update",
-      async (update: {
-        connection?: string;
-        lastDisconnect?: { error?: unknown };
-        qr?: string;
-      }) => {
-        const { connection, lastDisconnect, qr } = update;
+    sock.ev.on("connection.update", async (update: any) => {
+      const { connection, lastDisconnect, qr } = update;
 
-        if (qr) {
-          logger.info("QR Code baru diterima, generate data URL...");
-          try {
-            currentQRDataUrl = await QRCode.default.toDataURL(qr, {
-              width: 280,
-              margin: 2,
-              color: { dark: "#111827", light: "#ffffff" },
-            });
-            logger.info("QR Code siap di-scan melalui dashboard");
-          } catch (err) {
-            logger.error({ err }, "Gagal generate QR data URL");
-          }
+      if (qr) {
+        logger.info("QR Code diterima — generate data URL...");
+        reconnectDelay = 5000; // reset delay saat QR berhasil diterima
+        connectionStatus = "qr_ready";
+        try {
+          currentQRDataUrl = await QRCode.default.toDataURL(qr, {
+            width: 280,
+            margin: 2,
+            color: { dark: "#111827", light: "#ffffff" },
+          });
+          logger.info("QR Code siap ditampilkan di dashboard");
+        } catch (err) {
+          logger.error({ err }, "Gagal generate QR data URL");
         }
+      }
 
-        if (connection === "close") {
-          const boom = lastDisconnect?.error as InstanceType<typeof Boom>;
-          const shouldReconnect =
-            boom?.output?.statusCode !== DisconnectReason.loggedOut;
+      if (connection === "close") {
+        const boom = lastDisconnect?.error as InstanceType<typeof Boom>;
+        const statusCode = boom?.output?.statusCode;
+        waConnected = false;
+        waSocket = null;
 
-          if (shouldReconnect) {
-            logger.info("WhatsApp terputus, reconnect dalam 5 detik...");
-            waConnected = false;
-            waSocket = null;
-            setTimeout(() => initWhatsApp(), 5000);
-          } else {
-            logger.warn("WhatsApp logout. Hapus wa_session dan restart untuk scan ulang.");
-            waConnected = false;
-            waSocket = null;
-            currentQRDataUrl = null;
-          }
-        } else if (connection === "open") {
-          logger.info("WhatsApp berhasil terhubung!");
-          waSocket = sock;
-          waConnected = true;
+        if (statusCode === DisconnectReason.loggedOut) {
+          logger.warn("WhatsApp logout — hapus wa_session untuk scan ulang.");
+          waConnected = false;
+          waSocket = null;
           currentQRDataUrl = null;
+          connectionStatus = "error";
+          connectionError = "Logged out dari WhatsApp. Klik Disconnect & Reset QR untuk scan ulang.";
+          return;
         }
-      },
-    );
-  } catch (error) {
+
+        // Exponential backoff: max 60 detik
+        reconnectDelay = Math.min(reconnectDelay * 1.5, 60000);
+        const delayDesc = reconnectDelay >= 60000 ? "60 detik" : `${Math.round(reconnectDelay / 1000)} detik`;
+
+        if (statusCode === 405 || statusCode === 403) {
+          connectionStatus = "error";
+          connectionError = `WhatsApp menolak koneksi dari server ini (kode: ${statusCode}). Coba deploy ke server lain, atau gunakan Pairing Code di bawah.`;
+          logger.warn(`WhatsApp menolak koneksi (${statusCode}). Retry dalam ${delayDesc}...`);
+        } else {
+          connectionStatus = "connecting";
+          connectionError = null;
+          logger.info(`WhatsApp terputus (${statusCode ?? "unknown"}), reconnect dalam ${delayDesc}...`);
+        }
+
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(() => initWhatsApp(), reconnectDelay);
+
+      } else if (connection === "open") {
+        logger.info("WhatsApp berhasil terhubung!");
+        waSocket = sock;
+        waConnected = true;
+        currentQRDataUrl = null;
+        connectionStatus = "connected";
+        connectionError = null;
+        reconnectDelay = 5000; // reset delay
+      }
+    });
+  } catch (error: any) {
     logger.error({ error }, "Gagal menginisialisasi WhatsApp");
+    connectionStatus = "error";
+    connectionError = error?.message ?? "Terjadi kesalahan tidak diketahui";
+
+    reconnectDelay = Math.min(reconnectDelay * 1.5, 60000);
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(() => initWhatsApp(), reconnectDelay);
   }
+}
+
+export async function requestPairingCode(phoneNumber: string): Promise<string> {
+  if (!waSocket) throw new Error("Socket WhatsApp belum siap");
+  const code = await waSocket.requestPairingCode(phoneNumber);
+  return code;
 }
 
 export async function sendWhatsAppMessage(
@@ -94,14 +137,15 @@ export async function sendWhatsAppMessage(
 }
 
 export async function disconnectWhatsApp(): Promise<void> {
-  try {
-    if (waSocket) await waSocket.logout();
-  } catch {}
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  try { if (waSocket) await waSocket.logout(); } catch {}
   waSocket = null;
   waConnected = false;
   currentQRDataUrl = null;
+  connectionStatus = "connecting";
+  connectionError = null;
+  reconnectDelay = 5000;
 
-  // Hapus sesi agar QR baru muncul saat koneksi ulang
   const fs = await import("fs");
   const path = await import("path");
   const sessionDir = path.join(process.cwd(), "wa_session");
@@ -109,13 +153,11 @@ export async function disconnectWhatsApp(): Promise<void> {
     fs.rmSync(sessionDir, { recursive: true, force: true });
   }
 
-  setTimeout(() => initWhatsApp(), 1000);
+  reconnectTimer = setTimeout(() => initWhatsApp(), 1500);
 }
 
-export function isWhatsAppConnected(): boolean {
-  return waConnected;
-}
-
-export function getWhatsAppQR(): string | null {
-  return currentQRDataUrl;
+export function isWhatsAppConnected(): boolean { return waConnected; }
+export function getWhatsAppQR(): string | null { return currentQRDataUrl; }
+export function getWhatsAppStatus(): { status: string; error: string | null } {
+  return { status: connectionStatus, error: connectionError };
 }
