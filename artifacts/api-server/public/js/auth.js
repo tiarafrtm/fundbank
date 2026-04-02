@@ -94,12 +94,24 @@ registerForm.addEventListener('submit', async (e) => {
   registerBtn.textContent = 'Mendaftarkan...';
 
   try {
+    const email = document.getElementById('reg-email').value.trim().toLowerCase();
+    const role  = document.getElementById('reg-role').value;
+    const domainMap = { cs: '@cs.com', teller: '@teller.com' };
+    const required  = domainMap[role] || '';
+    if (!email.endsWith(required)) {
+      registerError.textContent = `Jabatan ${role.toUpperCase()} hanya boleh menggunakan email berakhiran ${required}`;
+      registerError.classList.remove('hidden');
+      registerBtn.disabled = false;
+      registerBtn.textContent = 'Buat Akun';
+      return;
+    }
+
     const result = await api('POST', '/auth/register', {
       nama:     document.getElementById('reg-nama').value,
-      email:    document.getElementById('reg-email').value,
+      email,
       no_hp:    document.getElementById('reg-no-hp').value,
       password: document.getElementById('reg-password').value,
-      role:     document.getElementById('reg-role').value,
+      role,
     });
 
     if (!result.success) {

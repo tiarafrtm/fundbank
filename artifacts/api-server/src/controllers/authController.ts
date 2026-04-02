@@ -31,6 +31,17 @@ export async function register(req: Request, res: Response): Promise<void> {
 
   const assignedRole: string = VALID_ROLES.includes(role) ? role : "cs";
 
+  const ROLE_DOMAIN: Record<string, string> = { cs: "@cs.com", teller: "@teller.com" };
+  const requiredDomain = ROLE_DOMAIN[assignedRole];
+  if (!email.toLowerCase().endsWith(requiredDomain)) {
+    res.status(400).json({
+      success: false,
+      message: `Jabatan ${assignedRole.toUpperCase()} hanya boleh menggunakan email dengan domain ${requiredDomain}`,
+      data: {},
+    });
+    return;
+  }
+
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
