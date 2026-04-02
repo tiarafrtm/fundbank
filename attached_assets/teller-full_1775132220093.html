@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sistem Antrian Bank — Teller</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --orange:#F97316;--orange-soft:#FFF7ED;--orange-light:#FFEDD5;
+  --orange-mid:#FB923C;--orange-dark:#EA580C;
+  --sidebar-bg:#1C1917;--sidebar-text:#D6D3D1;
+  --white:#FFFFFF;--gray-50:#FAFAF9;--gray-100:#F5F5F4;
+  --gray-200:#E7E5E4;--gray-400:#A8A29E;--gray-600:#57534E;--gray-800:#292524;
+  --green:#16A34A;--green-bg:#F0FDF4;--red:#DC2626;--red-bg:#FEF2F2;
+  --blue:#2563EB;--blue-bg:#EFF6FF;--purple:#7E22CE;--purple-bg:#FDF4FF;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+  --radius:12px;--radius-sm:8px;
+}
+body{font-family:'Poppins',sans-serif;background:var(--gray-50);color:var(--gray-800);display:flex;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{width:240px;background:var(--sidebar-bg);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;z-index:100;}
+.sidebar-brand{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.07);}
+.brand-icon{width:34px;height:34px;background:var(--orange);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:9px;}
+.brand-icon svg{width:18px;height:18px;fill:white;}
+.brand-name{font-size:14px;font-weight:700;color:white;line-height:1.2;}
+.brand-sub{font-size:11px;color:var(--gray-400);}
+.sidebar-nav{padding:14px 12px;flex:1;overflow-y:auto;}
+.nav-label{font-size:10px;font-weight:600;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase;padding:0 8px;margin-bottom:5px;margin-top:14px;}
+.nav-label:first-child{margin-top:0;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;transition:all .15s;color:var(--sidebar-text);font-size:13px;font-weight:500;text-decoration:none;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;}
+.nav-item:hover{background:rgba(255,255,255,.07);color:white;}
+.nav-item.active{background:rgba(249,115,22,.15);color:var(--orange);}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.75;}
+.nav-item.active svg{opacity:1;}
+.nav-badge{margin-left:auto;background:var(--orange);color:white;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;}
+.sidebar-footer{padding:14px 12px;border-top:1px solid rgba(255,255,255,.07);}
+.user-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;background:rgba(255,255,255,.05);}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;}
+.user-name{font-size:12px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-role{font-size:10px;color:var(--orange-mid);font-weight:500;}
+.wa-dot{width:7px;height:7px;border-radius:50%;background:#25D366;flex-shrink:0;}
+
+/* MAIN */
+.main{margin-left:240px;flex:1;display:flex;flex-direction:column;min-height:100vh;}
+.topbar{background:white;border-bottom:1px solid var(--gray-200);padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow-sm);}
+.page-title{font-size:15px;font-weight:700;color:var(--gray-800);}
+.page-sub{font-size:11px;color:var(--gray-400);}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.badge-wa{display:flex;align-items:center;gap:5px;background:var(--green-bg);border:1px solid #BBF7D0;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:600;color:var(--green);}
+.badge-wa::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);}
+.time-chip{background:var(--orange-soft);border:1px solid var(--orange-light);padding:4px 13px;border-radius:20px;font-size:12px;font-weight:600;color:var(--orange-dark);}
+.content{padding:22px 28px;flex:1;}
+
+/* PAGE visibility */
+.page{display:none;}
+.page.active{display:block;}
+
+/* ======================== DASHBOARD PAGE ======================== */
+.top-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:18px;}
+.serving-card{background:linear-gradient(135deg,var(--orange),var(--orange-dark));border-radius:var(--radius);padding:20px 22px;color:white;position:relative;overflow:hidden;box-shadow:0 6px 20px rgba(249,115,22,.28);}
+.serving-card::after{content:'';position:absolute;right:-16px;top:-16px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.08);}
+.serving-label{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;opacity:.85;margin-bottom:6px;}
+.serving-number{font-size:40px;font-weight:700;line-height:1;letter-spacing:-1px;margin-bottom:3px;}
+.serving-name{font-size:13px;opacity:.92;font-weight:500;}
+.serving-time{font-size:11px;opacity:.7;margin-top:3px;}
+.filter-card{background:white;border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);}
+.card-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--gray-400);margin-bottom:9px;}
+.select-styled{width:100%;padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:13px;font-weight:500;color:var(--gray-800);background:var(--gray-50);cursor:pointer;outline:none;transition:border-color .15s;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;}
+.select-styled:focus{border-color:var(--orange);}
+.waiting-count{margin-top:10px;font-size:22px;font-weight:700;color:var(--orange);}
+.waiting-sub{font-size:11px;color:var(--gray-400);}
+.call-card{background:white;border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);display:flex;flex-direction:column;}
+.btn-call{width:100%;padding:13px;background:var(--orange);color:white;border:none;border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;margin-top:auto;}
+.btn-call:hover{background:var(--orange-dark);transform:translateY(-1px);box-shadow:0 5px 16px rgba(249,115,22,.32);}
+.btn-call:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+.btn-skip-sm{width:100%;padding:8px;background:transparent;color:var(--gray-400);border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;margin-top:7px;}
+.btn-skip-sm:hover{border-color:var(--red);color:var(--red);}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.stat-chip{background:white;border-radius:var(--radius-sm);padding:13px 15px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);display:flex;align-items:center;gap:11px;}
+.stat-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.stat-icon svg{width:17px;height:17px;}
+.stat-val{font-size:20px;font-weight:700;line-height:1;}
+.stat-lbl{font-size:11px;color:var(--gray-400);font-weight:500;margin-top:1px;}
+
+/* ======================== TABLE SHARED ======================== */
+.section{background:white;border-radius:var(--radius);box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);margin-bottom:18px;overflow:hidden;}
+.section-header{padding:14px 20px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.section-title{font-size:14px;font-weight:700;color:var(--gray-800);display:flex;align-items:center;gap:7px;}
+.dot-live{width:7px;height:7px;border-radius:50%;background:var(--orange);animation:pulse 1.8s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(1.35);}}
+.btn-sm{padding:5px 11px;border-radius:6px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--gray-200);background:white;color:var(--gray-600);transition:all .13s;}
+.btn-sm:hover{border-color:var(--orange);color:var(--orange);}
+.btn-sm.active-filter{border-color:var(--orange);color:var(--orange);background:var(--orange-soft);}
+.auto-lbl{font-size:11px;color:var(--gray-400);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--gray-50);}
+th{padding:9px 18px;text-align:left;font-size:10px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--gray-100);}
+td{padding:12px 18px;font-size:13px;font-weight:500;color:var(--gray-800);border-bottom:1px solid var(--gray-100);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--gray-50);}
+.ticket-num{font-weight:700;color:var(--orange);font-size:14px;}
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.b-waiting{background:var(--orange-soft);color:var(--orange-dark);}
+.b-serving{background:var(--blue-bg);color:var(--blue);}
+.b-done{background:var(--green-bg);color:var(--green);}
+.b-skip{background:var(--gray-100);color:var(--gray-600);}
+.b-priority{background:var(--purple-bg);color:var(--purple);}
+.svc-tag{display:inline-flex;padding:2px 7px;background:var(--gray-100);border-radius:4px;font-size:11px;color:var(--gray-600);font-weight:500;}
+.ab{padding:5px 11px;border-radius:6px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;border:none;transition:all .13s;}
+.ab-done{background:var(--green-bg);color:var(--green);}
+.ab-done:hover{background:#DCFCE7;}
+.ab-skip{background:var(--gray-100);color:var(--gray-600);margin-left:4px;}
+.ab-skip:hover{background:var(--red-bg);color:var(--red);}
+.tbl-footer{padding:11px 18px;border-top:1px solid var(--gray-100);display:flex;align-items:center;font-size:12px;color:var(--gray-400);}
+
+/* ======================== ANTRIAN PAGE ======================== */
+.antrian-layout{display:grid;grid-template-columns:1fr 340px;gap:18px;}
+
+/* Panel kiri — display besar + list */
+.antrian-main{}
+.display-card{background:linear-gradient(135deg,var(--orange),var(--orange-dark));border-radius:var(--radius);padding:28px 32px;color:white;margin-bottom:18px;box-shadow:0 6px 24px rgba(249,115,22,.28);position:relative;overflow:hidden;}
+.display-card::after{content:'';position:absolute;right:-30px;top:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.07);}
+.display-card::before{content:'';position:absolute;left:-20px;bottom:-40px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.05);}
+.display-top{display:flex;align-items:flex-start;justify-content:space-between;position:relative;z-index:1;}
+.display-left{}
+.display-lbl{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.8;margin-bottom:6px;}
+.display-num{font-size:64px;font-weight:700;line-height:1;letter-spacing:-2px;}
+.display-name{font-size:15px;font-weight:600;opacity:.92;margin-top:4px;}
+.display-svc{font-size:12px;opacity:.7;margin-top:2px;}
+.display-right{text-align:right;position:relative;z-index:1;}
+.display-timer{font-size:11px;opacity:.75;margin-bottom:4px;}
+.display-mins{font-size:28px;font-weight:700;line-height:1;}
+.display-mins-lbl{font-size:11px;opacity:.7;}
+.display-actions{display:flex;gap:10px;margin-top:20px;position:relative;z-index:1;}
+.btn-selesai{flex:1;padding:12px;background:white;color:var(--orange-dark);border:none;border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;}
+.btn-selesai:hover{background:#FFF7ED;transform:translateY(-1px);}
+.btn-skip-white{padding:12px 20px;background:rgba(255,255,255,.15);color:white;border:1.5px solid rgba(255,255,255,.3);border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;}
+.btn-skip-white:hover{background:rgba(255,255,255,.25);}
+.btn-panggil-lg{width:100%;padding:13px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35);color:white;border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px;transition:all .15s;}
+.btn-panggil-lg:hover{background:rgba(255,255,255,.28);}
+
+/* Antrian list */
+.queue-list{}
+.queue-item{background:white;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;transition:all .15s;cursor:default;}
+.queue-item:hover{border-color:var(--orange-light);box-shadow:var(--shadow-sm);}
+.queue-item.priority{border-color:#E9D5FF;background:var(--purple-bg);}
+.queue-pos{width:28px;height:28px;border-radius:50%;background:var(--orange-soft);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--orange-dark);flex-shrink:0;}
+.queue-item.priority .queue-pos{background:var(--purple-bg);color:var(--purple);}
+.queue-info{flex:1;min-width:0;}
+.queue-name{font-size:13px;font-weight:600;color:var(--gray-800);}
+.queue-meta{font-size:11px;color:var(--gray-400);margin-top:1px;}
+.queue-num{font-size:16px;font-weight:700;color:var(--orange);flex-shrink:0;}
+.queue-item.priority .queue-num{color:var(--purple);}
+.queue-wait{font-size:11px;color:var(--gray-400);flex-shrink:0;text-align:right;}
+
+/* Panel kanan — kontrol & info */
+.antrian-side{}
+.side-card{background:white;border-radius:var(--radius);box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);padding:18px;margin-bottom:14px;}
+.side-title{font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+.loket-info{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--orange-soft);border-radius:var(--radius-sm);border:1px solid var(--orange-light);margin-bottom:10px;}
+.loket-dot{width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.loket-name{font-size:13px;font-weight:700;color:var(--orange-dark);}
+.loket-sub{font-size:11px;color:var(--orange-mid);}
+.status-toggle{display:flex;gap:6px;margin-bottom:10px;}
+.st-btn{flex:1;padding:8px;border-radius:6px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--gray-200);background:white;color:var(--gray-400);transition:all .13s;}
+.st-btn.on{background:var(--green-bg);border-color:#BBF7D0;color:var(--green);}
+.st-btn.off{background:var(--red-bg);border-color:#FECACA;color:var(--red);}
+.mini-stat{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.ms-item{background:var(--gray-50);border-radius:var(--radius-sm);padding:10px 12px;text-align:center;}
+.ms-val{font-size:18px;font-weight:700;color:var(--gray-800);}
+.ms-lbl{font-size:10px;color:var(--gray-400);font-weight:500;margin-top:1px;}
+.next-preview{border:1.5px dashed var(--gray-200);border-radius:var(--radius-sm);padding:12px 14px;}
+.np-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--gray-400);margin-bottom:6px;}
+.np-num{font-size:22px;font-weight:700;color:var(--orange);}
+.np-name{font-size:12px;color:var(--gray-600);margin-top:2px;}
+.np-svc{font-size:11px;color:var(--gray-400);}
+.btn-call-side{width:100%;padding:12px;background:var(--orange);color:white;border:none;border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;margin-top:12px;}
+.btn-call-side:hover{background:var(--orange-dark);transform:translateY(-1px);box-shadow:0 4px 14px rgba(249,115,22,.3);}
+
+/* ======================== RIWAYAT PAGE ======================== */
+.riwayat-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+.riwayat-title{font-size:18px;font-weight:700;color:var(--gray-800);}
+.riwayat-filter{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.inp-date{padding:7px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:12px;color:var(--gray-800);outline:none;transition:border-color .13s;}
+.inp-date:focus{border-color:var(--orange);}
+.select-sm{padding:7px 10px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:12px;color:var(--gray-600);background:white;cursor:pointer;outline:none;appearance:none;}
+.select-sm:focus{border-color:var(--orange);}
+.btn-export{padding:7px 16px;background:var(--orange);color:white;border:none;border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .13s;}
+.btn-export:hover{background:var(--orange-dark);}
+.rekap-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.rekap-card{background:white;border-radius:var(--radius-sm);padding:16px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);}
+.rekap-val{font-size:26px;font-weight:700;color:var(--gray-800);line-height:1;}
+.rekap-lbl{font-size:11px;color:var(--gray-400);font-weight:500;margin-top:3px;}
+.rekap-trend{font-size:11px;margin-top:5px;font-weight:600;}
+.trend-up{color:var(--green);}
+.trend-down{color:var(--red);}
+.chart-placeholder{background:white;border-radius:var(--radius);box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);padding:20px;margin-bottom:18px;}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.chart-title{font-size:14px;font-weight:700;}
+.chart-legend{display:flex;gap:14px;}
+.cl-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gray-600);}
+.cl-dot{width:8px;height:8px;border-radius:50%;}
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:100px;}
+.bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.bar{width:100%;border-radius:4px 4px 0 0;transition:opacity .15s;cursor:pointer;}
+.bar:hover{opacity:.8;}
+.bar-lbl{font-size:10px;color:var(--gray-400);font-weight:500;}
+.bar-val{font-size:10px;font-weight:700;color:var(--gray-600);}
+.detail-row{font-size:11px;color:var(--gray-400);display:flex;gap:8px;margin-top:3px;}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22" fill="none" stroke="white" stroke-width="1.5"/></svg>
+    </div>
+    <div class="brand-name">Antrian Bank</div>
+    <div class="brand-sub">Sistem Manajemen Antrian</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Menu Utama</div>
+    <button class="nav-item" onclick="showPage('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-item" onclick="showPage('antrian')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Antrian
+      <span class="nav-badge" id="nav-badge">8</span>
+    </button>
+    <button class="nav-item" onclick="showPage('riwayat')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Riwayat
+    </button>
+    <div class="nav-label">Lainnya</div>
+    <button class="nav-item" onclick="showPage('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.18 2.18 2 2 0 012.18 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.16 6.16l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      Test Notif WA
+    </button>
+    <button class="nav-item" onclick="showPage('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+      Pengaturan
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-avatar">M</div>
+      <div style="flex:1;min-width:0;">
+        <div class="user-name">Mutiara Fara Tama</div>
+        <div class="user-role">Teller — Loket 1</div>
+      </div>
+      <div class="wa-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-title" id="topbar-title">Dashboard Teller</div>
+      <div class="page-sub">Rabu, 2 April 2026</div>
+    </div>
+    <div class="topbar-right">
+      <div class="badge-wa">WhatsApp Terhubung</div>
+      <div class="time-chip" id="clock">--:--</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ====== DASHBOARD ====== -->
+    <div class="page active" id="page-dashboard">
+      <div class="top-row">
+        <div class="serving-card">
+          <div class="serving-label">Sedang Dilayani</div>
+          <div class="serving-number" id="d-cur-num">A-006</div>
+          <div class="serving-name" id="d-cur-name">Budi Santoso</div>
+          <div class="serving-time">Mulai dilayani 16.28 · 4 menit</div>
+        </div>
+        <div class="filter-card">
+          <div class="card-label">Filter Layanan</div>
+          <select class="select-styled"><option>Semua Layanan</option><option>Teller</option><option>Prioritas</option></select>
+          <div class="waiting-count">8 <span style="font-size:14px;font-weight:500;color:var(--gray-400)">menunggu</span></div>
+          <div class="waiting-sub">Estimasi tunggu ±24 menit</div>
+        </div>
+        <div class="call-card">
+          <div class="card-label">Aksi Antrian</div>
+          <button class="btn-call" onclick="callNextDashboard()">Panggil Berikutnya</button>
+          <button class="btn-skip-sm">Lewati (Skip)</button>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-chip">
+          <div class="stat-icon" style="background:var(--orange-soft)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+          <div><div class="stat-val">24</div><div class="stat-lbl">Total hari ini</div></div>
+        </div>
+        <div class="stat-chip">
+          <div class="stat-icon" style="background:var(--green-bg)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div><div class="stat-val" style="color:var(--green)">15</div><div class="stat-lbl">Selesai</div></div>
+        </div>
+        <div class="stat-chip">
+          <div class="stat-icon" style="background:var(--orange-soft)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div><div class="stat-val">8</div><div class="stat-lbl">Menunggu</div></div>
+        </div>
+        <div class="stat-chip">
+          <div class="stat-icon" style="background:var(--gray-100)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+          <div><div class="stat-val" style="color:var(--gray-400)">1</div><div class="stat-lbl">Diskip</div></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="dot-live"></span>Antrian Menunggu</div>
+          <div style="display:flex;align-items:center;gap:8px;"><span class="auto-lbl">Auto-refresh 5 detik</span><button class="btn-sm">Refresh</button></div>
+        </div>
+        <table>
+          <thead><tr><th>No. Antrian</th><th>Nama Nasabah</th><th>Layanan</th><th>Tujuan</th><th>Waktu Ambil</th><th>Tunggu</th><th>Aksi</th></tr></thead>
+          <tbody>
+            <tr><td><span class="ticket-num">A-007</span> <span class="badge b-priority" style="margin-left:4px">Prioritas</span></td><td>Siti Rahayu</td><td><span class="svc-tag">Teller</span></td><td>Setor tunai</td><td>16.10</td><td>22 mnt</td><td><button class="ab ab-done">Selesai</button><button class="ab ab-skip">Skip</button></td></tr>
+            <tr><td><span class="ticket-num">A-008</span></td><td>Ahmad Fauzi</td><td><span class="svc-tag">Teller</span></td><td>Transfer</td><td>16.15</td><td>17 mnt</td><td><button class="ab ab-done">Selesai</button><button class="ab ab-skip">Skip</button></td></tr>
+            <tr><td><span class="ticket-num">A-009</span></td><td>Dewi Lestari</td><td><span class="svc-tag">Teller</span></td><td>Bayar tagihan</td><td>16.18</td><td>14 mnt</td><td><button class="ab ab-done">Selesai</button><button class="ab ab-skip">Skip</button></td></tr>
+            <tr><td><span class="ticket-num">A-010</span></td><td>Rudi Hermawan</td><td><span class="svc-tag">Teller</span></td><td>Tarik tunai</td><td>16.20</td><td>12 mnt</td><td><button class="ab ab-done">Selesai</button><button class="ab ab-skip">Skip</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">Semua Antrian Hari Ini</div>
+          <div style="display:flex;gap:7px;">
+            <select class="select-sm"><option>Semua Status</option><option>Menunggu</option><option>Dilayani</option><option>Selesai</option><option>Diskip</option></select>
+            <select class="select-sm"><option>Semua Layanan</option><option>Teller</option><option>Prioritas</option></select>
+            <button class="btn-sm">Refresh</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>No. Antrian</th><th>Nama Nasabah</th><th>Tujuan</th><th>Status</th><th>Waktu Ambil</th><th>Durasi</th><th>Aksi</th></tr></thead>
+          <tbody>
+            <tr><td><span class="ticket-num">A-001</span></td><td>Hendra Gunawan</td><td>Setor tunai</td><td><span class="badge b-done">Selesai</span></td><td>08.02</td><td>8 mnt</td><td>—</td></tr>
+            <tr><td><span class="ticket-num">A-002</span></td><td>Maya Putri</td><td>Transfer</td><td><span class="badge b-done">Selesai</span></td><td>08.15</td><td>6 mnt</td><td>—</td></tr>
+            <tr><td><span class="ticket-num">A-003</span></td><td>Pak Slamet</td><td>Tarik tunai</td><td><span class="badge b-done">Selesai</span></td><td>08.30</td><td>5 mnt</td><td>—</td></tr>
+            <tr><td><span class="ticket-num">A-004</span></td><td>Rina Susanti</td><td>Bayar tagihan</td><td><span class="badge b-skip">Diskip</span></td><td>09.10</td><td>—</td><td>—</td></tr>
+            <tr><td><span class="ticket-num">A-005</span></td><td>Agus Prasetyo</td><td>Setor tunai</td><td><span class="badge b-done">Selesai</span></td><td>09.22</td><td>9 mnt</td><td>—</td></tr>
+            <tr><td><span class="ticket-num">A-006</span></td><td>Budi Santoso</td><td>Transfer</td><td><span class="badge b-serving">Dilayani</span></td><td>16.10</td><td>4 mnt+</td><td><button class="ab ab-done">Selesai</button></td></tr>
+          </tbody>
+        </table>
+        <div class="tbl-footer"><span>Total: 24 antrian</span><span style="margin-left:auto">Halaman 1 dari 3</span></div>
+      </div>
+    </div>
+
+    <!-- ====== ANTRIAN ====== -->
+    <div class="page" id="page-antrian">
+      <div class="antrian-layout">
+        <!-- Kiri -->
+        <div class="antrian-main">
+          <!-- Display besar -->
+          <div class="display-card">
+            <div class="display-top">
+              <div class="display-left">
+                <div class="display-lbl">Sedang Dilayani — Loket 1</div>
+                <div class="display-num" id="a-cur-num">A-006</div>
+                <div class="display-name" id="a-cur-name">Budi Santoso</div>
+                <div class="display-svc" id="a-cur-svc">Teller · Transfer antar bank</div>
+              </div>
+              <div class="display-right">
+                <div class="display-timer">Waktu layanan</div>
+                <div class="display-mins" id="a-timer">04</div>
+                <div class="display-mins-lbl">menit</div>
+              </div>
+            </div>
+            <div class="display-actions">
+              <button class="btn-selesai" onclick="selesaiAntrian()">Tandai Selesai</button>
+              <button class="btn-skip-white" onclick="skipAntrian()">Skip</button>
+            </div>
+            <button class="btn-panggil-lg" onclick="callNextAntrian()">Panggil Berikutnya (A-007)</button>
+          </div>
+
+          <!-- List antrian menunggu -->
+          <div class="section">
+            <div class="section-header">
+              <div class="section-title"><span class="dot-live"></span>Antrian Menunggu <span style="font-size:12px;font-weight:500;color:var(--gray-400);margin-left:4px">(8 orang)</span></div>
+              <div style="display:flex;gap:7px;align-items:center;">
+                <select class="select-sm"><option>Semua Tujuan</option><option>Setor tunai</option><option>Tarik tunai</option><option>Transfer</option><option>Bayar tagihan</option></select>
+                <button class="btn-sm">Refresh</button>
+              </div>
+            </div>
+            <div style="padding:12px 16px;">
+              <div class="queue-item priority">
+                <div class="queue-pos">1</div>
+                <div class="queue-info">
+                  <div class="queue-name">Siti Rahayu <span class="badge b-priority" style="margin-left:4px;font-size:10px">Prioritas</span></div>
+                  <div class="queue-meta">Setor tunai · Ambil 16.10</div>
+                </div>
+                <div>
+                  <div class="queue-num">A-007</div>
+                  <div class="queue-wait">22 mnt</div>
+                </div>
+              </div>
+              <div class="queue-item">
+                <div class="queue-pos">2</div>
+                <div class="queue-info">
+                  <div class="queue-name">Ahmad Fauzi</div>
+                  <div class="queue-meta">Transfer · Ambil 16.15</div>
+                </div>
+                <div>
+                  <div class="queue-num">A-008</div>
+                  <div class="queue-wait">17 mnt</div>
+                </div>
+              </div>
+              <div class="queue-item">
+                <div class="queue-pos">3</div>
+                <div class="queue-info">
+                  <div class="queue-name">Dewi Lestari</div>
+                  <div class="queue-meta">Bayar tagihan · Ambil 16.18</div>
+                </div>
+                <div>
+                  <div class="queue-num">A-009</div>
+                  <div class="queue-wait">14 mnt</div>
+                </div>
+              </div>
+              <div class="queue-item">
+                <div class="queue-pos">4</div>
+                <div class="queue-info">
+                  <div class="queue-name">Rudi Hermawan</div>
+                  <div class="queue-meta">Tarik tunai · Ambil 16.20</div>
+                </div>
+                <div>
+                  <div class="queue-num">A-010</div>
+                  <div class="queue-wait">12 mnt</div>
+                </div>
+              </div>
+              <div class="queue-item">
+                <div class="queue-pos">5</div>
+                <div class="queue-info">
+                  <div class="queue-name">Linda Wati</div>
+                  <div class="queue-meta">Setor tunai · Ambil 16.25</div>
+                </div>
+                <div>
+                  <div class="queue-num">A-011</div>
+                  <div class="queue-wait">7 mnt</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kanan -->
+        <div class="antrian-side">
+          <div class="side-card">
+            <div class="side-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              Status Loket
+            </div>
+            <div class="loket-info">
+              <div class="loket-dot"></div>
+              <div>
+                <div class="loket-name">Loket 1 — Aktif</div>
+                <div class="loket-sub">Mutiara Fara Tama · Teller</div>
+              </div>
+            </div>
+            <div class="status-toggle">
+              <button class="st-btn on">Buka Loket</button>
+              <button class="st-btn" onclick="this.classList.toggle('off')">Tutup Loket</button>
+            </div>
+          </div>
+
+          <div class="side-card">
+            <div class="side-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Statistik Loket Ini
+            </div>
+            <div class="mini-stat">
+              <div class="ms-item"><div class="ms-val">15</div><div class="ms-lbl">Selesai</div></div>
+              <div class="ms-item"><div class="ms-val">8</div><div class="ms-lbl">Menunggu</div></div>
+              <div class="ms-item"><div class="ms-val" style="color:var(--orange)">~6 mnt</div><div class="ms-lbl">Rata-rata</div></div>
+              <div class="ms-item"><div class="ms-val" style="color:var(--gray-400)">1</div><div class="ms-lbl">Diskip</div></div>
+            </div>
+          </div>
+
+          <div class="side-card">
+            <div class="side-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Antrian Berikutnya
+            </div>
+            <div class="next-preview">
+              <div class="np-lbl">Nomor Selanjutnya</div>
+              <div class="np-num">A-007</div>
+              <div class="np-name">Siti Rahayu</div>
+              <div class="np-svc">Setor tunai · Prioritas · Tunggu 22 mnt</div>
+            </div>
+            <button class="btn-call-side" onclick="callNextAntrian()">Panggil A-007</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== RIWAYAT ====== -->
+    <div class="page" id="page-riwayat">
+      <div class="riwayat-header">
+        <div>
+          <div class="riwayat-title">Riwayat Antrian</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:2px;">Data historis semua antrian</div>
+        </div>
+        <div class="riwayat-filter">
+          <input type="date" class="inp-date" value="2026-04-02"/>
+          <input type="date" class="inp-date" value="2026-04-02"/>
+          <select class="select-sm"><option>Semua Layanan</option><option>Teller</option><option>Prioritas</option></select>
+          <select class="select-sm"><option>Semua Status</option><option>Selesai</option><option>Diskip</option></select>
+          <button class="btn-export">Export CSV</button>
+        </div>
+      </div>
+
+      <!-- Rekap cards -->
+      <div class="rekap-row">
+        <div class="rekap-card">
+          <div class="rekap-val">24</div>
+          <div class="rekap-lbl">Total antrian hari ini</div>
+          <div class="rekap-trend trend-up">+3 dari kemarin</div>
+        </div>
+        <div class="rekap-card">
+          <div class="rekap-val" style="color:var(--green)">22</div>
+          <div class="rekap-lbl">Selesai dilayani</div>
+          <div class="rekap-trend trend-up">91.6% tingkat layanan</div>
+        </div>
+        <div class="rekap-card">
+          <div class="rekap-val" style="color:var(--orange)">~6 mnt</div>
+          <div class="rekap-lbl">Rata-rata waktu layanan</div>
+          <div class="rekap-trend trend-down">+1 mnt dari kemarin</div>
+        </div>
+        <div class="rekap-card">
+          <div class="rekap-val" style="color:var(--gray-400)">2</div>
+          <div class="rekap-lbl">Diskip / tidak hadir</div>
+          <div class="rekap-trend" style="color:var(--gray-400)">8.3% dari total</div>
+        </div>
+      </div>
+
+      <!-- Bar chart sederhana -->
+      <div class="chart-placeholder">
+        <div class="chart-header">
+          <div class="chart-title">Antrian per Jam — Hari Ini</div>
+          <div class="chart-legend">
+            <div class="cl-item"><div class="cl-dot" style="background:var(--orange)"></div>Selesai</div>
+            <div class="cl-item"><div class="cl-dot" style="background:var(--gray-200)"></div>Diskip</div>
+          </div>
+        </div>
+        <div class="bar-chart">
+          <div class="bar-wrap"><div class="bar" style="height:35px;background:var(--orange-light)"></div><div class="bar-lbl">08</div><div class="bar-val">3</div></div>
+          <div class="bar-wrap"><div class="bar" style="height:55px;background:var(--orange)"></div><div class="bar-lbl">09</div><div class="bar-val">5</div></div>
+          <div class="bar-wrap"><div class="bar" style="height:45px;background:var(--orange)"></div><div class="bar-lbl">10</div><div class="bar-val">4</div></div>
+          <div class="bar-wrap"><div class="bar" style="height:30px;background:var(--orange-light)"></div><div class="bar-lbl">11</div><div class="bar-val">2</div></div>
+          <div class="bar-wrap"><div class="bar" style="height:20px;background:var(--orange-light)"></div><div class="bar-lbl">12</div><div class="bar-val">1</div></div>
+          <div class="bar-wrap"><div class="bar" style="height:25px;background:var(--orange-light)"></div><div class="bar-lbl">13</div><div class="bar-val">2</div></div>
+          <div class="bar-wrap"><div class="bar" style="height:50px;background:var(--orange)"></div><div class="bar-lbl">14</div><div class="bar-val">4</div></div>
+          <div class="bar-wrap"><div class="bar" style="height:40px;background:var(--orange)"></div><div class="bar-lbl">15</div><div class="bar-val">3</div></div>
+          <div class="bar-wrap"><div class="bar" style="height:10px;background:var(--gray-200)"></div><div class="bar-lbl">16</div><div class="bar-val">—</div></div>
+        </div>
+      </div>
+
+      <!-- Tabel riwayat lengkap -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">Detail Riwayat</div>
+          <div style="display:flex;gap:7px;align-items:center;">
+            <input type="text" placeholder="Cari nama / no. antrian..." style="padding:6px 12px;border:1.5px solid var(--gray-200);border-radius:6px;font-family:'Poppins',sans-serif;font-size:12px;outline:none;width:200px;" onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--gray-200)'"/>
+            <button class="btn-sm">Cari</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>No. Antrian</th><th>Nama Nasabah</th><th>Tujuan</th><th>Status</th><th>Ambil Antrian</th><th>Mulai Dilayani</th><th>Selesai</th><th>Durasi</th></tr></thead>
+          <tbody>
+            <tr><td><span class="ticket-num">A-001</span></td><td>Hendra Gunawan</td><td>Setor tunai</td><td><span class="badge b-done">Selesai</span></td><td>08.02</td><td>08.05</td><td>08.13</td><td>8 mnt</td></tr>
+            <tr><td><span class="ticket-num">A-002</span></td><td>Maya Putri</td><td>Transfer</td><td><span class="badge b-done">Selesai</span></td><td>08.15</td><td>08.18</td><td>08.24</td><td>6 mnt</td></tr>
+            <tr><td><span class="ticket-num">A-003</span></td><td>Pak Slamet <span class="badge b-priority" style="margin-left:4px;font-size:10px">Prioritas</span></td><td>Tarik tunai</td><td><span class="badge b-done">Selesai</span></td><td>08.30</td><td>08.31</td><td>08.36</td><td>5 mnt</td></tr>
+            <tr><td><span class="ticket-num">A-004</span></td><td>Rina Susanti</td><td>Bayar tagihan</td><td><span class="badge b-skip">Diskip</span></td><td>09.10</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><td><span class="ticket-num">A-005</span></td><td>Agus Prasetyo</td><td>Setor tunai</td><td><span class="badge b-done">Selesai</span></td><td>09.22</td><td>09.25</td><td>09.34</td><td>9 mnt</td></tr>
+            <tr><td><span class="ticket-num">A-006</span></td><td>Budi Santoso</td><td>Transfer</td><td><span class="badge b-serving">Dilayani</span></td><td>16.10</td><td>16.28</td><td>—</td><td>4 mnt+</td></tr>
+          </tbody>
+        </table>
+        <div class="tbl-footer"><span>Total: 24 antrian · 22 selesai · 1 diskip · 1 dilayani</span><span style="margin-left:auto">Halaman 1 dari 3 &nbsp;|&nbsp; <a href="#" style="color:var(--orange);text-decoration:none;font-weight:600">Sebelumnya</a> &nbsp; <a href="#" style="color:var(--orange);text-decoration:none;font-weight:600">Berikutnya</a></span></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const pages={dashboard:'Dashboard Teller',antrian:'Kelola Antrian',riwayat:'Riwayat Antrian'};
+
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.getElementById('topbar-title').textContent=pages[id];
+  const navItems=document.querySelectorAll('.nav-item');
+  const idx={dashboard:0,antrian:1,riwayat:2};
+  navItems[idx[id]].classList.add('active');
+}
+
+// set dashboard active on load
+showPage('dashboard');
+
+// clock
+function updateClock(){
+  const now=new Date();
+  document.getElementById('clock').textContent=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+}
+setInterval(updateClock,1000);updateClock();
+
+// timer
+let secs=240;
+setInterval(()=>{
+  secs++;
+  document.getElementById('a-timer').textContent=String(Math.floor(secs/60)).padStart(2,'0');
+},1000);
+
+const queue=[
+  {num:'A-007',name:'Siti Rahayu',svc:'Teller · Setor tunai'},
+  {num:'A-008',name:'Ahmad Fauzi',svc:'Teller · Transfer'},
+  {num:'A-009',name:'Dewi Lestari',svc:'Teller · Bayar tagihan'},
+];
+let qi=0;
+
+function callNextAntrian(){
+  if(qi>=queue.length)return;
+  const q=queue[qi++];
+  document.getElementById('a-cur-num').textContent=q.num;
+  document.getElementById('a-cur-name').textContent=q.name;
+  document.getElementById('a-cur-svc').textContent=q.svc;
+  document.getElementById('d-cur-num').textContent=q.num;
+  document.getElementById('d-cur-name').textContent=q.name;
+  secs=0;
+}
+
+function callNextDashboard(){
+  callNextAntrian();
+}
+
+function selesaiAntrian(){
+  if(confirm('Tandai antrian ini selesai?'))callNextAntrian();
+}
+
+function skipAntrian(){
+  if(confirm('Lewati antrian ini?'))callNextAntrian();
+}
+</script>
+</body>
+</html>
