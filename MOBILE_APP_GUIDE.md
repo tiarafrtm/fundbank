@@ -1,18 +1,26 @@
 # Panduan Pengembangan Aplikasi Mobile Antrian Bank
-> Dokumen ini ditujukan untuk developer Android Studio yang akan membangun aplikasi nasabah.
-> Backend sudah siap dan seluruh endpoint di bawah ini aktif.
+> Dokumen ini ditujukan untuk developer Android Studio yang membangun aplikasi nasabah.
+> Seluruh endpoint di bawah ini aktif dan sudah diuji. Diperbarui sesuai kondisi backend terkini.
 
 ---
 
 ## Daftar Isi
 1. [Informasi Umum Backend](#1-informasi-umum-backend)
 2. [Alur Aplikasi Mobile](#2-alur-aplikasi-mobile)
-3. [Skema API Lengkap](#3-skema-api-lengkap)
+3. [API Nasabah Mobile](#3-api-nasabah-mobile)
+   - 3.1 [Daftar Akun Baru](#31-daftar-akun-baru)
+   - 3.2 [Login](#32-login)
+   - 3.3 [Profil Nasabah](#33-profil-nasabah)
+   - 3.4 [Ambil Nomor Antrian](#34-ambil-nomor-antrian)
+   - 3.5 [Status Antrian Aktif](#35-status-antrian-aktif)
+   - 3.6 [Batalkan Antrian](#36-batalkan-antrian)
+   - 3.7 [Tiket Antrian (HTML Cetak)](#37-tiket-antrian-html-cetak)
 4. [Format Pesan WhatsApp](#4-format-pesan-whatsapp)
 5. [Deep Link](#5-deep-link)
 6. [Push Notification OneSignal](#6-push-notification-onesignal)
 7. [Status & Kode Error](#7-status--kode-error)
 8. [Catatan Implementasi Android](#8-catatan-implementasi-android)
+9. [Referensi Endpoint Lengkap](#9-referensi-endpoint-lengkap)
 
 ---
 
@@ -20,15 +28,26 @@
 
 | Info | Detail |
 |------|--------|
-| **Base URL** | `https://<domain-produksi>/api/mobile` |
+| **Base URL Produksi** | `https://<domain-produksi>` |
+| **Base URL Mobile** | `https://<domain>/api/mobile` |
 | **Format** | JSON (request & response) |
 | **Auth** | Bearer Token (JWT dari Supabase) |
 | **Content-Type** | `application/json` |
+| **Token Validity** | ±1 jam (perlu login ulang jika expired) |
 
-### Header Standar
+### Header Wajib untuk Endpoint yang Membutuhkan Login
 ```
 Content-Type: application/json
-Authorization: Bearer <access_token>   ← wajib untuk endpoint yang membutuhkan login
+Authorization: Bearer <access_token>
+```
+
+### Format Response Konsisten (semua endpoint)
+```json
+{
+  "success": true | false,
+  "message": "Pesan yang mudah dibaca manusia",
+  "data": { ... }
+}
 ```
 
 ---
@@ -37,51 +56,45 @@ Authorization: Bearer <access_token>   ← wajib untuk endpoint yang membutuhkan
 
 ```
 [BUKA APP]
-     │
-     ▼
+     |
+     v
 [Cek token tersimpan?]
-  ├── Tidak → [Layar Login / Register]
-  └── Ya   → [Cek antrian aktif hari ini]
-                  │
-                  ▼
-        [GET /antrian/status]
-          ├── 404 Tidak ada antrian
-          │         │
-          │         ▼
-          │   [Layar Pilih Layanan]
-          │   [ Teller ]  [ CS ]
-          │         │
-          │         ▼
-          │   [POST /antrian/ambil]
-          │         │
-          │         ▼
-          │   [Layar Nomor Antrian]
-          │
-          └── 200 Ada antrian aktif
-                    │
-                    ▼
-              [Layar Status Antrian]
-              Polling tiap 15 detik
-                    │
-              ┌─────┴──────┐
-              ▼            ▼
-         [dipanggil]   [menunggu]
-              │            │
-              ▼            │
-        [Tampilkan        (lanjut
-         notifikasi)      polling)
-              │
-              ▼
-        [Lihat Tiket]
-        [GET /antrian/tiket/:id]
-              │
-              ▼
-        [Cetak PDF / WebView]
+  +-- Tidak --> [Layar Login / Register]
+  |
+  +-- Ya   --> [Validasi token ke GET /api/mobile/saya]
+                    |
+               +----+----+
+               |         |
+           [401/403]   [200 OK]
+               |         |
+          [Login]    [Cek antrian aktif]
+                     GET /api/mobile/antrian/status
+                          |
+               +----------+----------+
+               |                     |
+           [404 Tidak ada]       [200 Ada antrian]
+               |                     |
+    [Layar Pilih Layanan]    [Layar Status Antrian]
+    [ Teller ]  [ CS ]        Polling tiap 15 detik
+               |                     |
+    [POST /api/mobile/antrian/ambil]  |
+               |              +------+--------+
+               |              |               |
+               |          [menunggu]    [dipanggil]
+               |              |               |
+    [Layar Nomor Antrian] (lanjut       [Tampilkan
+                          polling)       notifikasi]
+                                              |
+                                     [GET /api/mobile/antrian/tiket/:id]
+                                              |
+                                       [WebView Tiket]
 ```
 
 ---
 
-## 3. Skema API Lengkap
+## 3. API Nasabah Mobile
+
+Semua endpoint mobile ada di bawah prefix `/api/mobile/`.
 
 ---
 
@@ -91,7 +104,9 @@ Authorization: Bearer <access_token>   ← wajib untuk endpoint yang membutuhkan
 POST /api/mobile/daftar
 ```
 
-**Request:**
+Tidak memerlukan token. Nasabah mendaftar menggunakan NIK sebagai identitas utama.
+
+**Request Body:**
 ```json
 {
   "nama":     "Budi Santoso",
@@ -101,10 +116,12 @@ POST /api/mobile/daftar
 }
 ```
 
-**Validasi:**
-- `nik` → tepat **16 digit angka**
-- `password` → minimal **6 karakter**
-- `nama`, `nik`, `no_hp`, `password` → semua **wajib**
+| Field | Wajib | Validasi |
+|-------|-------|----------|
+| `nama` | Ya | Tidak boleh kosong |
+| `nik` | Ya | Tepat **16 digit angka** |
+| `no_hp` | Ya | Tidak boleh kosong |
+| `password` | Ya | Minimal **6 karakter** |
 
 **Response sukses `201`:**
 ```json
@@ -120,11 +137,20 @@ POST /api/mobile/daftar
 }
 ```
 
-**Response error `400` (NIK sudah terdaftar):**
+**Response error `400` — NIK sudah terdaftar:**
 ```json
 {
   "success": false,
   "message": "NIK sudah terdaftar, silakan masuk",
+  "data": {}
+}
+```
+
+**Response error `400` — NIK tidak valid:**
+```json
+{
+  "success": false,
+  "message": "NIK harus tepat 16 digit angka",
   "data": {}
 }
 ```
@@ -137,7 +163,9 @@ POST /api/mobile/daftar
 POST /api/mobile/masuk
 ```
 
-**Request:**
+Tidak memerlukan token. Login menggunakan NIK + password.
+
+**Request Body:**
 ```json
 {
   "nik":      "3201234567890001",
@@ -163,14 +191,23 @@ POST /api/mobile/masuk
 }
 ```
 
-> Simpan `token` di SharedPreferences / EncryptedSharedPreferences.
-> Token berlaku ±1 jam. Jika expired, tampilkan layar login kembali.
+> Simpan `token` di `EncryptedSharedPreferences`. Token berlaku ±1 jam.
+> Jika response `401`, tampilkan layar login kembali.
 
 **Response error `401`:**
 ```json
 {
   "success": false,
   "message": "NIK atau password salah",
+  "data": {}
+}
+```
+
+**Response error `403` — bukan akun nasabah:**
+```json
+{
+  "success": false,
+  "message": "Akun ini bukan akun nasabah mobile",
   "data": {}
 }
 ```
@@ -183,6 +220,8 @@ POST /api/mobile/masuk
 GET /api/mobile/saya
 Authorization: Bearer <token>
 ```
+
+Gunakan endpoint ini untuk memvalidasi token tersimpan saat app dibuka.
 
 **Response `200`:**
 ```json
@@ -201,6 +240,8 @@ Authorization: Bearer <token>
 }
 ```
 
+**Response `401`** — token tidak valid/expired → redirect ke layar login.
+
 ---
 
 ### 3.4 Ambil Nomor Antrian
@@ -210,7 +251,9 @@ POST /api/mobile/antrian/ambil
 Authorization: Bearer <token>
 ```
 
-**Request:**
+Nasabah hanya bisa memiliki **satu antrian aktif per hari**. Jika sudah ada, endpoint ini akan menolak dengan `400`.
+
+**Request Body:**
 ```json
 {
   "layanan":              "Teller",
@@ -218,10 +261,10 @@ Authorization: Bearer <token>
 }
 ```
 
-| Field | Nilai yang valid |
-|-------|-----------------|
-| `layanan` | `"Teller"` atau `"CS"` |
-| `onesignal_player_id` | Opsional — untuk push notification |
+| Field | Wajib | Nilai yang valid |
+|-------|-------|-----------------|
+| `layanan` | Ya | `"Teller"` atau `"CS"` |
+| `onesignal_player_id` | Tidak | String player ID dari OneSignal SDK — untuk push notification |
 
 **Response sukses `201`:**
 ```json
@@ -243,14 +286,28 @@ Authorization: Bearer <token>
 }
 ```
 
-**Response error `400` (sudah punya antrian aktif):**
+**Response error `400` — sudah punya antrian aktif:**
 ```json
 {
   "success": false,
   "message": "Anda sudah memiliki antrian aktif hari ini",
   "data": {
-    "antrian": { ...data antrian yang masih aktif... }
+    "antrian": {
+      "id":            "uuid-antrian-lama",
+      "nomor_antrian": 7,
+      "layanan":       "Teller",
+      "status":        "menunggu"
+    }
   }
+}
+```
+
+**Response error `400` — layanan tidak valid:**
+```json
+{
+  "success": false,
+  "message": "Jenis layanan wajib dipilih: Teller atau CS",
+  "data": {}
 }
 ```
 
@@ -263,6 +320,8 @@ GET /api/mobile/antrian/status
 Authorization: Bearer <token>
 ```
 
+Gunakan endpoint ini untuk **polling** (tiap 15 detik) untuk mengetahui posisi dan status antrian nasabah hari ini.
+
 **Response `200`:**
 ```json
 {
@@ -274,7 +333,10 @@ Authorization: Bearer <token>
       "nomor_antrian": 10,
       "layanan":       "Teller",
       "status":        "menunggu",
-      "created_at":    "2026-04-02T09:00:00.000Z"
+      "notif_sent":    false,
+      "created_at":    "2026-04-02T09:00:00.000Z",
+      "called_at":     null,
+      "finished_at":   null
     },
     "posisi":           3,
     "antrian_di_depan": 2
@@ -284,19 +346,21 @@ Authorization: Bearer <token>
 
 | Field | Keterangan |
 |-------|------------|
-| `posisi` | Urutan nasabah (1 = giliran berikutnya) |
-| `antrian_di_depan` | Jumlah orang yang masih di depan |
+| `posisi` | Urutan nasabah saat ini (1 = giliran berikutnya) |
+| `antrian_di_depan` | Jumlah orang yang masih menunggu di depan |
+| `called_at` | Waktu dipanggil (diisi saat status menjadi `dipanggil`) |
+| `finished_at` | Waktu selesai (diisi saat status menjadi `selesai`) |
 
-**Status antrian yang mungkin:**
+**Siklus status antrian:**
 
 | `status` | Arti | Tindakan di App |
 |----------|------|-----------------|
-| `menunggu` | Masih antri | Tampilkan posisi, lanjut polling |
-| `dipanggil` | Nomor dipanggil | Tampilkan notifikasi & buka tiket |
-| `selesai` | Layanan selesai | Tampilkan pesan terima kasih |
-| `batal` | Dibatalkan | Kembali ke layar pilih layanan |
+| `menunggu` | Masih dalam antrian | Tampilkan posisi, lanjut polling |
+| `dipanggil` | Nomor dipanggil loket | Tampilkan notifikasi, buka tiket, stop polling |
+| `selesai` | Layanan sudah selesai | Tampilkan pesan terima kasih, bersihkan state |
+| `batal` | Dibatalkan (nasabah/teller) | Kembali ke layar pilih layanan |
 
-**Response `404` (tidak ada antrian):**
+**Response `404` — tidak ada antrian hari ini:**
 ```json
 {
   "success": false,
@@ -314,8 +378,12 @@ DELETE /api/mobile/antrian/:id
 Authorization: Bearer <token>
 ```
 
-> Ganti `:id` dengan nilai `antrian.id` yang didapat dari endpoint status.
-> Hanya bisa membatalkan antrian berstatus `menunggu`.
+Ganti `:id` dengan nilai `antrian.id` dari response status. Nasabah hanya bisa membatalkan antrian **miliknya sendiri** yang berstatus `menunggu`.
+
+**Contoh:**
+```
+DELETE /api/mobile/antrian/uuid-antrian-123
+```
 
 **Response `200`:**
 ```json
@@ -323,12 +391,17 @@ Authorization: Bearer <token>
   "success": true,
   "message": "Antrian nomor 10 berhasil dibatalkan",
   "data": {
-    "antrian": { ...data antrian yang dibatalkan... }
+    "antrian": {
+      "id":            "uuid-antrian",
+      "nomor_antrian": 10,
+      "layanan":       "Teller",
+      "status":        "batal"
+    }
   }
 }
 ```
 
-**Response `404` (tidak bisa dibatalkan):**
+**Response `404` — tidak dapat dibatalkan:**
 ```json
 {
   "success": false,
@@ -336,6 +409,9 @@ Authorization: Bearer <token>
   "data": {}
 }
 ```
+
+> Antrian yang sudah `dipanggil`, `selesai`, atau `batal` tidak dapat dibatalkan lagi.
+> Antrian milik nasabah lain juga tidak dapat dibatalkan dari endpoint ini.
 
 ---
 
@@ -346,28 +422,47 @@ GET /api/mobile/antrian/tiket/:id
 Authorization: Bearer <token>
 ```
 
-> Response berupa **HTML siap cetak**, bukan JSON.
-> Tampilkan menggunakan `WebView` di Android, kemudian bisa di-print sebagai PDF menggunakan `PrintManager`.
+Response berupa **HTML siap cetak**, bukan JSON. Tampilkan menggunakan `WebView` di Android.
 
-**Isi tiket:**
-- Nomor antrian besar (font 84px)
+**Contoh:**
+```
+GET /api/mobile/antrian/tiket/uuid-antrian-123
+```
+
+**Isi tiket yang ditampilkan:**
+- Logo dan nama bank (Bank ABC, Cabang Sudirman)
+- Nomor antrian besar (font 84px, warna oranye)
+- Label layanan (Teller / Customer Service)
 - Nama nasabah, NIK
-- Layanan (Teller / Customer Service)
-- Waktu ambil nomor
-- Status antrian (chip berwarna)
-- Tombol cetak bawaan
+- Waktu ambil nomor (format lokal Indonesia)
+- Chip status berwarna (Menunggu / Dipanggil / Selesai / Dibatalkan)
+- Tombol cetak (menggunakan `window.print()`)
+
+**Response `404`:**
+```json
+{
+  "success": false,
+  "message": "Tiket tidak ditemukan",
+  "data": {}
+}
+```
 
 ---
 
 ## 4. Format Pesan WhatsApp
 
-Backend secara otomatis mengirim pesan WhatsApp via Baileys ketika teller memanggil nomor antrian berikutnya. Pesan dikirim ke nomor HP nasabah yang terdaftar.
+Backend mengirim pesan WhatsApp secara otomatis via Baileys ketika loket memanggil nomor berikutnya. Pesan dikirim ke nomor HP nasabah yang terdaftar saat posisi nasabah tinggal 3 antrian ke depan.
 
-**Format pesan yang dikirim:**
+**Kondisi pengiriman WA:**
+- Posisi nasabah ≤ 3 dari nomor yang sedang dipanggil
+- Field `notif_sent` di database masih `false` (tidak dikirim dua kali)
+- Status antrian nasabah masih `menunggu` saat notifikasi hendak dikirim
+
+**Format pesan:**
 ```
 Halo, Budi Santoso!
 
-Kami informasikan bahwa nomor antrian Anda *10* 
+Kami informasikan bahwa nomor antrian Anda *10*
 di layanan Teller akan segera dipanggil.
 
 Harap segera menuju loket yang tersedia.
@@ -378,14 +473,14 @@ bankantrian://queue?ticket=10
 — Bank ABC, Cabang Sudirman
 ```
 
-> Nomor antrian dicetak **bold** (`*10*` dalam format WhatsApp Markdown).
-> Deep link `bankantrian://queue?ticket=10` mengarah ke app Android nasabah.
+> Nomor antrian dicetak **bold** menggunakan format WhatsApp Markdown (`*10*`).
+> Deep link `bankantrian://queue?ticket=10` akan membuka app nasabah langsung ke layar status.
 
 ---
 
 ## 5. Deep Link
 
-Skema deep link yang perlu didaftarkan di Android app:
+Daftarkan skema berikut di AndroidManifest agar app bisa dibuka dari notifikasi WA:
 
 ```
 bankantrian://queue?ticket=<nomor_antrian>
@@ -393,9 +488,11 @@ bankantrian://queue?ticket=<nomor_antrian>
 
 **Contoh:** `bankantrian://queue?ticket=10`
 
-**Cara daftarkan di AndroidManifest.xml:**
+**AndroidManifest.xml:**
 ```xml
-<activity android:name=".QueueStatusActivity" ...>
+<activity android:name=".QueueStatusActivity"
+    android:launchMode="singleTask"
+    android:exported="true">
   <intent-filter>
     <action android:name="android.intent.action.VIEW" />
     <category android:name="android.intent.category.DEFAULT" />
@@ -409,36 +506,55 @@ bankantrian://queue?ticket=<nomor_antrian>
 
 **Cara ambil parameter di Activity:**
 ```kotlin
-val ticketNumber = intent?.data?.getQueryParameter("ticket")
-// ticketNumber = "10"
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    val ticketNumber = intent?.data?.getQueryParameter("ticket")
+    // ticketNumber = "10" → gunakan untuk tampilkan status antrian
+}
 ```
 
 ---
 
 ## 6. Push Notification OneSignal
 
-Untuk mendapatkan push notification saat nomor dipanggil:
+Push notification dikirim oleh backend saat nomor antrian nasabah mendekati giliran (≤ 3 posisi ke depan).
 
-1. Integrasikan **OneSignal Android SDK** di project Android Studio
-2. Daftarkan listener untuk mendapat `player_id` (OneSignal subscription ID)
-3. Kirim `player_id` ke backend saat ambil nomor antrian:
+### Langkah Integrasi
+
+1. Tambahkan **OneSignal Android SDK** ke `build.gradle`
+2. Inisialisasi OneSignal di `Application` class
+3. Ambil `player_id` dan kirim ke backend saat ambil antrian
 
 ```kotlin
-OneSignal.User.pushSubscription.addObserver(object : IPushSubscriptionObserver {
-    override fun onPushSubscriptionDidChange(state: PushSubscriptionChangedState) {
-        val playerId = state.current.id ?: return
-        // Kirim ke API saat ambil antrian:
-        // POST /api/mobile/antrian/ambil
-        // body: { layanan: "Teller", onesignal_player_id: playerId }
-    }
-})
+// Di Application class
+OneSignal.initWithContext(this, "YOUR_ONESIGNAL_APP_ID")
+
+// Ambil player ID
+val playerId = OneSignal.User.pushSubscription.id
+
+// Kirim ke backend saat POST /api/mobile/antrian/ambil
+val body = JSONObject().apply {
+    put("layanan", "Teller")
+    put("onesignal_player_id", playerId)
+}
 ```
 
-**Payload push notification yang diterima (dari backend):**
+### Payload Push Notification yang Diterima
+
 ```json
 {
   "headings": { "en": "Antrian Anda Segera Dipanggil" },
   "contents": { "en": "Nomor antrian 10 akan segera dipanggil. Harap menuju loket." }
+}
+```
+
+### Handle Notifikasi
+
+```kotlin
+OneSignal.Notifications.addClickListener { result ->
+    val data = result.notification.additionalData
+    // Buka layar status antrian
+    startActivity(Intent(this, QueueStatusActivity::class.java))
 }
 ```
 
@@ -448,19 +564,19 @@ OneSignal.User.pushSubscription.addObserver(object : IPushSubscriptionObserver {
 
 | HTTP Code | Arti | Tindakan di App |
 |-----------|------|-----------------|
-| `200` | Sukses | Proses data |
-| `201` | Berhasil dibuat | Proses data |
-| `400` | Validasi gagal / data tidak valid | Tampilkan pesan error ke user |
-| `401` | Token expired / tidak valid | Redirect ke layar login |
-| `403` | Bukan akun nasabah | Tampilkan error, logout |
-| `404` | Data tidak ditemukan | Tangani (misal: antrian tidak ada) |
-| `500` | Error server | Tampilkan pesan "Terjadi kesalahan, coba lagi" |
+| `200` | Sukses | Proses data `data` |
+| `201` | Berhasil dibuat | Proses data `data` |
+| `400` | Validasi gagal | Tampilkan `message` ke user |
+| `401` | Token expired atau tidak valid | Hapus token, redirect ke layar login |
+| `403` | Bukan akun nasabah | Tampilkan error, logout paksa |
+| `404` | Data tidak ditemukan | Tangani kasus: tidak ada antrian, tiket tidak ada, dll |
+| `500` | Error server | Tampilkan "Terjadi kesalahan, silakan coba lagi" |
 
-**Format error yang konsisten:**
+**Semua error menggunakan format yang sama:**
 ```json
 {
   "success": false,
-  "message": "Pesan error yang jelas untuk user",
+  "message": "Deskripsi error yang jelas",
   "data": {}
 }
 ```
@@ -469,60 +585,139 @@ OneSignal.User.pushSubscription.addObserver(object : IPushSubscriptionObserver {
 
 ## 8. Catatan Implementasi Android
 
-### Penyimpanan Token
+### Penyimpanan Token (EncryptedSharedPreferences)
 ```kotlin
-// Simpan
-val prefs = getEncryptedSharedPreferences(context)
-prefs.edit().putString("bank_token", token).apply()
-prefs.edit().putString("bank_user_id", user.id).apply()
-prefs.edit().putString("bank_user_nama", user.nama).apply()
+// Inisialisasi
+val masterKey = MasterKey.Builder(context)
+    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+    .build()
+
+val prefs = EncryptedSharedPreferences.create(
+    context, "bank_prefs", masterKey,
+    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+)
+
+// Simpan setelah login
+prefs.edit().apply {
+    putString("bank_token", token)
+    putString("bank_user_id", user.id)
+    putString("bank_user_nama", user.nama)
+    putString("bank_user_nik", user.nik)
+    apply()
+}
 
 // Ambil
 val token = prefs.getString("bank_token", null)
 
-// Hapus (logout)
+// Hapus saat logout
 prefs.edit().clear().apply()
 ```
 
-### Polling Status Antrian
+### Validasi Token saat App Dibuka
 ```kotlin
-// Di ViewModel atau Coroutine
+// Di SplashActivity / ViewModel
+suspend fun checkSession(): Boolean {
+    val token = prefs.getString("bank_token", null) ?: return false
+    return try {
+        val response = api.getSaya("Bearer $token")
+        response.success
+    } catch (e: Exception) {
+        false // Token expired atau server tidak bisa diakses
+    }
+}
+```
+
+### Polling Status Antrian (tiap 15 detik)
+```kotlin
 private fun startPolling() {
     viewModelScope.launch {
         while (isActive) {
-            fetchAntrianStatus()
-            delay(15_000) // polling tiap 15 detik
+            try {
+                val result = api.getAntrianStatus("Bearer $token")
+                if (result.success) {
+                    _antrianState.value = result.data
+                    // Hentikan polling jika sudah dipanggil atau selesai
+                    val status = result.data.antrian.status
+                    if (status == "dipanggil" || status == "selesai" || status == "batal") {
+                        break
+                    }
+                }
+            } catch (e: Exception) {
+                // Tetap lanjut polling saat network error sementara
+            }
+            delay(15_000)
         }
     }
 }
 ```
 
-### Tampilkan Tiket (WebView)
+### Menampilkan Tiket di WebView
 ```kotlin
+val webView = findViewById<WebView>(R.id.webView)
 webView.settings.javaScriptEnabled = true
-webView.loadUrl(
-    "$BASE_URL/api/mobile/antrian/tiket/$antrianId",
-    mapOf("Authorization" to "Bearer $token")
-)
+
+val url = "$BASE_URL/api/mobile/antrian/tiket/$antrianId"
+val headers = mapOf("Authorization" to "Bearer $token")
+webView.loadUrl(url, headers)
 ```
 
 ### Cetak PDF dari Tiket
 ```kotlin
 val printManager = getSystemService(PRINT_SERVICE) as PrintManager
-val printAdapter = webView.createPrintDocumentAdapter("Tiket Antrian")
-printManager.print("Tiket_Antrian_$nomor", printAdapter, PrintAttributes.Builder().build())
+val printAdapter = webView.createPrintDocumentAdapter("Tiket Antrian $nomor")
+val printAttributes = PrintAttributes.Builder()
+    .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+    .build()
+printManager.print("Tiket_Antrian_$nomor", printAdapter, printAttributes)
 ```
 
 ### Struktur Layar yang Direkomendasikan
+```
+SplashActivity
+  +-- [Cek token] --> LoginActivity
+  |                     +-- RegisterActivity
+  |
+  +-- [Token valid] --> HomeActivity
+                          +-- [Tidak ada antrian] --> PilihLayananActivity
+                          |                              +-- ConfirmAntrianActivity
+                          |
+                          +-- [Ada antrian] --> StatusAntrianActivity (polling)
+                                                    +-- TiketActivity (WebView)
+                                                    +-- SelesaiActivity
+```
 
-```
-MainActivity (SplashScreen)
-├── LoginActivity
-│   └── RegisterActivity
-├── HomeActivity (cek antrian aktif)
-│   ├── PilihLayananActivity (Teller / CS)
-│   │   └── ConfirmAntrianActivity
-│   └── StatusAntrianActivity (polling)
-│       └── TiketActivity (WebView)
-└── ProfilActivity
-```
+---
+
+## 9. Referensi Endpoint Lengkap
+
+### Nasabah Mobile (`/api/mobile/*`)
+
+| Method | Endpoint | Auth | Keterangan |
+|--------|----------|------|------------|
+| `POST` | `/api/mobile/daftar` | Tidak | Daftar akun baru dengan NIK |
+| `POST` | `/api/mobile/masuk` | Tidak | Login dengan NIK + password |
+| `GET` | `/api/mobile/saya` | Bearer | Profil nasabah, validasi token |
+| `POST` | `/api/mobile/antrian/ambil` | Bearer | Ambil nomor antrian (Teller/CS) |
+| `GET` | `/api/mobile/antrian/status` | Bearer | Status & posisi antrian aktif hari ini |
+| `DELETE` | `/api/mobile/antrian/:id` | Bearer | Batalkan antrian sendiri |
+| `GET` | `/api/mobile/antrian/tiket/:id` | Bearer | Tiket HTML siap cetak |
+
+### Catatan Keamanan Backend (Untuk Referensi)
+
+Backend sudah mengimplementasikan beberapa lapisan keamanan yang perlu diketahui developer mobile:
+
+| Fitur | Detail |
+|-------|--------|
+| **Satu antrian per hari** | Nasabah tidak bisa ambil dua nomor antrian di hari yang sama |
+| **Token JWT** | Semua endpoint yang butuh login harus sertakan header `Authorization: Bearer <token>` |
+| **Role isolation** | Token nasabah tidak bisa mengakses endpoint Teller/CS dan sebaliknya |
+| **Notif WA satu kali** | Flag `notif_sent` memastikan WhatsApp tidak dikirim dua kali ke nasabah yang sama |
+| **Status validation** | Antrian yang sudah `selesai` atau `batal` tidak bisa diubah lagi |
+
+### Nilai `layanan` yang Didukung
+
+| Nilai di API | Tampil di UI |
+|-------------|-------------|
+| `"Teller"` | Teller |
+| `"CS"` | Customer Service |
