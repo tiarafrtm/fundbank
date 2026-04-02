@@ -419,11 +419,15 @@ async function selesaiSedangDilayani() {
 
 async function skipSedangDilayani() {
   if (!currentLayaniId) return;
-  if (!confirm('Skip antrian ini?')) return;
+  const nomor = aCurNum?.textContent;
+  if (!confirm(`Skip antrian #${nomor}? Anda punya 30 detik untuk membatalkan.`)) return;
+  const savedId = currentLayaniId;
   try {
-    const result = await api('PUT', `/antrian/batal/${currentLayaniId}`);
-    if (result.success) { loadAntrianPage(); loadQueueData(); loadStatistik(); }
-    else { alert('Gagal: ' + result.message); }
+    const result = await api('PUT', `/antrian/batal/${savedId}`);
+    if (result.success) {
+      showUndoToast(savedId, nomor);
+      loadAntrianPage(); loadQueueData(); loadStatistik();
+    } else { alert('Gagal: ' + result.message); }
   } catch { alert('Terjadi kesalahan'); }
 }
 
@@ -437,11 +441,15 @@ async function selesaiAntrian(id, nomor) {
 }
 
 async function skipAntrian(id, nomor) {
-  if (!confirm(`Skip antrian #${nomor}?`)) return;
+  if (!confirm(`Skip antrian #${nomor}? Anda punya 30 detik untuk membatalkan.`)) return;
   try {
     const result = await api('PUT', `/antrian/batal/${id}`);
-    if (result.success) { loadQueueData(); loadStatistik(); if (currentPage === 'antrian') loadAntrianPage(); if (currentPage === 'riwayat') loadRiwayat(); }
-    else { alert('Gagal: ' + result.message); }
+    if (result.success) {
+      showUndoToast(id, nomor);
+      loadQueueData(); loadStatistik();
+      if (currentPage === 'antrian') loadAntrianPage();
+      if (currentPage === 'riwayat') loadRiwayat();
+    } else { alert('Gagal: ' + result.message); }
   } catch { alert('Terjadi kesalahan'); }
 }
 
@@ -617,6 +625,85 @@ testPushBtn?.addEventListener('click', async () => {
   } catch { showAlert(pushResult, 'Gagal mengirim', 'error'); }
   finally { testPushBtn.disabled = false; testPushBtn.textContent = 'Kirim Push Notification'; }
 });
+
+// ===========================
+// AUTO-LOGOUT (inaktif 30 menit)
+// ===========================
+(function setupAutoLogout() {
+  const TIMEOUT_MS = 30 * 60 * 1000; // 30 menit
+  let idleTimer = null;
+
+  function resetTimer() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      clearSession();
+      alert('Sesi Anda telah berakhir karena tidak aktif selama 30 menit. Silakan login kembali.');
+      window.location.href = '/login';
+    }, TIMEOUT_MS);
+  }
+
+  ['mousemove','keydown','click','scroll','touchstart'].forEach(evt =>
+    document.addEventListener(evt, resetTimer, { passive: true })
+  );
+  resetTimer();
+})();
+
+// ===========================
+// UNDO-SKIP TOAST
+// ===========================
+let undoToast = null;
+let undoCountdown = null;
+
+function showUndoToast(id, nomor) {
+  clearUndoToast();
+
+  const toast = document.createElement('div');
+  toast.className = 'undo-toast';
+  toast.innerHTML = `
+    <span>Antrian #${nomor} diskip</span>
+    <button class="undo-btn" id="undo-skip-btn">Batalkan <span id="undo-count">30</span>s</button>
+  `;
+  document.body.appendChild(toast);
+  undoToast = toast;
+
+  let sisa = 30;
+  const countEl = toast.querySelector('#undo-count');
+  undoCountdown = setInterval(() => {
+    sisa--;
+    if (countEl) countEl.textContent = sisa;
+    if (sisa <= 0) clearUndoToast();
+  }, 1000);
+
+  toast.querySelector('#undo-skip-btn')?.addEventListener('click', async () => {
+    clearUndoToast();
+    try {
+      const result = await api('PUT', `/antrian/restore/${id}`);
+      if (result.success) {
+        loadQueueData(); loadStatistik();
+        if (currentPage === 'antrian') loadAntrianPage();
+        if (currentPage === 'riwayat') loadRiwayat();
+        showInfoBanner(`Antrian #${nomor} berhasil dipulihkan`);
+      } else {
+        showInfoBanner(result.message, true);
+      }
+    } catch { showInfoBanner('Gagal memulihkan antrian', true); }
+  });
+
+  setTimeout(clearUndoToast, 32000);
+}
+
+function clearUndoToast() {
+  if (undoCountdown) { clearInterval(undoCountdown); undoCountdown = null; }
+  if (undoToast) { undoToast.remove(); undoToast = null; }
+}
+
+function showInfoBanner(msg, isError = false) {
+  const el = document.createElement('div');
+  el.className = 'undo-toast' + (isError ? ' undo-toast-error' : '');
+  el.innerHTML = `<span>${msg}</span>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
 
 // ===========================
 // INISIALISASI

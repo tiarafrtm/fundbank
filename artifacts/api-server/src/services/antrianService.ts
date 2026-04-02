@@ -12,12 +12,12 @@ export async function getNomorAntrian(layanan: string): Promise<number> {
     .gte(
       "created_at",
       new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
-    ) // Hanya antrian hari ini
+    )
     .order("nomor_antrian", { ascending: false })
     .limit(1);
 
   if (error || !data || data.length === 0) {
-    return 1; // Mulai dari nomor 1 jika belum ada antrian hari ini
+    return 1;
   }
 
   return data[0].nomor_antrian + 1;
@@ -27,12 +27,7 @@ export async function getNomorAntrian(layanan: string): Promise<number> {
 export async function getAntrianMenunggu() {
   const { data, error } = await supabaseAdmin
     .from("antrian")
-    .select(
-      `
-      *,
-      profiles (nama, no_hp)
-    `,
-    )
+    .select(`*, profiles (nama, no_hp)`)
     .eq("status", "menunggu")
     .order("nomor_antrian", { ascending: true });
 
@@ -40,112 +35,126 @@ export async function getAntrianMenunggu() {
   return data;
 }
 
-// Memanggil nomor antrian berikutnya dan mengirim notifikasi ke antrian ke-3
+// Memanggil nomor antrian berikutnya — dengan atomic update untuk mencegah race condition
 export async function panggilBerikutnya(layanan?: string): Promise<{
   antrian: any;
   notifDikirim: boolean;
 }> {
-  // Ambil antrian pertama yang masih menunggu
+  // STEP 1: Ambil antrian pertama yang masih menunggu
   let query = supabaseAdmin
     .from("antrian")
-    .select(
-      `
-      *,
-      profiles (nama, no_hp, onesignal_player_id)
-    `,
-    )
+    .select(`*, profiles (nama, no_hp, onesignal_player_id)`)
     .eq("status", "menunggu")
+    .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
     .order("nomor_antrian", { ascending: true })
     .limit(1);
 
-  if (layanan) {
-    query = query.eq("layanan", layanan);
-  }
+  if (layanan) query = query.eq("layanan", layanan);
 
-  const { data: antrian, error } = await query;
-
+  const { data: antrianList, error } = await query;
   if (error) throw error;
-  if (!antrian || antrian.length === 0) {
+  if (!antrianList || antrianList.length === 0) {
     throw new Error("Tidak ada antrian yang menunggu");
   }
 
-  const currentAntrian = antrian[0];
+  const currentAntrian = antrianList[0];
 
-  // Update status antrian menjadi 'dipanggil'
-  const { error: updateError } = await supabaseAdmin
+  // STEP 2: Atomic update — hanya update kalau status MASIH 'menunggu'
+  // Ini mencegah dua loket mengambil nomor yang sama (race condition)
+  const { data: updateResult, error: updateError } = await supabaseAdmin
     .from("antrian")
     .update({ status: "dipanggil", called_at: new Date().toISOString() })
-    .eq("id", currentAntrian.id);
+    .eq("id", currentAntrian.id)
+    .eq("status", "menunggu") // ← Kunci: hanya sukses kalau masih menunggu
+    .select();
 
   if (updateError) throw updateError;
 
-  // Cari nasabah yang posisinya 3 nomor di depan (perlu diberitahu bersiap)
+  // Kalau tidak ada baris yang terupdate → antrian sudah diambil loket lain
+  if (!updateResult || updateResult.length === 0) {
+    throw new Error("Antrian sudah dipanggil oleh loket lain. Silakan coba lagi.");
+  }
+
+  logger.info(
+    { nomor: currentAntrian.nomor_antrian, layanan, id: currentAntrian.id },
+    "Antrian berhasil dipanggil (atomic update OK)",
+  );
+
+  // STEP 3: Cari nasabah yang perlu notifikasi (3 posisi ke depan)
   let notifQuery = supabaseAdmin
     .from("antrian")
-    .select(
-      `
-      *,
-      profiles (nama, no_hp, onesignal_player_id)
-    `,
-    )
+    .select(`*, profiles (nama, no_hp, onesignal_player_id)`)
     .eq("status", "menunggu")
     .eq("notif_sent", false)
+    .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
     .order("nomor_antrian", { ascending: true })
     .limit(1);
 
-  if (layanan) {
-    notifQuery = notifQuery.eq("layanan", layanan);
-  }
+  if (layanan) notifQuery = notifQuery.eq("layanan", layanan);
 
   const { data: antrianNotif } = await notifQuery;
 
   let notifDikirim = false;
 
-  // Kirim notifikasi jika ditemukan nasabah yang perlu diberitahu (posisi ke-3 dari yang dipanggil)
   if (antrianNotif && antrianNotif.length > 0) {
     const targetNotif = antrianNotif[0];
-    const selisihNomor =
-      targetNotif.nomor_antrian - currentAntrian.nomor_antrian;
+    const selisihNomor = targetNotif.nomor_antrian - currentAntrian.nomor_antrian;
 
-    // Kirim notifikasi jika nasabah berada 3 posisi di depan antrian yang dipanggil
     if (selisihNomor <= 3) {
-      const profile = targetNotif.profiles as any;
-      const nomorAntrian = targetNotif.nomor_antrian;
-
-      // Kirim push notification via OneSignal
-      if (profile?.onesignal_player_id) {
-        await sendPushNotification(profile.onesignal_player_id, nomorAntrian);
-      }
-
-      // Kirim pesan WhatsApp via Baileys
-      const noHp = profile?.no_hp ?? targetNotif.no_hp_nasabah;
-      const namaNasabah = profile?.nama ?? targetNotif.nama_nasabah ?? "Nasabah";
-      const layananDisplay =
-        targetNotif.layanan === "CS" ? "Customer Service" : targetNotif.layanan;
-
-      if (noHp) {
-        const pesanWA =
-          `Halo, ${namaNasabah}!\n\n` +
-          `Kami informasikan bahwa nomor antrian Anda *${nomorAntrian}* ` +
-          `di layanan ${layananDisplay} akan segera dipanggil.\n\n` +
-          `Harap segera menuju loket yang tersedia.\n\n` +
-          `Klik untuk lihat status antrian:\n` +
-          `bankantrian://queue?ticket=${nomorAntrian}\n\n` +
-          `— Bank ABC, Cabang Sudirman`;
-        await sendWhatsAppMessage(noHp, pesanWA);
-      }
-
-      // Tandai bahwa notifikasi sudah dikirim
-      await supabaseAdmin
+      // Verifikasi ulang status masih 'menunggu' sebelum kirim notif
+      // Mencegah WA ke nasabah yang sudah diskip/selesai
+      const { data: freshCheck } = await supabaseAdmin
         .from("antrian")
-        .update({ notif_sent: true })
-        .eq("id", targetNotif.id);
+        .select("status, notif_sent")
+        .eq("id", targetNotif.id)
+        .single();
 
-      notifDikirim = true;
-      logger.info(
-        { targetNomor: nomorAntrian },
-        "Notifikasi bersiap berhasil dikirim",
-      );
+      if (freshCheck?.status === "menunggu" && !freshCheck?.notif_sent) {
+        const profile = targetNotif.profiles as any;
+        const nomorAntrian = targetNotif.nomor_antrian;
+
+        // Kirim push notification via OneSignal
+        if (profile?.onesignal_player_id) {
+          try {
+            await sendPushNotification(profile.onesignal_player_id, nomorAntrian);
+          } catch (e: any) {
+            logger.warn({ error: e?.message }, "OneSignal push gagal, lanjut WA");
+          }
+        }
+
+        // Kirim pesan WhatsApp via Baileys
+        const noHp = profile?.no_hp ?? targetNotif.no_hp_nasabah;
+        const namaNasabah = profile?.nama ?? targetNotif.nama_nasabah ?? "Nasabah";
+        const layananDisplay =
+          targetNotif.layanan === "CS" ? "Customer Service" : targetNotif.layanan;
+
+        if (noHp) {
+          const pesanWA =
+            `Halo, ${namaNasabah}!\n\n` +
+            `Kami informasikan bahwa nomor antrian Anda *${nomorAntrian}* ` +
+            `di layanan ${layananDisplay} akan segera dipanggil.\n\n` +
+            `Harap segera menuju loket yang tersedia.\n\n` +
+            `Klik untuk lihat status antrian:\n` +
+            `bankantrian://queue?ticket=${nomorAntrian}\n\n` +
+            `— Bank ABC, Cabang Sudirman`;
+
+          try {
+            await sendWhatsAppMessage(noHp, pesanWA);
+            logger.info({ noHp, nomorAntrian }, "WA notifikasi terkirim");
+          } catch (e: any) {
+            logger.error({ noHp, error: e?.message }, "WA notifikasi GAGAL");
+          }
+        }
+
+        // Tandai notif sudah dikirim — cegah kirim ulang
+        await supabaseAdmin
+          .from("antrian")
+          .update({ notif_sent: true })
+          .eq("id", targetNotif.id)
+          .eq("status", "menunggu"); // Hanya update kalau masih menunggu
+
+        notifDikirim = true;
+      }
     }
   }
 

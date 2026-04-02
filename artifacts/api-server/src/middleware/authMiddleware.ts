@@ -18,13 +18,16 @@ async function resolveUser(req: Request, res: Response): Promise<any | null> {
   return user;
 }
 
-async function getRole(user: any): Promise<string> {
+async function resolveRole(req: Request, user: any): Promise<string> {
   const { data: profile } = await supabaseAdmin
     .from("profiles")
-    .select("role")
+    .select("role, nama")
     .eq("id", user.id)
     .single();
-  return profile?.role ?? user.app_metadata?.role ?? user.user_metadata?.role ?? "";
+  const role = profile?.role ?? user.app_metadata?.role ?? user.user_metadata?.role ?? "";
+  (req as any).userRole = role;
+  (req as any).userNama = profile?.nama ?? user.email ?? "—";
+  return role;
 }
 
 export async function authMiddleware(
@@ -39,7 +42,7 @@ export async function tellerMiddleware(
 ): Promise<void> {
   const user = await resolveUser(req, res);
   if (!user) return;
-  const role = await getRole(user);
+  const role = await resolveRole(req, user);
   if (role !== "teller") {
     res.status(403).json({ success: false, message: "Akses ditolak. Hanya Teller yang diizinkan", data: {} });
     return;
@@ -52,7 +55,7 @@ export async function csMiddleware(
 ): Promise<void> {
   const user = await resolveUser(req, res);
   if (!user) return;
-  const role = await getRole(user);
+  const role = await resolveRole(req, user);
   if (role !== "cs") {
     res.status(403).json({ success: false, message: "Akses ditolak. Hanya CS yang diizinkan", data: {} });
     return;
@@ -65,7 +68,7 @@ export async function anyStaffMiddleware(
 ): Promise<void> {
   const user = await resolveUser(req, res);
   if (!user) return;
-  const role = await getRole(user);
+  const role = await resolveRole(req, user);
   if (!["teller", "cs"].includes(role)) {
     res.status(403).json({ success: false, message: "Akses ditolak. Login sebagai Teller atau CS", data: {} });
     return;
@@ -78,7 +81,6 @@ export async function nasabahMiddleware(
 ): Promise<void> {
   const user = await resolveUser(req, res);
   if (!user) return;
-  // Nasabah mobile: role "nasabah" di app_metadata atau user_metadata
   const role = user.app_metadata?.role ?? user.user_metadata?.role ?? "";
   if (role !== "nasabah") {
     res.status(403).json({

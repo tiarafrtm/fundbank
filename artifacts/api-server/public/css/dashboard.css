@@ -881,3 +881,48 @@ body {
 
 .spinner { width: 28px; height: 28px; border: 3px solid var(--gray-200); border-top-color: var(--orange); border-radius: 50%; animation: putar .7s linear infinite; }
 @keyframes putar { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   UNDO-SKIP TOAST
+   ============================================================ */
+.undo-toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--gray-800);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 9999;
+  box-shadow: 0 8px 32px rgba(0,0,0,.22);
+  animation: toastIn .25s ease;
+  white-space: nowrap;
+}
+
+.undo-toast-error { background: var(--danger); }
+
+.undo-btn {
+  background: var(--orange);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background .15s;
+}
+
+.undo-btn:hover { background: var(--orange-dark); }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

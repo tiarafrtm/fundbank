@@ -1,0 +1,45 @@
+1. Masalah Antrian & Race Condition
+CS/Teller klik "Panggil" bersamaan
+Dua loket bisa ambil nomor antrian yang sama kalau tidak ada locking. Solusinya sudah kita bahas — pakai Supabase Transaction/atomic update.
+Klik "Panggil" dua kali cepat
+Teller klik tombol dua kali sebelum response balik, jadinya skip satu nomor atau malah error. Solusi: disable tombol setelah diklik sampai response dari server balik.
+Antrian loncat nomor
+Kalau ada error di tengah proses, nomor bisa loncat misal dari A-005 langsung A-007. Perlu logging setiap transaksi antrian supaya bisa diaudit.
+
+2. Masalah Koneksi & Realtime
+Browser Teller/CS tidak update otomatis
+Kalau koneksi internet putus sebentar, data di dashboard bisa stale (tidak sinkron dengan kondisi nyata). Perlu indikator koneksi yang jelas dan auto-reconnect.
+Data antrian beda antara Teller 1 dan Teller 2
+Kalau realtime Supabase-nya tidak terkonfigurasi benar, dua loket bisa lihat data yang berbeda di waktu yang sama. Ini berbahaya karena bisa panggil nasabah yang sama.
+
+3. Masalah User Error (Human Error)
+Teller klik "Selesai" sebelum nasabah selesai dilayani
+Tidak ada konfirmasi, langsung mark done. Perlu dialog konfirmasi "Apakah nasabah sudah selesai dilayani?"
+Skip nasabah yang sebenarnya hadir
+Teller bisa tidak sengaja skip padahal nasabah sudah di depan loket. Perlu fitur "Batalkan Skip" dalam waktu misalnya 30 detik setelah diskip.
+Reset antrian tidak sengaja
+Admin/supervisor tidak sengaja reset antrian di tengah hari. Perlu konfirmasi berlapis dan log siapa yang melakukan reset.
+
+4. Masalah Notifikasi WA
+WA terkirim tapi nasabah sudah tidak ada
+Nasabah dapat notif "segera hadir" tapi ternyata sudah dipanggil dan diskip. Perlu cek status tiket sebelum kirim notif — kalau sudah skip jangan kirim.
+Notif WA terkirim dua kali
+Kalau ada bug di threshold check, nasabah bisa dapat pesan yang sama berkali-kali. Perlu flag notif_sent: true di database supaya tidak dikirim ulang.
+Fonnte API lambat atau down
+Kalau Fonnte sedang bermasalah, notif tidak terkirim tapi sistem tidak tahu. Perlu error handling dan log status pengiriman tiap notif.
+
+5. Masalah Keamanan
+Teller bisa akses dashboard CS dan sebaliknya
+Kalau role check tidak ketat di backend, Teller bisa panggil antrian CS. Setiap request ke Supabase harus dicek role-nya lewat Row Level Security (RLS).
+Session tidak expired
+Kalau Teller lupa logout dan meninggalkan komputer, orang lain bisa pakai dashboardnya. Perlu auto-logout setelah tidak aktif misalnya 30 menit.
+Tidak ada log aktivitas
+Kalau ada kecurangan atau kesalahan, tidak ada jejak siapa yang melakukan apa. Semua aksi penting harus dicatat — siapa, kapan, aksi apa.
+
+6. Masalah UX Operasional
+Teller tidak tahu nasabah datang prioritas
+Kalau tidak ada notifikasi bunyi atau visual yang mencolok, Teller bisa tidak sadar ada antrian prioritas yang harus didahulukan.
+Tidak ada informasi estimasi waktu
+Teller tidak bisa kasih tau nasabah kira-kira berapa lama lagi. Perlu kalkulasi estimasi berdasarkan rata-rata waktu layanan.
+Loket tutup tapi antrian masih masuk
+Kalau Teller istirahat atau pulang tapi lupa tutup loket, nasabah masih bisa ambil antrian ke loket itu padahal tidak ada yang melayani.
