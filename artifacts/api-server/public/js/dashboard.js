@@ -114,12 +114,14 @@ function showLogin() {
   loginPage.classList.add('active');
   dashboardPage.classList.remove('active');
   if (refreshInterval) clearInterval(refreshInterval);
+  history.pushState({}, '', '/login');
 }
 
 function showDashboard() {
   loginPage.classList.remove('active');
   dashboardPage.classList.add('active');
   tellerNameEl.textContent = tellerProfile?.nama ?? 'Teller';
+  history.pushState({}, '', '/dashboard');
   loadQueueData();
   checkNotifStatus();
   refreshInterval = setInterval(() => {

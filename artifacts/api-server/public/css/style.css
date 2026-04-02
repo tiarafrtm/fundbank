@@ -104,14 +104,13 @@ body {
 
 /* ======================== Auth Page ======================== */
 
-#login-page {
+#login-page.active {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--gray-100);
 }
-#login-page.active { display: flex; }
 
 .auth-layout {
   width: 100%;
