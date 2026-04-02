@@ -46,13 +46,13 @@ export async function getStatistik(req: Request, res: Response): Promise<void> {
   }
 }
 
-// Nasabah mengambil nomor antrian
+// CS/Teller/Nasabah membuat nomor antrian
 export async function ambilAntrian(
   req: Request,
   res: Response,
 ): Promise<void> {
   const user = (req as any).user;
-  const { layanan, onesignal_player_id } = req.body;
+  const { layanan, nama, no_hp, onesignal_player_id } = req.body;
 
   if (!layanan) {
     res.status(400).json({
@@ -63,29 +63,36 @@ export async function ambilAntrian(
     return;
   }
 
-  // Cek apakah nasabah sudah punya antrian aktif hari ini
-  const { data: existingAntrian } = await supabaseAdmin
-    .from("antrian")
-    .select("*")
-    .eq("user_id", user.id)
-    .in("status", ["menunggu", "dipanggil"])
-    .gte(
-      "created_at",
-      new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
-    )
+  // Cek role staf dari profiles
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
     .single();
+  const isStaff = ["cs", "teller"].includes(profile?.role ?? "");
 
-  if (existingAntrian) {
-    res.status(400).json({
-      success: false,
-      message: "Anda sudah memiliki antrian aktif hari ini",
-      data: { antrian: existingAntrian },
-    });
-    return;
+  // Jika bukan staf: cek antrian aktif hari ini
+  if (!isStaff) {
+    const { data: existingAntrian } = await supabaseAdmin
+      .from("antrian")
+      .select("*")
+      .eq("user_id", user.id)
+      .in("status", ["menunggu", "dipanggil"])
+      .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
+      .single();
+
+    if (existingAntrian) {
+      res.status(400).json({
+        success: false,
+        message: "Anda sudah memiliki antrian aktif hari ini",
+        data: { antrian: existingAntrian },
+      });
+      return;
+    }
   }
 
-  // Update onesignal_player_id jika diberikan
-  if (onesignal_player_id) {
+  // Update onesignal_player_id jika diberikan (hanya untuk self)
+  if (onesignal_player_id && !isStaff) {
     await supabaseAdmin
       .from("profiles")
       .update({ onesignal_player_id })
@@ -95,23 +102,27 @@ export async function ambilAntrian(
   // Dapatkan nomor antrian berikutnya
   const nomorAntrian = await getNomorAntrian(layanan);
 
-  // Buat record antrian baru
+  // Staf bisa masukkan nama/no_hp nasabah langsung
+  const insertData: Record<string, any> = {
+    user_id: isStaff ? null : user.id,
+    nomor_antrian: nomorAntrian,
+    layanan,
+    status: "menunggu",
+    notif_sent: false,
+  };
+  if (isStaff && nama) insertData.nama_nasabah = nama;
+  if (isStaff && no_hp) insertData.no_hp_nasabah = no_hp;
+
   const { data: antrian, error } = await supabaseAdmin
     .from("antrian")
-    .insert({
-      user_id: user.id,
-      nomor_antrian: nomorAntrian,
-      layanan,
-      status: "menunggu",
-      notif_sent: false,
-    })
+    .insert(insertData)
     .select()
     .single();
 
   if (error || !antrian) {
     res.status(500).json({
       success: false,
-      message: "Gagal mengambil nomor antrian: " + (error?.message ?? ""),
+      message: "Gagal membuat nomor antrian: " + (error?.message ?? ""),
       data: {},
     });
     return;
@@ -119,8 +130,8 @@ export async function ambilAntrian(
 
   res.status(201).json({
     success: true,
-    message: `Nomor antrian Anda adalah ${nomorAntrian}`,
-    data: { antrian },
+    message: `Nomor antrian ${nomorAntrian} berhasil dibuat`,
+    data: { antrian, nomor_antrian: nomorAntrian },
   });
 }
 

@@ -1,6 +1,8 @@
 import { type Request, type Response } from "express";
 import { supabase, supabaseAdmin } from "../config/supabase";
 
+const VALID_ROLES = ["cs", "teller"];
+
 function buildUserProfile(supabaseUser: any, dbProfile: any) {
   const meta = supabaseUser?.user_metadata ?? {};
   const appMeta = supabaseUser?.app_metadata ?? {};
@@ -9,29 +11,32 @@ function buildUserProfile(supabaseUser: any, dbProfile: any) {
     email: supabaseUser?.email,
     nama: dbProfile?.nama ?? meta?.nama ?? "Pengguna",
     no_hp: dbProfile?.no_hp ?? meta?.no_hp ?? null,
-    role: dbProfile?.role ?? appMeta?.role ?? meta?.role ?? "nasabah",
+    role: dbProfile?.role ?? appMeta?.role ?? meta?.role ?? "cs",
     onesignal_player_id: dbProfile?.onesignal_player_id ?? null,
     created_at: dbProfile?.created_at ?? supabaseUser?.created_at,
   };
 }
 
 export async function register(req: Request, res: Response): Promise<void> {
-  const { nama, email, password, no_hp } = req.body;
+  const { nama, email, password, no_hp, role } = req.body;
 
   if (!nama || !email || !password || !no_hp) {
     res.status(400).json({
       success: false,
-      message: "Nama, email, password, dan no_hp wajib diisi",
+      message: "Nama lengkap, email, no HP, dan password wajib diisi",
       data: {},
     });
     return;
   }
 
+  const assignedRole: string = VALID_ROLES.includes(role) ? role : "cs";
+
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    user_metadata: { nama, no_hp, role: "nasabah" },
+    user_metadata: { nama, no_hp, role: assignedRole },
+    app_metadata: { role: assignedRole },
   });
 
   if (authError || !authData.user) {
@@ -43,26 +48,17 @@ export async function register(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const { error: profileError } = await supabaseAdmin.from("profiles").insert({
+  await supabaseAdmin.from("profiles").insert({
     id: authData.user.id,
     nama,
     no_hp,
-    role: "nasabah",
+    role: assignedRole,
   });
-
-  if (profileError) {
-    res.status(201).json({
-      success: true,
-      message: "Registrasi berhasil. Silakan login.",
-      data: { user: { id: authData.user.id, email, nama, no_hp, role: "nasabah" } },
-    });
-    return;
-  }
 
   res.status(201).json({
     success: true,
-    message: "Registrasi berhasil. Silakan login.",
-    data: { user: { id: authData.user.id, email, nama, no_hp, role: "nasabah" } },
+    message: `Registrasi berhasil sebagai ${assignedRole.toUpperCase()}. Silakan login.`,
+    data: { user: { id: authData.user.id, email, nama, no_hp, role: assignedRole } },
   });
 }
 
@@ -70,25 +66,14 @@ export async function login(req: Request, res: Response): Promise<void> {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    res.status(400).json({
-      success: false,
-      message: "Email dan password wajib diisi",
-      data: {},
-    });
+    res.status(400).json({ success: false, message: "Email dan password wajib diisi", data: {} });
     return;
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error || !data.session) {
-    res.status(401).json({
-      success: false,
-      message: "Email atau password salah",
-      data: {},
-    });
+    res.status(401).json({ success: false, message: "Email atau password salah", data: {} });
     return;
   }
 
@@ -103,10 +88,7 @@ export async function login(req: Request, res: Response): Promise<void> {
   res.json({
     success: true,
     message: "Login berhasil",
-    data: {
-      token: data.session.access_token,
-      user: userProfile,
-    },
+    data: { token: data.session.access_token, user: userProfile },
   });
 }
 

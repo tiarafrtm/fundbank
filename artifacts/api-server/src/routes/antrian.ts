@@ -11,16 +11,17 @@ import {
 import {
   authMiddleware,
   tellerMiddleware,
+  anyStaffMiddleware,
 } from "../middleware/authMiddleware";
 
 const router: IRouter = Router();
 
-router.get("/statistik",     tellerMiddleware, getStatistik);
-router.post("/ambil",        authMiddleware,   ambilAntrian);
-router.get("/status",        authMiddleware,   statusAntrian);
-router.get("/list",          tellerMiddleware, listAntrian);
-router.put("/panggil",       tellerMiddleware, panggilAntrian);
-router.put("/selesai/:id",   tellerMiddleware, selesaiAntrian);
-router.put("/batal/:id",     tellerMiddleware, batalAntrian);
+router.get("/statistik",     anyStaffMiddleware, getStatistik);
+router.post("/ambil",        anyStaffMiddleware, ambilAntrian);
+router.get("/status",        authMiddleware,     statusAntrian);
+router.get("/list",          anyStaffMiddleware, listAntrian);
+router.put("/panggil",       tellerMiddleware,   panggilAntrian);
+router.put("/selesai/:id",   tellerMiddleware,   selesaiAntrian);
+router.put("/batal/:id",     anyStaffMiddleware, batalAntrian);
 
 export default router;
