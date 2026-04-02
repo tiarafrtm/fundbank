@@ -1,19 +1,17 @@
-/* =========================================================
-   Dashboard Teller - Sistem Antrian Bank
-   Vanilla JavaScript - Polling setiap 5 detik
-   ========================================================= */
-
 const API_BASE = '/api';
 let authToken = null;
 let tellerProfile = null;
 let refreshInterval = null;
 
-// ========== Elemen DOM ==========
 const loginPage = document.getElementById('login-page');
 const dashboardPage = document.getElementById('dashboard-page');
 const loginForm = document.getElementById('login-form');
+const registerForm = document.getElementById('register-form');
 const loginError = document.getElementById('login-error');
+const registerError = document.getElementById('register-error');
+const registerSuccess = document.getElementById('register-success');
 const loginBtn = document.getElementById('login-btn');
+const registerBtn = document.getElementById('register-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const tellerNameEl = document.getElementById('teller-name');
 const waStatusEl = document.getElementById('wa-status');
@@ -25,6 +23,28 @@ const panggilFeedback = document.getElementById('panggil-feedback');
 const totalBadge = document.getElementById('total-badge');
 const layananFilter = document.getElementById('layanan-filter');
 const refreshBtn = document.getElementById('refresh-btn');
+
+// ========== Tab Switcher ==========
+function switchTab(tab) {
+  const tabLogin = document.getElementById('tab-login');
+  const tabRegister = document.getElementById('tab-register');
+
+  if (tab === 'login') {
+    tabLogin.classList.add('active');
+    tabRegister.classList.remove('active');
+    loginForm.classList.remove('hidden');
+    registerForm.classList.add('hidden');
+  } else {
+    tabRegister.classList.add('active');
+    tabLogin.classList.remove('active');
+    registerForm.classList.remove('hidden');
+    loginForm.classList.add('hidden');
+  }
+
+  loginError.classList.add('hidden');
+  registerError.classList.add('hidden');
+  registerSuccess.classList.add('hidden');
+}
 
 // ========== Helper: API Request ==========
 async function apiRequest(method, endpoint, body = null) {
@@ -102,7 +122,6 @@ function showDashboard() {
   tellerNameEl.textContent = tellerProfile?.nama ?? 'Teller';
   loadQueueData();
   checkNotifStatus();
-  // Auto-refresh setiap 5 detik
   refreshInterval = setInterval(() => {
     loadQueueData();
     checkNotifStatus();
@@ -128,7 +147,6 @@ loginForm.addEventListener('submit', async (e) => {
       return;
     }
 
-    // Pastikan yang login adalah teller
     if (result.data.user?.role !== 'teller') {
       loginError.textContent = 'Akses ditolak. Hanya teller yang dapat masuk ke dashboard ini.';
       loginError.classList.remove('hidden');
@@ -146,8 +164,43 @@ loginForm.addEventListener('submit', async (e) => {
   }
 });
 
+// ========== Daftar ==========
+registerForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  registerError.classList.add('hidden');
+  registerSuccess.classList.add('hidden');
+  registerBtn.disabled = true;
+  registerBtn.textContent = 'Mendaftarkan...';
+
+  const nama = document.getElementById('reg-nama').value;
+  const email = document.getElementById('reg-email').value;
+  const no_hp = document.getElementById('reg-no-hp').value;
+  const password = document.getElementById('reg-password').value;
+
+  try {
+    const result = await apiRequest('POST', '/auth/register', { nama, email, password, no_hp });
+
+    if (!result.success) {
+      registerError.textContent = result.message || 'Pendaftaran gagal';
+      registerError.classList.remove('hidden');
+      return;
+    }
+
+    registerSuccess.textContent = '✅ Pendaftaran berhasil! Hubungi admin untuk aktivasi teller, lalu login.';
+    registerSuccess.classList.remove('hidden');
+    registerForm.reset();
+
+    setTimeout(() => switchTab('login'), 3000);
+  } catch (err) {
+    registerError.textContent = 'Terjadi kesalahan koneksi. Coba lagi.';
+    registerError.classList.remove('hidden');
+  } finally {
+    registerBtn.disabled = false;
+    registerBtn.textContent = 'Daftar Akun';
+  }
+});
+
 // ========== Logout ==========
-logoutBtn.addEventListener('submit', () => {});
 logoutBtn.addEventListener('click', () => {
   if (confirm('Yakin ingin keluar dari dashboard?')) {
     clearSession();
@@ -174,7 +227,6 @@ async function loadQueueData() {
 
     const { sedang_dilayani, antrian_menunggu, total_menunggu } = result.data;
 
-    // Update nomor yang sedang dilayani
     if (sedang_dilayani) {
       currentNumberEl.textContent = sedang_dilayani.nomor_antrian;
       const nama = sedang_dilayani.profiles?.nama ?? 'Nasabah';
@@ -185,13 +237,10 @@ async function loadQueueData() {
       currentInfoEl.textContent = 'Belum ada antrian dipanggil';
     }
 
-    // Update badge total
     totalBadge.textContent = `${total_menunggu} menunggu`;
-
-    // Render tabel antrian
     renderQueueTable(antrian_menunggu);
   } catch (err) {
-    // Jangan tampilkan error saat auto-refresh agar tidak mengganggu
+    // Jangan tampilkan error saat auto-refresh
   }
 }
 
@@ -216,10 +265,7 @@ function renderQueueTable(antrian) {
         <td>${layananBadge(item.layanan)}</td>
         <td>${waktu}</td>
         <td>
-          <button
-            class="btn btn-danger"
-            onclick="selesaiAntrian('${item.id}', ${item.nomor_antrian})"
-          >
+          <button class="btn btn-danger" onclick="selesaiAntrian('${item.id}', ${item.nomor_antrian})">
             ✓ Selesai
           </button>
         </td>
@@ -228,7 +274,6 @@ function renderQueueTable(antrian) {
   }).join('');
 }
 
-// ========== Escape HTML (keamanan) ==========
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
@@ -283,11 +328,9 @@ async function checkNotifStatus() {
       const waConnected = result.data.whatsapp_connected;
       waStatusEl.textContent = 'WA';
       waStatusEl.className = 'status-badge ' + (waConnected ? 'status-online' : 'status-offline');
-      waStatusEl.title = waConnected ? 'WhatsApp Terhubung' : 'WhatsApp Belum Terhubung (scan QR di terminal)';
+      waStatusEl.title = waConnected ? 'WhatsApp Terhubung' : 'WhatsApp Belum Terhubung';
     }
-  } catch (err) {
-    // Abaikan error status
-  }
+  } catch (err) {}
 }
 
 // ========== Manual Refresh ==========
@@ -299,7 +342,6 @@ refreshBtn.addEventListener('click', () => {
 // ========== Inisialisasi ==========
 (function init() {
   if (loadSession()) {
-    // Verifikasi token masih valid
     apiRequest('GET', '/auth/me').then((result) => {
       if (result.success && result.data.profile?.role === 'teller') {
         tellerProfile = result.data.profile;

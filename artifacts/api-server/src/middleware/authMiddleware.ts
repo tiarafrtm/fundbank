@@ -1,7 +1,6 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { supabaseAdmin } from "../config/supabase";
 
-// Middleware untuk memverifikasi JWT token dari Supabase Auth
 export async function authMiddleware(
   req: Request,
   res: Response,
@@ -10,32 +9,23 @@ export async function authMiddleware(
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    res
-      .status(401)
-      .json({ success: false, message: "Token tidak ditemukan", data: {} });
+    res.status(401).json({ success: false, message: "Token tidak ditemukan", data: {} });
     return;
   }
 
   const token = authHeader.split(" ")[1];
-  const {
-    data: { user },
-    error,
-  } = await supabaseAdmin.auth.getUser(token);
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
 
   if (error || !user) {
-    res
-      .status(401)
-      .json({ success: false, message: "Token tidak valid atau kadaluarsa", data: {} });
+    res.status(401).json({ success: false, message: "Token tidak valid atau kadaluarsa", data: {} });
     return;
   }
 
-  // Simpan data user di request untuk digunakan controller
   (req as any).user = user;
   (req as any).token = token;
   next();
 }
 
-// Middleware khusus untuk memastikan hanya teller yang bisa akses
 export async function tellerMiddleware(
   req: Request,
   res: Response,
@@ -44,13 +34,19 @@ export async function tellerMiddleware(
   await authMiddleware(req, res, async () => {
     const user = (req as any).user;
 
-    const { data: profile, error } = await supabaseAdmin
+    // Cek dari tabel profiles dulu
+    const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
 
-    if (error || !profile || profile.role !== "teller") {
+    const role =
+      profile?.role ??
+      user.app_metadata?.role ??
+      user.user_metadata?.role;
+
+    if (role !== "teller") {
       res.status(403).json({
         success: false,
         message: "Akses ditolak. Hanya teller yang diizinkan",

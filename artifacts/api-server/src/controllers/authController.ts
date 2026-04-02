@@ -1,7 +1,20 @@
 import { type Request, type Response } from "express";
 import { supabase, supabaseAdmin } from "../config/supabase";
 
-// Mendaftarkan nasabah baru
+function buildUserProfile(supabaseUser: any, dbProfile: any) {
+  const meta = supabaseUser?.user_metadata ?? {};
+  const appMeta = supabaseUser?.app_metadata ?? {};
+  return {
+    id: supabaseUser?.id,
+    email: supabaseUser?.email,
+    nama: dbProfile?.nama ?? meta?.nama ?? "Pengguna",
+    no_hp: dbProfile?.no_hp ?? meta?.no_hp ?? null,
+    role: dbProfile?.role ?? appMeta?.role ?? meta?.role ?? "nasabah",
+    onesignal_player_id: dbProfile?.onesignal_player_id ?? null,
+    created_at: dbProfile?.created_at ?? supabaseUser?.created_at,
+  };
+}
+
 export async function register(req: Request, res: Response): Promise<void> {
   const { nama, email, password, no_hp } = req.body;
 
@@ -14,12 +27,11 @@ export async function register(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // Daftarkan user ke Supabase Auth
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { nama, no_hp },
+      data: { nama, no_hp, role: "nasabah" },
     },
   });
 
@@ -32,7 +44,6 @@ export async function register(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // Buat profil nasabah di tabel profiles
   const { error: profileError } = await supabaseAdmin.from("profiles").insert({
     id: authData.user.id,
     nama,
@@ -41,10 +52,10 @@ export async function register(req: Request, res: Response): Promise<void> {
   });
 
   if (profileError) {
-    res.status(500).json({
-      success: false,
-      message: "Akun dibuat tapi gagal membuat profil: " + profileError.message,
-      data: {},
+    res.status(201).json({
+      success: true,
+      message: "Registrasi berhasil. Silakan login.",
+      data: { user: { id: authData.user.id, email, nama, no_hp, role: "nasabah" } },
     });
     return;
   }
@@ -52,11 +63,10 @@ export async function register(req: Request, res: Response): Promise<void> {
   res.status(201).json({
     success: true,
     message: "Registrasi berhasil. Silakan login.",
-    data: { user: { id: authData.user.id, email, nama, no_hp } },
+    data: { user: { id: authData.user.id, email, nama, no_hp, role: "nasabah" } },
   });
 }
 
-// Login dan mendapatkan JWT token
 export async function login(req: Request, res: Response): Promise<void> {
   const { email, password } = req.body;
 
@@ -83,45 +93,38 @@ export async function login(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // Ambil data profil user
   const { data: profile } = await supabaseAdmin
     .from("profiles")
     .select("*")
     .eq("id", data.user.id)
     .single();
 
+  const userProfile = buildUserProfile(data.user, profile);
+
   res.json({
     success: true,
     message: "Login berhasil",
     data: {
       token: data.session.access_token,
-      user: profile ?? { id: data.user.id, email: data.user.email },
+      user: userProfile,
     },
   });
 }
 
-// Mendapatkan profil user yang sedang login
 export async function getMe(req: Request, res: Response): Promise<void> {
-  const user = (req as any).user;
+  const supabaseUser = (req as any).user;
 
-  const { data: profile, error } = await supabaseAdmin
+  const { data: profile } = await supabaseAdmin
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", supabaseUser.id)
     .single();
 
-  if (error || !profile) {
-    res.status(404).json({
-      success: false,
-      message: "Profil tidak ditemukan",
-      data: {},
-    });
-    return;
-  }
+  const userProfile = buildUserProfile(supabaseUser, profile);
 
   res.json({
     success: true,
     message: "Data profil berhasil diambil",
-    data: { profile },
+    data: { profile: userProfile },
   });
 }
