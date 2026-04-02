@@ -85,48 +85,75 @@ body {
 
 /* Brand */
 .sidebar-top {
-  padding: 20px 16px 16px;
+  height: var(--topbar-h);
+  padding: 0 12px;
   border-bottom: 1px solid var(--gray-100);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 .sidebar-brand {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
   overflow: hidden;
 }
 
 .sb-icon {
-  width: 34px; height: 34px;
+  width: 32px; height: 32px;
   background: var(--orange);
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  margin-bottom: 8px;
   box-shadow: 0 4px 10px rgba(249,115,22,.3);
+  transition: opacity .18s, transform .22s;
+}
+
+.sb-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  transition: opacity .18s;
 }
 
 .sb-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--gray-800);
   white-space: nowrap;
-  opacity: 1;
-  transition: opacity .18s;
   line-height: 1.2;
 }
 
 .sb-subtitle {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--gray-400);
   white-space: nowrap;
-  opacity: 1;
-  transition: opacity .18s;
 }
 
-.sidebar.collapsed .sb-title,
-.sidebar.collapsed .sb-subtitle { opacity: 0; pointer-events: none; }
+/* Tombol hamburger di dalam sidebar */
+.sb-toggle {
+  flex-shrink: 0;
+  width: 32px; height: 32px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gray-400);
+  transition: background .15s, color .15s;
+  margin-left: auto;
+  font-family: var(--font);
+}
+.sb-toggle:hover { background: var(--gray-100); color: var(--gray-700); }
+
+/* Collapsed: sembunyikan icon brand + teks, hamburger tetap terlihat dan terpusat */
+.sidebar.collapsed .sb-icon { opacity: 0; width: 0; margin: 0; overflow: hidden; }
+.sidebar.collapsed .sb-text { opacity: 0; width: 0; overflow: hidden; pointer-events: none; }
+.sidebar.collapsed .sidebar-brand { justify-content: center; gap: 0; }
+.sidebar.collapsed .sb-toggle { margin-left: 0; }
 
 /* Nav */
 .sidebar-nav {
