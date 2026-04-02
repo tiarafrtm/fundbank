@@ -1,6 +1,6 @@
 kind = "api"
-previewPath = "/api" # TODO - should be excluded from preview in the first place
-title = "API Server"
+previewPath = "/api/dashboard"
+title = "Dashboard Teller - Sistem Antrian Bank"
 version = "1.0.0"
 id = "3B4_FFSkEVBkAeYMFRJ2e"
 
