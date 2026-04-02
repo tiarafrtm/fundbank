@@ -1,32 +1,25 @@
 import { logger } from "../lib/logger";
 
-// WhatsApp socket instance (di-set setelah koneksi berhasil)
 let waSocket: any = null;
 let waConnected = false;
+let currentQRDataUrl: string | null = null;
 
-// Inisialisasi koneksi WhatsApp menggunakan Baileys
 export async function initWhatsApp(): Promise<void> {
   try {
     const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } =
       await import("@whiskeysockets/baileys");
     const { Boom } = await import("@hapi/boom");
     const path = await import("path");
-    const qrcode = await import("qrcode-terminal").catch(() => null);
+    const QRCode = await import("qrcode");
 
-    // Simpan sesi auth agar tidak perlu scan QR ulang setiap restart
     const { state, saveCreds } = await useMultiFileAuthState(
       path.join(process.cwd(), "wa_session"),
     );
 
-    const sock = makeWASocket({
-      auth: state,
-      // Tidak menggunakan printQRInTerminal (deprecated di v7), handle manual
-    });
+    const sock = makeWASocket({ auth: state });
 
-    // Simpan credentials saat ada perubahan
     sock.ev.on("creds.update", saveCreds);
 
-    // Pantau status koneksi dan tampilkan QR code jika belum login
     sock.ev.on(
       "connection.update",
       async (update: {
@@ -36,19 +29,18 @@ export async function initWhatsApp(): Promise<void> {
       }) => {
         const { connection, lastDisconnect, qr } = update;
 
-        // Tampilkan QR code di terminal untuk di-scan dengan WhatsApp
         if (qr) {
-          logger.info("=== SCAN QR CODE INI DENGAN WHATSAPP ===");
-          if (qrcode) {
-            // Gunakan qrcode-terminal jika tersedia
-            qrcode.default.generate(qr, { small: true }, (qrText: string) => {
-              console.log(qrText);
+          logger.info("QR Code baru diterima, generate data URL...");
+          try {
+            currentQRDataUrl = await QRCode.default.toDataURL(qr, {
+              width: 280,
+              margin: 2,
+              color: { dark: "#111827", light: "#ffffff" },
             });
-          } else {
-            // Fallback: tampilkan teks QR mentah
-            console.log("QR CODE:", qr);
+            logger.info("QR Code siap di-scan melalui dashboard");
+          } catch (err) {
+            logger.error({ err }, "Gagal generate QR data URL");
           }
-          logger.info("========================================");
         }
 
         if (connection === "close") {
@@ -57,21 +49,21 @@ export async function initWhatsApp(): Promise<void> {
             boom?.output?.statusCode !== DisconnectReason.loggedOut;
 
           if (shouldReconnect) {
-            logger.info("WhatsApp terputus, mencoba reconnect dalam 5 detik...");
+            logger.info("WhatsApp terputus, reconnect dalam 5 detik...");
             waConnected = false;
             waSocket = null;
             setTimeout(() => initWhatsApp(), 5000);
           } else {
-            logger.warn(
-              "WhatsApp logout. Hapus folder wa_session dan restart server untuk scan ulang QR",
-            );
+            logger.warn("WhatsApp logout. Hapus wa_session dan restart untuk scan ulang.");
             waConnected = false;
             waSocket = null;
+            currentQRDataUrl = null;
           }
         } else if (connection === "open") {
           logger.info("WhatsApp berhasil terhubung!");
           waSocket = sock;
           waConnected = true;
+          currentQRDataUrl = null;
         }
       },
     );
@@ -80,22 +72,18 @@ export async function initWhatsApp(): Promise<void> {
   }
 }
 
-// Mengirim pesan WhatsApp ke nomor tertentu
 export async function sendWhatsAppMessage(
   noHp: string,
   pesan: string,
 ): Promise<boolean> {
   if (!waConnected || !waSocket) {
-    logger.warn("WhatsApp belum terhubung, pesan tidak bisa dikirim");
+    logger.warn("WhatsApp belum terhubung");
     return false;
   }
-
   try {
-    // Format nomor: ubah awalan 0 menjadi 62 (kode negara Indonesia)
     const nomor = noHp.startsWith("0")
       ? "62" + noHp.slice(1) + "@s.whatsapp.net"
       : noHp.replace(/\D/g, "") + "@s.whatsapp.net";
-
     await waSocket.sendMessage(nomor, { text: pesan });
     logger.info({ nomor }, "Pesan WhatsApp berhasil dikirim");
     return true;
@@ -105,7 +93,29 @@ export async function sendWhatsAppMessage(
   }
 }
 
-// Cek status koneksi WhatsApp
+export async function disconnectWhatsApp(): Promise<void> {
+  try {
+    if (waSocket) await waSocket.logout();
+  } catch {}
+  waSocket = null;
+  waConnected = false;
+  currentQRDataUrl = null;
+
+  // Hapus sesi agar QR baru muncul saat koneksi ulang
+  const fs = await import("fs");
+  const path = await import("path");
+  const sessionDir = path.join(process.cwd(), "wa_session");
+  if (fs.existsSync(sessionDir)) {
+    fs.rmSync(sessionDir, { recursive: true, force: true });
+  }
+
+  setTimeout(() => initWhatsApp(), 1000);
+}
+
 export function isWhatsAppConnected(): boolean {
   return waConnected;
+}
+
+export function getWhatsAppQR(): string | null {
+  return currentQRDataUrl;
 }

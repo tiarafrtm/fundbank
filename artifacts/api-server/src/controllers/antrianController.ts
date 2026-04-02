@@ -6,6 +6,46 @@ import {
   panggilBerikutnya,
 } from "../services/antrianService";
 
+// Statistik antrian hari ini (untuk halaman dashboard)
+export async function getStatistik(req: Request, res: Response): Promise<void> {
+  const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("antrian")
+      .select("status, layanan")
+      .gte("created_at", todayStart);
+
+    if (error) throw error;
+
+    const items = data ?? [];
+    const total      = items.length;
+    const menunggu   = items.filter(i => i.status === "menunggu").length;
+    const dipanggil  = items.filter(i => i.status === "dipanggil").length;
+    const selesai    = items.filter(i => i.status === "selesai").length;
+    const batal      = items.filter(i => i.status === "batal").length;
+
+    const perLayanan = ["Tabungan", "Kredit", "Umum"].map(l => ({
+      layanan: l,
+      total: items.filter(i => i.layanan === l).length,
+      selesai: items.filter(i => i.layanan === l && i.status === "selesai").length,
+      menunggu: items.filter(i => i.layanan === l && i.status === "menunggu").length,
+    }));
+
+    res.json({
+      success: true,
+      message: "Statistik antrian hari ini",
+      data: { total, menunggu, dipanggil, selesai, batal, per_layanan: perLayanan },
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengambil statistik: " + (error?.message ?? ""),
+      data: {},
+    });
+  }
+}
+
 // Nasabah mengambil nomor antrian
 export async function ambilAntrian(
   req: Request,

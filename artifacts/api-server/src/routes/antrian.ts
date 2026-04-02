@@ -6,6 +6,7 @@ import {
   panggilAntrian,
   selesaiAntrian,
   batalAntrian,
+  getStatistik,
 } from "../controllers/antrianController";
 import {
   authMiddleware,
@@ -14,22 +15,12 @@ import {
 
 const router: IRouter = Router();
 
-// POST /api/antrian/ambil - Nasabah ambil nomor antrian
-router.post("/ambil", authMiddleware, ambilAntrian);
-
-// GET /api/antrian/status - Nasabah cek posisi antrian mereka
-router.get("/status", authMiddleware, statusAntrian);
-
-// GET /api/antrian/list - Teller lihat semua antrian yang menunggu
-router.get("/list", tellerMiddleware, listAntrian);
-
-// PUT /api/antrian/panggil - Teller panggil nomor berikutnya (auto notif)
-router.put("/panggil", tellerMiddleware, panggilAntrian);
-
-// PUT /api/antrian/selesai/:id - Teller tandai antrian selesai
-router.put("/selesai/:id", tellerMiddleware, selesaiAntrian);
-
-// DELETE /api/antrian/batal/:id - Nasabah batalkan antrian mereka
-router.delete("/batal/:id", authMiddleware, batalAntrian);
+router.get("/statistik",     tellerMiddleware, getStatistik);
+router.post("/ambil",        authMiddleware,   ambilAntrian);
+router.get("/status",        authMiddleware,   statusAntrian);
+router.get("/list",          tellerMiddleware, listAntrian);
+router.put("/panggil",       tellerMiddleware, panggilAntrian);
+router.put("/selesai/:id",   tellerMiddleware, selesaiAntrian);
+router.put("/batal/:id",     tellerMiddleware, batalAntrian);
 
 export default router;
