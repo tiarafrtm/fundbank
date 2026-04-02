@@ -24,7 +24,7 @@ let refreshInterval = null;       // timer auto-refresh
 
 // Mapping: nama page → judul di topbar
 const pageTitles = {
-  overview: 'Overview',
+  overview: 'Ringkasan',
   buat:     'Buat Antrian',
 };
 

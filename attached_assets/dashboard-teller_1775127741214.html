@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard Teller — Sistem Antrian Bank</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --orange:#F97316;
+    --orange-soft:#FFF7ED;
+    --orange-light:#FFEDD5;
+    --orange-mid:#FB923C;
+    --orange-dark:#EA580C;
+    --sidebar-bg:#1C1917;
+    --sidebar-text:#D6D3D1;
+    --sidebar-active:#F97316;
+    --white:#FFFFFF;
+    --gray-50:#FAFAF9;
+    --gray-100:#F5F5F4;
+    --gray-200:#E7E5E4;
+    --gray-400:#A8A29E;
+    --gray-600:#57534E;
+    --gray-800:#292524;
+    --green:#16A34A;
+    --green-bg:#F0FDF4;
+    --red:#DC2626;
+    --red-bg:#FEF2F2;
+    --blue:#2563EB;
+    --blue-bg:#EFF6FF;
+    --shadow-sm:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+    --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.05);
+    --shadow-lg:0 10px 30px rgba(0,0,0,.1);
+    --radius:12px;
+    --radius-sm:8px;
+  }
+  body{font-family:'Poppins',sans-serif;background:var(--gray-50);color:var(--gray-800);display:flex;min-height:100vh;}
+
+  /* SIDEBAR */
+  .sidebar{width:240px;background:var(--sidebar-bg);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;z-index:100;}
+  .sidebar-brand{padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,.07);}
+  .brand-icon{width:36px;height:36px;background:var(--orange);border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+  .brand-icon svg{width:20px;height:20px;fill:white;}
+  .brand-name{font-size:14px;font-weight:700;color:white;line-height:1.2;}
+  .brand-sub{font-size:11px;color:var(--gray-400);font-weight:400;}
+  .sidebar-nav{padding:16px 12px;flex:1;}
+  .nav-label{font-size:10px;font-weight:600;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase;padding:0 8px;margin-bottom:6px;margin-top:16px;}
+  .nav-label:first-child{margin-top:0;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;transition:all .18s;color:var(--sidebar-text);font-size:13px;font-weight:500;text-decoration:none;margin-bottom:2px;}
+  .nav-item:hover{background:rgba(255,255,255,.07);color:white;}
+  .nav-item.active{background:rgba(249,115,22,.15);color:var(--orange);}
+  .nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8;}
+  .nav-item.active svg{opacity:1;}
+  .sidebar-footer{padding:16px 12px;border-top:1px solid rgba(255,255,255,.07);}
+  .user-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;background:rgba(255,255,255,.05);}
+  .user-avatar{width:34px;height:34px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;}
+  .user-info{flex:1;min-width:0;}
+  .user-name{font-size:12px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .user-role{font-size:10px;color:var(--orange-mid);font-weight:500;}
+  .wa-dot{width:8px;height:8px;border-radius:50%;background:#25D366;flex-shrink:0;}
+
+  /* MAIN */
+  .main{margin-left:240px;flex:1;display:flex;flex-direction:column;min-height:100vh;}
+
+  /* TOPBAR */
+  .topbar{background:white;border-bottom:1px solid var(--gray-200);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow-sm);}
+  .topbar-left{display:flex;align-items:center;gap:12px;}
+  .page-title{font-size:16px;font-weight:700;color:var(--gray-800);}
+  .page-date{font-size:12px;color:var(--gray-400);font-weight:400;}
+  .topbar-right{display:flex;align-items:center;gap:10px;}
+  .badge-wa{display:flex;align-items:center;gap:6px;background:var(--green-bg);border:1px solid #BBF7D0;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;color:var(--green);}
+  .badge-wa::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);}
+  .time-chip{background:var(--orange-soft);border:1px solid var(--orange-light);padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;color:var(--orange-dark);}
+
+  /* CONTENT */
+  .content{padding:24px 28px;flex:1;}
+
+  /* TOP CARDS ROW */
+  .top-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;}
+
+  /* SERVING CARD */
+  .serving-card{background:linear-gradient(135deg,var(--orange) 0%,var(--orange-dark) 100%);border-radius:var(--radius);padding:22px 24px;color:white;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(249,115,22,.3);}
+  .serving-card::after{content:'';position:absolute;right:-20px;top:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.08);}
+  .serving-card::before{content:'';position:absolute;right:30px;bottom:-30px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.06);}
+  .serving-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.85;margin-bottom:8px;}
+  .serving-number{font-size:42px;font-weight:700;line-height:1;letter-spacing:-1px;margin-bottom:4px;}
+  .serving-name{font-size:13px;opacity:.9;font-weight:500;}
+  .serving-time{font-size:11px;opacity:.7;margin-top:4px;}
+
+  /* FILTER CARD */
+  .filter-card{background:white;border-radius:var(--radius);padding:22px 24px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);}
+  .card-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-400);margin-bottom:10px;}
+  .select-styled{width:100%;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:13px;font-weight:500;color:var(--gray-800);background:var(--gray-50);cursor:pointer;outline:none;transition:border-color .18s;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+  .select-styled:focus{border-color:var(--orange);}
+  .waiting-count{margin-top:12px;font-size:22px;font-weight:700;color:var(--orange);}
+  .waiting-sub{font-size:12px;color:var(--gray-400);font-weight:400;}
+
+  /* CALL BUTTON CARD */
+  .call-card{background:white;border-radius:var(--radius);padding:22px 24px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);display:flex;flex-direction:column;justify-content:space-between;}
+  .btn-call{width:100%;padding:14px;background:var(--orange);color:white;border:none;border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .18s;letter-spacing:.01em;margin-top:auto;}
+  .btn-call:hover{background:var(--orange-dark);transform:translateY(-1px);box-shadow:0 6px 18px rgba(249,115,22,.35);}
+  .btn-call:active{transform:translateY(0);}
+  .btn-skip{width:100%;padding:9px;background:transparent;color:var(--gray-400);border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);font-family:'Poppins',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all .18s;margin-top:8px;}
+  .btn-skip:hover{border-color:var(--red);color:var(--red);}
+
+  /* STAT CHIPS */
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+  .stat-chip{background:white;border-radius:var(--radius-sm);padding:14px 16px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);display:flex;align-items:center;gap:12px;}
+  .stat-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .stat-icon svg{width:18px;height:18px;}
+  .stat-val{font-size:20px;font-weight:700;color:var(--gray-800);line-height:1;}
+  .stat-lbl{font-size:11px;color:var(--gray-400);font-weight:500;margin-top:2px;}
+
+  /* TABLE SECTION */
+  .section{background:white;border-radius:var(--radius);box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);margin-bottom:20px;overflow:hidden;}
+  .section-header{padding:16px 20px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;}
+  .section-title{font-size:14px;font-weight:700;color:var(--gray-800);display:flex;align-items:center;gap:8px;}
+  .section-title .dot{width:8px;height:8px;border-radius:50%;background:var(--orange);animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(1.3);}}
+  .section-actions{display:flex;align-items:center;gap:8px;}
+  .btn-sm{padding:6px 12px;border-radius:6px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--gray-200);background:white;color:var(--gray-600);transition:all .15s;}
+  .btn-sm:hover{border-color:var(--orange);color:var(--orange);}
+  .auto-refresh{font-size:11px;color:var(--gray-400);font-weight:500;}
+
+  /* TABLE */
+  table{width:100%;border-collapse:collapse;}
+  thead tr{background:var(--gray-50);}
+  th{padding:10px 20px;text-align:left;font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--gray-100);}
+  td{padding:13px 20px;font-size:13px;font-weight:500;color:var(--gray-800);border-bottom:1px solid var(--gray-100);}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:var(--gray-50);}
+  .ticket-num{font-weight:700;color:var(--orange);font-size:14px;}
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+  .badge-waiting{background:var(--orange-soft);color:var(--orange-dark);}
+  .badge-serving{background:var(--blue-bg);color:var(--blue);}
+  .badge-done{background:var(--green-bg);color:var(--green);}
+  .badge-skip{background:var(--gray-100);color:var(--gray-600);}
+  .badge-priority{background:#FDF4FF;color:#7E22CE;}
+  .service-tag{display:inline-flex;padding:2px 8px;background:var(--gray-100);border-radius:4px;font-size:11px;color:var(--gray-600);font-weight:500;}
+  .action-btn{padding:5px 12px;border-radius:6px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;border:none;transition:all .15s;}
+  .action-done{background:var(--green-bg);color:var(--green);}
+  .action-done:hover{background:#DCFCE7;}
+  .action-skip{background:var(--gray-100);color:var(--gray-600);margin-left:4px;}
+  .action-skip:hover{background:var(--red-bg);color:var(--red);}
+  .empty-state{padding:40px;text-align:center;color:var(--gray-400);font-size:13px;}
+  .empty-icon{font-size:32px;margin-bottom:8px;opacity:.4;}
+
+  /* BOTTOM FILTER ROW */
+  .filter-row{display:flex;align-items:center;gap:8px;}
+  .filter-row select{padding:5px 10px;border:1.5px solid var(--gray-200);border-radius:6px;font-family:'Poppins',sans-serif;font-size:12px;color:var(--gray-600);background:white;cursor:pointer;outline:none;}
+  .filter-row select:focus{border-color:var(--orange);}
+  .total-chip{margin-left:auto;font-size:12px;color:var(--gray-400);font-weight:500;}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22" fill="none" stroke="white" stroke-width="1.5"/></svg>
+    </div>
+    <div class="brand-name">Antrian Bank</div>
+    <div class="brand-sub">Sistem Manajemen Antrian</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Menu Utama</div>
+    <a class="nav-item active" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      Antrian
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Riwayat
+    </a>
+    <div class="nav-label">Pengaturan</div>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+      Test Notif WA
+    </a>
+    <a class="nav-item" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M6 12a6 6 0 1012 0 6 6 0 01-12 0"/></svg>
+      Pengaturan
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-avatar">M</div>
+      <div class="user-info">
+        <div class="user-name">Mutiara Fara Tama</div>
+        <div class="user-role">Teller — Loket 1</div>
+      </div>
+      <div class="wa-dot" title="WA Terhubung"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div>
+        <div class="page-title">Dashboard Teller</div>
+        <div class="page-date">Rabu, 2 April 2026</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="badge-wa">WhatsApp Terhubung</div>
+      <div class="time-chip" id="clock">16:32</div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- TOP ROW -->
+    <div class="top-row">
+      <!-- Sedang dilayani -->
+      <div class="serving-card">
+        <div class="serving-label">Sedang Dilayani</div>
+        <div class="serving-number">A-006</div>
+        <div class="serving-name">Budi Santoso</div>
+        <div class="serving-time">Mulai dilayani 16.28 · 4 menit</div>
+      </div>
+
+      <!-- Filter & waiting -->
+      <div class="filter-card">
+        <div class="card-label">Filter Layanan</div>
+        <select class="select-styled">
+          <option>Semua Layanan</option>
+          <option>Teller</option>
+          <option>Customer Service</option>
+          <option>Prioritas</option>
+        </select>
+        <div class="waiting-count">8 <span style="font-size:14px;font-weight:500;color:var(--gray-400)">menunggu</span></div>
+        <div class="waiting-sub">Estimasi tunggu ±24 menit</div>
+      </div>
+
+      <!-- Call button -->
+      <div class="call-card">
+        <div class="card-label">Aksi Antrian</div>
+        <button class="btn-call" onclick="callNext()">Panggil Berikutnya</button>
+        <button class="btn-skip">Lewati (Skip)</button>
+      </div>
+    </div>
+
+    <!-- STAT CHIPS -->
+    <div class="stat-row">
+      <div class="stat-chip">
+        <div class="stat-icon" style="background:var(--orange-soft);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        </div>
+        <div>
+          <div class="stat-val">24</div>
+          <div class="stat-lbl">Total Hari Ini</div>
+        </div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-icon" style="background:var(--green-bg);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div>
+          <div class="stat-val" style="color:var(--green);">15</div>
+          <div class="stat-lbl">Selesai Dilayani</div>
+        </div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-icon" style="background:var(--orange-soft);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div>
+          <div class="stat-val">8</div>
+          <div class="stat-lbl">Menunggu</div>
+        </div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-icon" style="background:var(--gray-100);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <div>
+          <div class="stat-val" style="color:var(--gray-400);">1</div>
+          <div class="stat-lbl">Diskip</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANTRIAN MENUNGGU -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">
+          <span class="dot"></span>
+          Daftar Antrian Menunggu
+        </div>
+        <div class="section-actions">
+          <span class="auto-refresh">Auto-refresh 5 detik</span>
+          <button class="btn-sm">Refresh</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>No. Antrian</th>
+            <th>Nama Nasabah</th>
+            <th>Layanan</th>
+            <th>Waktu Ambil</th>
+            <th>Tunggu</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="ticket-num">A-007</span> <span class="badge badge-priority" style="margin-left:4px;">Prioritas</span></td>
+            <td>Siti Rahayu</td>
+            <td><span class="service-tag">Teller</span></td>
+            <td>16.10</td>
+            <td>22 mnt</td>
+            <td>
+              <button class="action-btn action-done">Selesai</button>
+              <button class="action-btn action-skip">Skip</button>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ticket-num">A-008</span></td>
+            <td>Ahmad Fauzi</td>
+            <td><span class="service-tag">Teller</span></td>
+            <td>16.15</td>
+            <td>17 mnt</td>
+            <td>
+              <button class="action-btn action-done">Selesai</button>
+              <button class="action-btn action-skip">Skip</button>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ticket-num">A-009</span></td>
+            <td>Dewi Lestari</td>
+            <td><span class="service-tag">Teller</span></td>
+            <td>16.18</td>
+            <td>14 mnt</td>
+            <td>
+              <button class="action-btn action-done">Selesai</button>
+              <button class="action-btn action-skip">Skip</button>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ticket-num">A-010</span></td>
+            <td>Rudi Hermawan</td>
+            <td><span class="service-tag">Teller</span></td>
+            <td>16.20</td>
+            <td>12 mnt</td>
+            <td>
+              <button class="action-btn action-done">Selesai</button>
+              <button class="action-btn action-skip">Skip</button>
+            </td>
+          </tr>
+          <tr>
+            <td><span class="ticket-num">A-011</span></td>
+            <td>Linda Wati</td>
+            <td><span class="service-tag">Teller</span></td>
+            <td>16.25</td>
+            <td>7 mnt</td>
+            <td>
+              <button class="action-btn action-done">Selesai</button>
+              <button class="action-btn action-skip">Skip</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SEMUA ANTRIAN HARI INI -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Semua Antrian Hari Ini</div>
+        <div class="section-actions">
+          <div class="filter-row">
+            <select>
+              <option>Semua Status</option>
+              <option>Menunggu</option>
+              <option>Dilayani</option>
+              <option>Selesai</option>
+              <option>Diskip</option>
+            </select>
+            <select>
+              <option>Semua Layanan</option>
+              <option>Teller</option>
+              <option>CS</option>
+              <option>Prioritas</option>
+            </select>
+            <button class="btn-sm">Refresh</button>
+          </div>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>No. Antrian</th>
+            <th>Nama Nasabah</th>
+            <th>Layanan</th>
+            <th>Status</th>
+            <th>Waktu Ambil</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="ticket-num">A-001</span></td>
+            <td>Hendra Gunawan</td>
+            <td><span class="service-tag">Teller</span></td>
+            <td><span class="badge badge-done">Selesai</span></td>
+            <td>08.02</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><span class="ticket-num">A-002</span></td>
+            <td>Maya Putri</td>
+            <td><span class="service-tag">Teller</span></td>
+            <td><span class="badge badge-done">Selesai</span></td>
+            <td>08.15</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><span class="ticket-num">A-003</span></td>
+            <td>Pak Slamet</td>
+            <td><span class="service-tag">Prioritas</span></td>
+            <td><span class="badge badge-done">Selesai</span></td>
+            <td>08.30</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><span class="ticket-num">A-004</span></td>
+            <td>Rina Susanti</td>
+            <td><span class="service-tag">Teller</span></td>
+            <td><span class="badge badge-skip">Diskip</span></td>
+            <td>09.10</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><span class="ticket-num">A-005</span></td>
+            <td>Agus Prasetyo</td>
+            <td><span class="service-tag">Teller</span></td>
+            <td><span class="badge badge-done">Selesai</span></td>
+            <td>09.22</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><span class="ticket-num">A-006</span></td>
+            <td>Budi Santoso</td>
+            <td><span class="service-tag">Teller</span></td>
+            <td><span class="badge badge-serving">Dilayani</span></td>
+            <td>16.10</td>
+            <td><button class="action-btn action-done">Selesai</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="padding:12px 20px;border-top:1px solid var(--gray-100);display:flex;align-items:center;">
+        <span style="font-size:12px;color:var(--gray-400);font-weight:500;">Total: 24 antrian</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--gray-400);">Halaman 1 dari 3</span>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  function updateClock(){
+    const now=new Date();
+    const h=String(now.getHours()).padStart(2,'0');
+    const m=String(now.getMinutes()).padStart(2,'0');
+    document.getElementById('clock').textContent=h+':'+m;
+  }
+  setInterval(updateClock,1000);
+  updateClock();
+
+  function callNext(){
+    const btn=document.querySelector('.btn-call');
+    btn.textContent='Memanggil...';
+    btn.style.opacity='.7';
+    setTimeout(()=>{
+      btn.textContent='Panggil Berikutnya';
+      btn.style.opacity='1';
+      document.querySelector('.serving-number').textContent='A-007';
+      document.querySelector('.serving-name').textContent='Siti Rahayu';
+      document.querySelector('.serving-time').textContent='Mulai dilayani sekarang · 0 menit';
+    },800);
+  }
+</script>
+</body>
+</html>

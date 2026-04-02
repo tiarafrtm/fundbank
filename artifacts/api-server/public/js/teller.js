@@ -57,9 +57,9 @@ let qrPollInterval  = null;        // timer polling QR WhatsApp
 
 // Mapping: nama page → judul di topbar
 const pageTitles = {
-  dashboard: 'Dashboard',
+  dashboard: 'Beranda',
   antrian:   'Antrian',
-  notif:     'Test Notif WA',
+  notif:     'Notifikasi WA',
 };
 
 // ===========================
