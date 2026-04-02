@@ -13,6 +13,7 @@
    - 3.3 [Profil Nasabah](#33-profil-nasabah)
    - 3.4 [Ambil Nomor Antrian](#34-ambil-nomor-antrian)
    - 3.5 [Status Antrian Aktif](#35-status-antrian-aktif)
+   - 3.5.1 [Panduan Tampilan Layar Status Antrian](#351-panduan-tampilan-layar-status-antrian)
    - 3.6 [Batalkan Antrian](#36-batalkan-antrian)
    - 3.7 [Tiket Antrian (HTML Cetak)](#37-tiket-antrian-html-cetak)
 4. [Format Pesan WhatsApp](#4-format-pesan-whatsapp)
@@ -366,6 +367,145 @@ Gunakan endpoint ini untuk **polling** (tiap 15 detik) untuk mengetahui posisi d
   "success": false,
   "message": "Tidak ada antrian aktif hari ini",
   "data": {}
+}
+```
+
+---
+
+### 3.5.1 Panduan Tampilan Layar Status Antrian
+
+Gunakan field `posisi` dan `status` dari response `/api/mobile/antrian/status` untuk menentukan tampilan yang tepat.
+
+#### Kondisi & Tampilan yang Direkomendasikan
+
+| Kondisi | `status` | `posisi` | Tampilan Utama | Warna/Tone |
+|---------|----------|----------|----------------|------------|
+| Menunggu jauh | `menunggu` | > 3 | Nomor antrian besar + sisa antrian + estimasi waktu | Abu-abu / netral |
+| Hampir giliran | `menunggu` | 2–3 | "Segera bersiap!" + sisa antrian | Oranye (`#F97316`) |
+| Berikutnya | `menunggu` | 1 | "Giliran Anda berikutnya!" | Oranye highlight penuh |
+| Dipanggil | `dipanggil` | — | Full screen: "Silakan menuju loket!" | Hijau / oranye bold |
+| Selesai | `selesai` | — | "Terima kasih, layanan selesai" + tombol pulang | Hijau |
+| Batal | `batal` | — | "Antrian dibatalkan" + tombol ambil ulang | Merah / netral |
+
+#### Logika Kotlin yang Direkomendasikan
+
+```kotlin
+fun renderAntrianState(antrian: AntrianData, posisi: Int) {
+    when {
+        antrian.status == "dipanggil" -> showDipanggil()
+        antrian.status == "selesai"   -> showSelesai()
+        antrian.status == "batal"     -> showBatal()
+        posisi == 1                   -> showGiliranBerikutnya()
+        posisi in 2..3                -> showSegerapBersiap(posisi)
+        else                          -> showMenunggu(posisi)
+    }
+}
+```
+
+#### Detail Setiap State
+
+**State 1 — Menunggu (posisi > 3)**
+```
+┌─────────────────────────┐
+│  Nomor Antrian Anda     │
+│                         │
+│        [ 10 ]           │  ← font besar, warna oranye
+│      Teller             │
+│                         │
+│  Posisi    : ke-4       │
+│  Di depan  : 3 orang    │
+│  Estimasi  : ~15 menit  │  ← estimasi: posisi × rata2 layanan (mis. 5 menit/orang)
+│                         │
+│  [   Batalkan Antrian   ]│
+└─────────────────────────┘
+```
+
+**State 2 — Segera Bersiap (posisi 2–3)**
+```
+┌─────────────────────────┐
+│  ⬤ Segera Bersiap!     │  ← banner oranye
+│                         │
+│        [ 10 ]           │
+│      Teller             │
+│                         │
+│  2 orang di depan Anda  │
+│  Harap mendekat ke loket│
+│                         │
+│  [   Batalkan Antrian   ]│
+└─────────────────────────┘
+```
+
+**State 3 — Giliran Berikutnya (posisi 1)**
+```
+┌─────────────────────────┐
+│  ★ Giliran Anda         │
+│    Berikutnya!          │  ← background oranye penuh
+│                         │
+│        [ 10 ]           │  ← putih di atas oranye
+│      Teller             │
+│                         │
+│  Silakan siapkan dokumen│
+│  dan menuju area tunggu │
+└─────────────────────────┘
+```
+
+**State 4 — Dipanggil (status = `dipanggil`)**
+```
+┌─────────────────────────┐
+│                         │
+│   Silakan Menuju        │
+│      Loket!             │  ← full screen, background hijau/oranye
+│                         │
+│        [ 10 ]           │
+│      Teller             │
+│                         │
+│  [  Lihat Tiket PDF  ]  │
+└─────────────────────────┘
+```
+
+> Saat status berubah menjadi `dipanggil`, hentikan polling dan tampilkan notifikasi lokal Android
+> (`NotificationManager`) sebagai cadangan push notification.
+
+#### Estimasi Waktu
+
+Estimasi dihitung di sisi Android, bukan dari backend:
+
+```kotlin
+// Asumsi rata-rata 5 menit per nasabah
+val RATA_RATA_MENIT_PER_NASABAH = 5
+
+fun hitungEstimasi(antrianDiDepan: Int): String {
+    val totalMenit = antrianDiDepan * RATA_RATA_MENIT_PER_NASABAH
+    return when {
+        totalMenit < 5  -> "< 5 menit"
+        totalMenit < 60 -> "~$totalMenit menit"
+        else -> {
+            val jam = totalMenit / 60
+            val menit = totalMenit % 60
+            "~$jam jam $menit menit"
+        }
+    }
+}
+```
+
+> Tampilkan label "Estimasi" dengan jelas agar nasabah tahu ini perkiraan, bukan waktu pasti.
+> Hanya tampilkan estimasi saat `posisi > 1`. Saat posisi 1, lebih baik ganti dengan instruksi aksi.
+
+#### Notifikasi Lokal Android (Cadangan Push)
+
+Saat status berubah dari `menunggu` ke `dipanggil` melalui polling, tampilkan notifikasi lokal:
+
+```kotlin
+fun showLocalNotification(context: Context, nomor: Int) {
+    val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        .setSmallIcon(R.drawable.ic_notification)
+        .setContentTitle("Antrian Anda Dipanggil!")
+        .setContentText("Nomor $nomor — Silakan menuju loket.")
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setAutoCancel(true)
+        .build()
+
+    NotificationManagerCompat.from(context).notify(1, notification)
 }
 ```
 
