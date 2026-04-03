@@ -80,15 +80,16 @@ export async function panggilBerikutnya(layanan?: string): Promise<{
     "Antrian berhasil dipanggil (atomic update OK)",
   );
 
-  // STEP 3: Cari nasabah yang perlu notifikasi (3 posisi ke depan)
+  // STEP 3: Cari SEMUA nasabah dalam 3 posisi ke depan yang belum dapat notif
   let notifQuery = supabaseAdmin
     .from("antrian")
     .select(`*, profiles (nama, no_hp, onesignal_player_id)`)
     .eq("status", "menunggu")
     .eq("notif_sent", false)
     .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
-    .order("nomor_antrian", { ascending: true })
-    .limit(1);
+    .gt("nomor_antrian", currentAntrian.nomor_antrian)                          // hanya yang di belakang
+    .lte("nomor_antrian", currentAntrian.nomor_antrian + 3)                     // max 3 posisi ke depan
+    .order("nomor_antrian", { ascending: true });
 
   if (layanan) notifQuery = notifQuery.eq("layanan", layanan);
 
@@ -96,65 +97,67 @@ export async function panggilBerikutnya(layanan?: string): Promise<{
 
   let notifDikirim = false;
 
+  // Kirim notif ke SEMUA nasabah dalam jarak 3 posisi
   if (antrianNotif && antrianNotif.length > 0) {
-    const targetNotif = antrianNotif[0];
-    const selisihNomor = targetNotif.nomor_antrian - currentAntrian.nomor_antrian;
-
-    if (selisihNomor <= 3) {
+    for (const targetNotif of antrianNotif) {
       // Verifikasi ulang status masih 'menunggu' sebelum kirim notif
-      // Mencegah WA ke nasabah yang sudah diskip/selesai
       const { data: freshCheck } = await supabaseAdmin
         .from("antrian")
         .select("status, notif_sent")
         .eq("id", targetNotif.id)
         .single();
 
-      if (freshCheck?.status === "menunggu" && !freshCheck?.notif_sent) {
-        const profile = targetNotif.profiles as any;
-        const nomorAntrian = targetNotif.nomor_antrian;
+      if (freshCheck?.status !== "menunggu" || freshCheck?.notif_sent) continue;
 
-        // Kirim push notification via OneSignal
-        if (profile?.onesignal_player_id) {
-          try {
-            await sendPushNotification(profile.onesignal_player_id, nomorAntrian);
-          } catch (e: any) {
-            logger.warn({ error: e?.message }, "OneSignal push gagal, lanjut WA");
-          }
+      const profile      = targetNotif.profiles as any;
+      const nomorAntrian = targetNotif.nomor_antrian;
+      const posisiDiDepan = nomorAntrian - currentAntrian.nomor_antrian; // 1, 2, atau 3
+
+      // Kirim push notification via OneSignal
+      if (profile?.onesignal_player_id) {
+        try {
+          await sendPushNotification(profile.onesignal_player_id, nomorAntrian);
+        } catch (e: any) {
+          logger.warn({ error: e?.message }, "OneSignal push gagal, lanjut WA");
         }
-
-        // Kirim pesan WhatsApp via Baileys
-        const noHp = profile?.no_hp ?? targetNotif.no_hp_nasabah;
-        const namaNasabah = profile?.nama ?? targetNotif.nama_nasabah ?? "Nasabah";
-        const layananDisplay =
-          targetNotif.layanan === "CS" ? "Customer Service" : targetNotif.layanan;
-
-        if (noHp) {
-          const pesanWA =
-            `Halo, ${namaNasabah}!\n\n` +
-            `Kami informasikan bahwa nomor antrian Anda *${nomorAntrian}* ` +
-            `di layanan ${layananDisplay} akan segera dipanggil.\n\n` +
-            `Harap segera menuju loket yang tersedia.\n\n` +
-            `Klik untuk lihat status antrian:\n` +
-            `bankantrian://queue?ticket=${nomorAntrian}\n\n` +
-            `— Bank ABC, Cabang Sudirman`;
-
-          try {
-            await sendWhatsAppMessage(noHp, pesanWA);
-            logger.info({ noHp, nomorAntrian }, "WA notifikasi terkirim");
-          } catch (e: any) {
-            logger.error({ noHp, error: e?.message }, "WA notifikasi GAGAL");
-          }
-        }
-
-        // Tandai notif sudah dikirim — cegah kirim ulang
-        await supabaseAdmin
-          .from("antrian")
-          .update({ notif_sent: true })
-          .eq("id", targetNotif.id)
-          .eq("status", "menunggu"); // Hanya update kalau masih menunggu
-
-        notifDikirim = true;
       }
+
+      // Kirim pesan WhatsApp via Baileys
+      const noHp          = profile?.no_hp ?? targetNotif.no_hp_nasabah;
+      const namaNasabah   = profile?.nama  ?? targetNotif.nama_nasabah ?? "Nasabah";
+      const layananDisplay = targetNotif.layanan === "CS" ? "Customer Service" : targetNotif.layanan;
+
+      if (noHp) {
+        // Pesan berbeda berdasarkan jarak antrian
+        const keteranganPosisi = posisiDiDepan === 1
+          ? `Anda adalah antrian *berikutnya*! Harap segera menuju loket.`
+          : `Anda berada di posisi ke-*${posisiDiDepan}* dari depan. Harap bersiap-siap.`;
+
+        const pesanWA =
+          `Halo, ${namaNasabah}!\n\n` +
+          `Nomor antrian Anda: *${nomorAntrian}* (${layananDisplay})\n` +
+          `${keteranganPosisi}\n\n` +
+          `Klik untuk lihat status antrian:\n` +
+          `bankantrian://queue?ticket=${nomorAntrian}\n\n` +
+          `— Bank ABC, Cabang Sudirman`;
+
+        try {
+          await sendWhatsAppMessage(noHp, pesanWA);
+          logger.info({ noHp, nomorAntrian, posisiDiDepan }, "WA notifikasi terkirim");
+        } catch (e: any) {
+          logger.error({ noHp, error: e?.message }, "WA notifikasi GAGAL");
+        }
+      }
+
+      // Tandai notif sudah dikirim — cegah kirim ulang
+      await supabaseAdmin
+        .from("antrian")
+        .update({ notif_sent: true })
+        .eq("id", targetNotif.id)
+        .eq("status", "menunggu");
+
+      notifDikirim = true;
+      logger.info({ nomorAntrian, posisiDiDepan }, `Notif dikirim ke antrian ${nomorAntrian} (posisi ${posisiDiDepan} dari depan)`);
     }
   }
 
