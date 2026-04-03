@@ -117,3 +117,33 @@ function escHtml(str) {
 function getNamaNasabah(item) {
   return item.profiles?.nama ?? item.nama_nasabah ?? 'Tidak diketahui';
 }
+
+// ===========================
+// MOBILE SIDEBAR
+// ===========================
+function openMobileSidebar() {
+  const sidebar  = document.querySelector('.sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.add('mobile-open');
+  backdrop.classList.add('visible');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMobileSidebar() {
+  const sidebar  = document.querySelector('.sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (!sidebar || !backdrop) return;
+  sidebar.classList.remove('mobile-open');
+  backdrop.classList.remove('visible');
+  document.body.style.overflow = '';
+}
+
+// Tutup sidebar mobile saat nav-item diklik
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (window.innerWidth <= 768) closeMobileSidebar();
+    });
+  });
+});
