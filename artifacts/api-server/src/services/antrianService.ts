@@ -138,7 +138,7 @@ export async function panggilBerikutnya(layanan?: string): Promise<{
           `Nomor antrian Anda: *${nomorAntrian}* (${layananDisplay})\n` +
           `${keteranganPosisi}\n\n` +
           `Klik untuk lihat status antrian:\n` +
-          `bankantrian://queue?ticket=${nomorAntrian}\n\n` +
+          `https://antrianbank.site/tiket?ticket=${nomorAntrian}\n\n` +
           `— FUND BANK`;
 
         try {

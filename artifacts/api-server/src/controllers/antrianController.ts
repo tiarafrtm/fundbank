@@ -358,7 +358,8 @@ export async function batalAntrian(req: Request, res: Response): Promise<void> {
           `Halo, ${namaNasabah}!\n\n` +
           `⚠️ Nomor antrian *${antrian.nomor_antrian}* (${layananDisplay}) Anda telah *dilewati* karena tidak hadir saat dipanggil.\n\n` +
           `Mohon diperhatikan: Jika ada notifikasi WhatsApp dari kami, *segera datang ke loket* agar tidak dilewati kembali.\n\n` +
-          `Silakan ambil nomor antrian baru di aplikasi jika masih ingin dilayani.\n\n` +
+          `Lihat status atau ambil antrian baru:\n` +
+          `https://antrianbank.site/tiket?ticket=${antrian.nomor_antrian}\n\n` +
           `— FUND BANK`;
 
         try {
