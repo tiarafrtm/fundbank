@@ -246,7 +246,8 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
 
 // Teller/CS menetapkan nomor loket mereka
 export async function setLoket(req: Request, res: Response): Promise<void> {
-  const user = (req as any).user;
+  const user    = (req as any).user;
+  const role    = (req as any).userRole as string;
   const { loket_number } = req.body;
 
   if (!loket_number || typeof loket_number !== "number" || loket_number < 1 || loket_number > 20) {
@@ -258,11 +259,14 @@ export async function setLoket(req: Request, res: Response): Promise<void> {
     return;
   }
 
+  // Simpan layanan bersama loket_number agar estimasi tunggu bisa query per layanan
+  const layanan = ROLE_LAYANAN[role] ?? null;
+
   const { data, error } = await supabaseAdmin
     .from("profiles")
-    .update({ loket_number })
+    .update({ loket_number, layanan })
     .eq("id", user.id)
-    .select("id, nama, loket_number")
+    .select("id, nama, loket_number, layanan")
     .single();
 
   if (error || !data) {
@@ -274,11 +278,11 @@ export async function setLoket(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  actLog(req, "set_loket", { loket_number });
+  actLog(req, "set_loket", { loket_number, layanan });
   res.json({
     success: true,
     message: `Loket ${loket_number} berhasil ditetapkan`,
-    data: { loket_number: data.loket_number },
+    data: { loket_number: data.loket_number, layanan: data.layanan },
   });
 }
 

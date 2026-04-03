@@ -382,8 +382,8 @@ export async function statusAntrianMobile(req: Request, res: Response): Promise<
     return;
   }
 
-  // Jalankan 3 query paralel sekaligus untuk hemat waktu
-  const [posisiResult, loketResult, selesaiResult] = await Promise.all([
+  // Jalankan 4 query paralel sekaligus untuk hemat waktu
+  const [posisiResult, loketDipanggilResult, selesaiResult, loketProfileResult] = await Promise.all([
     // 1. Hitung berapa orang di depan (status menunggu, nomor lebih kecil)
     supabaseAdmin
       .from("antrian")
@@ -392,8 +392,8 @@ export async function statusAntrianMobile(req: Request, res: Response): Promise<
       .eq("layanan", antrian.layanan)
       .lt("nomor_antrian", antrian.nomor_antrian),
 
-    // 2. Hitung berapa loket/staf yang SEDANG melayani (status dipanggil)
-    //    → semakin banyak loket aktif, estimasi semakin cepat
+    // 2. Hitung loket yang SEDANG melayani saat ini (status dipanggil)
+    //    Akurat saat ada antrian aktif, tapi bisa 0 saat jeda antar nasabah
     supabaseAdmin
       .from("antrian")
       .select("*", { count: "exact", head: true })
@@ -411,10 +411,22 @@ export async function statusAntrianMobile(req: Request, res: Response): Promise<
       .not("called_at", "is", null)
       .not("finished_at", "is", null)
       .limit(20),
+
+    // 4. Hitung staff yang sudah set loket untuk layanan ini (profiles.layanan)
+    //    Lebih stabil dari query dipanggil — tetap terhitung saat jeda antar nasabah
+    supabaseAdmin
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("layanan", antrian.layanan)
+      .not("loket_number", "is", null),
   ]);
 
-  const antriDiDepan    = posisiResult.count ?? 0;
-  const jumlahLoketAktif = Math.max(1, loketResult.count ?? 1); // minimal 1 loket
+  const antriDiDepan     = posisiResult.count ?? 0;
+  const loketSedangLayan = loketDipanggilResult.count ?? 0;
+  const loketTerdaftar   = loketProfileResult.count ?? 0;
+  // Ambil nilai terbesar: saat jeda antar nasabah loketDipanggil=0,
+  // tapi loketTerdaftar tetap terhitung → estimasi tidak melonjak
+  const jumlahLoketAktif = Math.max(1, loketSedangLayan, loketTerdaftar);
 
   // Hitung rata-rata menit per nasabah per loket
   const MENIT_DEFAULT = 10;
@@ -453,6 +465,8 @@ export async function statusAntrianMobile(req: Request, res: Response): Promise<
       posisi             : antriDiDepan + 1,
       antrian_di_depan   : antriDiDepan,
       jumlah_loket_aktif : jumlahLoketAktif,
+      loket_sedang_layan : loketSedangLayan,   // loket yg aktif melayani saat ini
+      loket_terdaftar    : loketTerdaftar,      // staff yg sudah set loket hari ini
       estimasi_menit     : estimasiMenit,
       estimasi_label     : estimasiLabel,
       menit_per_nasabah  : meniPerNasabah,
