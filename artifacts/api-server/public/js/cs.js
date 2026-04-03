@@ -214,7 +214,7 @@ async function loadQueueData() {
     }
 
     const {
-      sedang_dilayani, antrian_menunggu, antrian_dipanggil,
+      sedang_dilayani, antrian_menunggu,
       total_menunggu, semua_loket_aktif, my_loket_number, loket_terpakai
     } = result.data;
 
@@ -525,25 +525,32 @@ async function loadRiwayat() {
 
     if (!riwayatTbody) return;
     if (!items.length) {
-      riwayatTbody.innerHTML = `<tr class="empty-row"><td colspan="5">Tidak ada data antrian CS hari ini</td></tr>`;
+      riwayatTbody.innerHTML = `<tr class="empty-row"><td colspan="6">Tidak ada data antrian CS hari ini</td></tr>`;
       return;
     }
 
-    riwayatTbody.innerHTML = items.map(item => `
+    riwayatTbody.innerHTML = items.map(item => {
+      const isMyLoket = !item.loket_number || !myLoketNumber || item.loket_number === myLoketNumber;
+      const loketLabel = item.loket_number ? `Loket ${item.loket_number}` : '—';
+      let aksiHtml = '—';
+      if (item.status === 'menunggu') {
+        aksiHtml = `<button class="btn btn-done" onclick="selesaiAntrian('${item.id}',${item.nomor_antrian})">Selesai</button>
+                    <button class="btn btn-danger" onclick="skipAntrian('${item.id}',${item.nomor_antrian})">Skip</button>`;
+      } else if (item.status === 'dipanggil') {
+        aksiHtml = isMyLoket
+          ? `<button class="btn btn-done" onclick="selesaiAntrian('${item.id}',${item.nomor_antrian})">Selesai</button>`
+          : `<span class="text-muted" style="font-size:0.78rem">Loket lain</span>`;
+      }
+      return `
       <tr>
         <td><span class="antrian-number">${item.nomor_antrian}</span></td>
         <td><strong>${escHtml(getNamaNasabah(item))}</strong></td>
         <td>${statusBadge(item.status)}</td>
+        <td><span class="badge-loket-small">${loketLabel}</span></td>
         <td>${formatWaktu(item.created_at)}</td>
-        <td>
-          ${item.status === 'menunggu'
-            ? `<button class="btn btn-done" onclick="selesaiAntrian('${item.id}',${item.nomor_antrian})">Selesai</button>
-               <button class="btn btn-danger" onclick="skipAntrian('${item.id}',${item.nomor_antrian})">Skip</button>`
-            : item.status === 'dipanggil'
-              ? `<button class="btn btn-done" onclick="selesaiAntrian('${item.id}',${item.nomor_antrian})">Selesai</button>`
-              : '—'}
-        </td>
-      </tr>`).join('');
+        <td>${aksiHtml}</td>
+      </tr>`;
+    }).join('');
   } catch {}
 }
 

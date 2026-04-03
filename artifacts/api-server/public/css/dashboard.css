@@ -577,6 +577,10 @@ body {
 .status-selesai     { background: var(--success-light); color: var(--success); }
 .status-batal       { background: var(--gray-100);      color: var(--gray-600); }
 
+.badge-loket-small  { display: inline-block; padding: 1px 7px; border-radius: 12px; font-size: 11px; font-weight: 600; background: var(--orange-soft); color: var(--orange-dark); white-space: nowrap; }
+.badge-loket-small:empty, .badge-loket-small[data-empty] { background: transparent; color: var(--gray-400); }
+.text-muted         { color: var(--gray-400); }
+
 /* ============================================================
    TOMBOL
    ============================================================ */
