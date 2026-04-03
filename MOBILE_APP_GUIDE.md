@@ -394,8 +394,10 @@ Gunakan endpoint ini untuk **polling** (tiap 15 detik) untuk mengetahui posisi d
       "called_at":     null,
       "finished_at":   null
     },
-    "posisi":           3,
-    "antrian_di_depan": 2
+    "posisi":            3,
+    "antrian_di_depan":  2,
+    "estimasi_menit":    20,
+    "menit_per_nasabah": 10
   }
 }
 ```
@@ -404,6 +406,8 @@ Gunakan endpoint ini untuk **polling** (tiap 15 detik) untuk mengetahui posisi d
 |-------|------------|
 | `posisi` | Urutan nasabah saat ini (1 = giliran berikutnya) |
 | `antrian_di_depan` | Jumlah orang yang masih menunggu di depan |
+| `estimasi_menit` | Perkiraan waktu tunggu dalam menit (`antrian_di_depan × menit_per_nasabah`) |
+| `menit_per_nasabah` | Rata-rata durasi layanan per nasabah hari ini (default 10 menit) |
 | `called_at` | Waktu dipanggil (diisi saat status menjadi `dipanggil`) |
 | `finished_at` | Waktu selesai (diisi saat status menjadi `selesai`) |
 

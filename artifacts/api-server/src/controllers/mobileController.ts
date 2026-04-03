@@ -300,13 +300,43 @@ export async function statusAntrianMobile(req: Request, res: Response): Promise<
     .eq("layanan", antrian.layanan)
     .lt("nomor_antrian", antrian.nomor_antrian);
 
+  const antriDiDepan = posisiDepan ?? 0;
+
+  // Hitung rata-rata waktu layanan dari data historis hari ini
+  // (antrian yang sudah selesai dan punya called_at + finished_at)
+  const { data: selesaiHariIni } = await supabaseAdmin
+    .from("antrian")
+    .select("called_at, finished_at")
+    .eq("status", "selesai")
+    .eq("layanan", antrian.layanan)
+    .gte("created_at", today)
+    .not("called_at", "is", null)
+    .not("finished_at", "is", null)
+    .limit(20);
+
+  // Hitung rata-rata menit per nasabah
+  const MENIT_DEFAULT = 10;
+  let meniPerNasabah = MENIT_DEFAULT;
+  if (selesaiHariIni && selesaiHariIni.length > 0) {
+    const totalMenit = selesaiHariIni.reduce((sum: number, row: any) => {
+      const durasi = (new Date(row.finished_at).getTime() - new Date(row.called_at).getTime()) / 60000;
+      return sum + (durasi > 0 && durasi < 60 ? durasi : MENIT_DEFAULT); // abaikan outlier
+    }, 0);
+    meniPerNasabah = Math.round(totalMenit / selesaiHariIni.length);
+    if (meniPerNasabah < 1) meniPerNasabah = MENIT_DEFAULT;
+  }
+
+  const estimasiMenit = antriDiDepan * meniPerNasabah;
+
   res.json({
     success: true,
     message: "Status antrian",
     data: {
       antrian,
-      posisi: (posisiDepan ?? 0) + 1,
-      antrian_di_depan: posisiDepan ?? 0,
+      posisi: antriDiDepan + 1,
+      antrian_di_depan: antriDiDepan,
+      estimasi_menit: estimasiMenit,
+      menit_per_nasabah: meniPerNasabah,
     },
   });
 }
