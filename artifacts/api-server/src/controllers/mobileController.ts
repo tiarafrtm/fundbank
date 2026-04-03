@@ -472,8 +472,8 @@ function generateTiketHTML({ nomor, layanan, keperluan, nama, email, waktu, stat
       <path d="M12 12v4"/><path d="M9 12h6"/>
     </svg>
   </div>
-  <p class="bank">Bank ABC</p>
-  <p class="sub">Cabang Sudirman &nbsp;·&nbsp; Tiket Antrian</p>
+  <p class="bank">FUND BANK</p>
+  <p class="sub">Tiket Antrian</p>
 
   <p class="label-sm">Nomor Antrian Anda</p>
   <p class="number">${nomor}</p>

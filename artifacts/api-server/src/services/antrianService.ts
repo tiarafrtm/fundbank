@@ -139,7 +139,7 @@ export async function panggilBerikutnya(layanan?: string): Promise<{
           `${keteranganPosisi}\n\n` +
           `Klik untuk lihat status antrian:\n` +
           `bankantrian://queue?ticket=${nomorAntrian}\n\n` +
-          `— Bank ABC, Cabang Sudirman`;
+          `— FUND BANK`;
 
         try {
           await sendWhatsAppMessage(noHp, pesanWA);
