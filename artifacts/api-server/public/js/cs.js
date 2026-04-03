@@ -187,7 +187,10 @@ function renderQueueTable(antrian) {
   queueTbody.innerHTML = antrian.map(item => `
     <tr>
       <td><span class="antrian-number">${item.nomor_antrian}</span></td>
-      <td><strong>${escHtml(getNamaNasabah(item))}</strong></td>
+      <td>
+        <strong>${escHtml(getNamaNasabah(item))}</strong>
+        ${item.keperluan ? `<div style="font-size:11px;color:var(--orange);font-weight:600;margin-top:2px">${escHtml(item.keperluan)}</div>` : ''}
+      </td>
       <td>${layananBadge(item.layanan)}</td>
       <td>${formatWaktu(item.created_at)}</td>
       <td>
@@ -310,7 +313,7 @@ function renderQueueList(antrian) {
       <div class="queue-pos">${idx + 1}</div>
       <div class="queue-info">
         <div class="queue-name">${escHtml(getNamaNasabah(item))}</div>
-        <div class="queue-meta">Customer Service · Ambil ${formatWaktu(item.created_at)}</div>
+        <div class="queue-meta">${item.keperluan ? escHtml(item.keperluan) + ' · ' : ''}Customer Service · Ambil ${formatWaktu(item.created_at)}</div>
       </div>
       <div>
         <div class="queue-num">${item.nomor_antrian}</div>

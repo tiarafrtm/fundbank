@@ -292,6 +292,7 @@ Nasabah hanya bisa memiliki **satu antrian aktif per hari**. Jika sudah ada, end
 ```json
 {
   "layanan":              "Teller",
+  "keperluan":            "Setor Tunai",
   "onesignal_player_id": "player-id-dari-onesignal-sdk"
 }
 ```
@@ -299,7 +300,17 @@ Nasabah hanya bisa memiliki **satu antrian aktif per hari**. Jika sudah ada, end
 | Field | Wajib | Nilai yang valid |
 |-------|-------|-----------------|
 | `layanan` | Ya | `"Teller"` atau `"CS"` |
+| `keperluan` | Disarankan | Lihat tabel di bawah |
 | `onesignal_player_id` | Tidak | String player ID dari OneSignal SDK — untuk push notification |
+
+**Daftar `keperluan` per layanan:**
+
+| Layanan | Pilihan `keperluan` |
+|---------|---------------------|
+| `"Teller"` | `"Setor Tunai"` · `"Tarik Tunai"` · `"Transfer"` · `"Pembayaran"` |
+| `"CS"` | `"Buka Rekening"` · `"Pengajuan Kartu ATM"` · `"Info Produk Bank"` · `"Konsultasi Keuangan"` |
+
+> Jika `keperluan` diisi dengan nilai di luar daftar, backend akan menolak dengan `400`.
 
 **Response sukses `201`:**
 ```json
@@ -312,6 +323,7 @@ Nasabah hanya bisa memiliki **satu antrian aktif per hari**. Jika sudah ada, end
       "user_id":       "uuid-user",
       "nomor_antrian": 10,
       "layanan":       "Teller",
+      "keperluan":     "Setor Tunai",
       "status":        "menunggu",
       "notif_sent":    false,
       "created_at":    "2026-04-02T09:00:00.000Z"
@@ -342,6 +354,15 @@ Nasabah hanya bisa memiliki **satu antrian aktif per hari**. Jika sudah ada, end
 {
   "success": false,
   "message": "Jenis layanan wajib dipilih: Teller atau CS",
+  "data": {}
+}
+```
+
+**Response error `400` — keperluan tidak valid:**
+```json
+{
+  "success": false,
+  "message": "Keperluan tidak valid untuk layanan Teller. Pilihan: Setor Tunai, Tarik Tunai, Transfer, Pembayaran",
   "data": {}
 }
 ```
@@ -708,7 +729,8 @@ val playerId = OneSignal.User.pushSubscription.id
 
 // Kirim ke backend saat POST /api/mobile/antrian/ambil
 val body = JSONObject().apply {
-    put("layanan", "Teller")
+    put("layanan", "Teller")          // atau "CS"
+    put("keperluan", "Setor Tunai")   // pilih dari daftar keperluan sesuai layanan
     put("onesignal_player_id", playerId)
 }
 ```

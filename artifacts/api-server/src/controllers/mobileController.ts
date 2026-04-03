@@ -174,7 +174,7 @@ export async function getSaya(req: Request, res: Response): Promise<void> {
 // ============================================================
 export async function ambilAntrianMobile(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
-  const { layanan: layananRaw, onesignal_player_id } = req.body;
+  const { layanan: layananRaw, keperluan: keperluanRaw, onesignal_player_id } = req.body;
 
   // Normalisasi case: "teller"/"TELLER"/"Teller" → "Teller", "cs"/"CS" → "CS"
   const LAYANAN_MAP: Record<string, string> = {
@@ -186,6 +186,21 @@ export async function ambilAntrianMobile(req: Request, res: Response): Promise<v
     res.status(400).json({
       success: false,
       message: "Jenis layanan wajib dipilih: Teller atau CS",
+      data: {},
+    });
+    return;
+  }
+
+  // Keperluan: sub-layanan spesifik (opsional tapi sangat disarankan)
+  const KEPERLUAN_OPTIONS: Record<string, string[]> = {
+    Teller: ["Setor Tunai", "Tarik Tunai", "Transfer", "Pembayaran"],
+    CS: ["Buka Rekening", "Pengajuan Kartu ATM", "Info Produk Bank", "Konsultasi Keuangan"],
+  };
+  const keperluan = (keperluanRaw ?? "").toString().trim() || null;
+  if (keperluan && !KEPERLUAN_OPTIONS[layanan]?.includes(keperluan)) {
+    res.status(400).json({
+      success: false,
+      message: `Keperluan tidak valid untuk layanan ${layanan}. Pilihan: ${KEPERLUAN_OPTIONS[layanan]?.join(", ")}`,
       data: {},
     });
     return;
@@ -228,6 +243,7 @@ export async function ambilAntrianMobile(req: Request, res: Response): Promise<v
       user_id: user.id,
       nomor_antrian: nomorAntrian,
       layanan,
+      ...(keperluan ? { keperluan } : {}),
       status: "menunggu",
       notif_sent: false,
     })
@@ -335,7 +351,6 @@ export async function tiketAntrian(req: Request, res: Response): Promise<void> {
   const { id } = req.params;
   const meta = user.user_metadata ?? {};
   const userEmail: string = user.email ?? "";
-
   const { data: antrian } = await supabaseAdmin
     .from("antrian")
     .select(`*, profiles (nama, no_hp)`)
@@ -358,6 +373,7 @@ export async function tiketAntrian(req: Request, res: Response): Promise<void> {
   const html = generateTiketHTML({
     nomor: antrian.nomor_antrian,
     layanan: antrian.layanan,
+    keperluan: antrian.keperluan ?? null,
     nama,
     email: userEmail,
     waktu,
@@ -372,8 +388,8 @@ export async function tiketAntrian(req: Request, res: Response): Promise<void> {
 // ============================================================
 // HTML tiket yang dapat dicetak / disimpan sebagai PDF
 // ============================================================
-function generateTiketHTML({ nomor, layanan, nama, email, waktu, status, antrianId }: {
-  nomor: number; layanan: string; nama: string; email: string;
+function generateTiketHTML({ nomor, layanan, keperluan, nama, email, waktu, status, antrianId }: {
+  nomor: number; layanan: string; keperluan: string | null; nama: string; email: string;
   waktu: string; status: string; antrianId: string;
 }) {
   const layananLabel = layanan === "CS" ? "Customer Service" : layanan;
@@ -433,6 +449,7 @@ function generateTiketHTML({ nomor, layanan, nama, email, waktu, status, antrian
   <p class="number">${nomor}</p>
   <div class="center" style="margin-top:8px">
     <span class="chip chip-orange">${layananLabel}</span>
+    ${keperluan ? `<span class="chip chip-blue" style="margin-left:6px">${escHtml(keperluan)}</span>` : ""}
   </div>
 
   <hr/>
@@ -443,8 +460,8 @@ function generateTiketHTML({ nomor, layanan, nama, email, waktu, status, antrian
       <div class="val">${escHtml(nama)}</div>
     </div>
     <div class="info-item">
-      <div class="lbl">Email</div>
-      <div class="val">${escHtml(email)}</div>
+      <div class="lbl">Keperluan</div>
+      <div class="val">${escHtml(keperluan ?? "-")}</div>
     </div>
     <div class="info-item">
       <div class="lbl">Waktu Ambil</div>

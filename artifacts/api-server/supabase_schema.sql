@@ -62,6 +62,7 @@ ALTER TABLE public.antrian ALTER COLUMN user_id DROP NOT NULL;
 ALTER TABLE public.antrian ADD COLUMN IF NOT EXISTS nama_nasabah   TEXT;
 ALTER TABLE public.antrian ADD COLUMN IF NOT EXISTS no_hp_nasabah  TEXT;
 ALTER TABLE public.antrian ADD COLUMN IF NOT EXISTS called_at      TIMESTAMPTZ;
+ALTER TABLE public.antrian ADD COLUMN IF NOT EXISTS keperluan      TEXT;
 
 -- *** PERBAIKAN CONSTRAINT LAYANAN ***
 -- Menambahkan Teller dan CS ke daftar yang diizinkan
