@@ -84,4 +84,8 @@ app.get("/cs/antrian", (_req, res) => res.sendFile(path.join(publicDir, "cs.html
 app.get("/cs/notif",   (_req, res) => res.sendFile(path.join(publicDir, "cs.html")));
 app.get("/cs/buat",    (_req, res) => res.sendFile(path.join(publicDir, "cs.html")));
 
+// Halaman fallback untuk App Links — dibuka browser jika app belum terinstall
+// URL: https://antrianbank.site/tiket?ticket=17
+app.get("/tiket", (_req, res) => res.sendFile(path.join(publicDir, "tiket.html")));
+
 export default app;

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tiket Antrian — FUND BANK</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #fff7f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      box-shadow: 0 8px 40px rgba(249,115,22,0.10);
+      padding: 40px 32px 36px;
+      max-width: 380px;
+      width: 100%;
+      text-align: center;
+    }
+
+    /* Logo bank */
+    .bank-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .bank-logo .icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, #F97316 0%, #ea6c10 100%);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .bank-logo .icon svg { width: 24px; height: 24px; color: #fff; }
+    .bank-logo .name { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+
+    /* State: sedang membuka app */
+    #state-opening { display: block; }
+    #state-fallback { display: none; }
+
+    .spinner {
+      width: 56px; height: 56px;
+      border: 4px solid #FFE8D6;
+      border-top-color: #F97316;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .tiket-nomor {
+      font-size: 52px;
+      font-weight: 700;
+      color: #F97316;
+      line-height: 1;
+      margin: 8px 0 4px;
+    }
+    .tiket-label {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 20px;
+    }
+
+    .status-text {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    /* Divider */
+    .divider {
+      border: none;
+      border-top: 1px solid #f0e8e1;
+      margin: 28px 0;
+    }
+
+    /* Fallback state */
+    .fallback-icon {
+      width: 64px; height: 64px;
+      background: #FFF3E8;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .fallback-icon svg { width: 32px; height: 32px; color: #F97316; }
+
+    .fallback-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 10px;
+    }
+    .fallback-desc {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+
+    .btn-download {
+      display: block;
+      background: linear-gradient(135deg, #F97316 0%, #ea6c10 100%);
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 14px 24px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      transition: opacity 0.2s;
+    }
+    .btn-download:hover { opacity: 0.9; }
+    .btn-download svg { vertical-align: middle; margin-right: 8px; width: 18px; height: 18px; }
+
+    .btn-retry {
+      display: block;
+      background: transparent;
+      border: 1.5px solid #F97316;
+      color: #F97316;
+      font-family: 'Poppins', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+      width: 100%;
+    }
+    .btn-retry:hover { background: #fff7f0; }
+
+    .footer-note {
+      font-size: 11px;
+      color: #bbb;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- Logo -->
+  <div class="bank-logo">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="7" width="20" height="14" rx="2"/>
+        <path d="M16 7V5a2 2 0 0 0-4 0v2"/>
+        <path d="M12 12v4"/><path d="M9 12h6"/>
+      </svg>
+    </div>
+    <span class="name">FUND BANK</span>
+  </div>
+
+  <!-- STATE 1: Sedang membuka app -->
+  <div id="state-opening">
+    <div class="spinner"></div>
+    <div class="tiket-label">Nomor Antrian Anda</div>
+    <div class="tiket-nomor" id="nomor-display">—</div>
+    <div class="tiket-label" style="margin-top:4px">Membuka aplikasi...</div>
+    <hr class="divider" />
+    <p class="status-text">
+      Kami sedang mencoba membuka aplikasi FUND BANK di perangkat Anda.<br/>
+      Mohon tunggu sebentar.
+    </p>
+  </div>
+
+  <!-- STATE 2: App tidak ditemukan, tampilkan download -->
+  <div id="state-fallback">
+    <div class="fallback-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    </div>
+    <p class="fallback-title">Aplikasi Belum Terpasang</p>
+    <p class="fallback-desc">
+      Untuk melihat status antrian nomor <strong id="nomor-fallback">—</strong> secara real-time
+      dan menerima notifikasi panggilan, silakan unduh aplikasi FUND BANK terlebih dahulu.
+    </p>
+
+    <a href="https://antrianbank.site/download/app.apk" class="btn-download" id="btn-apk">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Unduh Aplikasi Resmi
+    </a>
+
+    <button class="btn-retry" id="btn-retry">
+      Coba Buka Aplikasi Lagi
+    </button>
+  </div>
+
+  <p class="footer-note">FUND BANK &nbsp;·&nbsp; Sistem Antrian Digital</p>
+</div>
+
+<script>
+  const params  = new URLSearchParams(window.location.search);
+  const ticket  = params.get('ticket') || '';
+  const deeplink = 'bankantrian://queue?ticket=' + ticket;
+
+  // Tampilkan nomor di kedua state
+  document.getElementById('nomor-display').textContent  = ticket || '—';
+  document.getElementById('nomor-fallback').textContent = ticket || '—';
+
+  function tryOpenApp() {
+    // Sembunyikan fallback, tampilkan loading
+    document.getElementById('state-opening').style.display = 'block';
+    document.getElementById('state-fallback').style.display = 'none';
+
+    // Coba buka app via deep link
+    window.location.href = deeplink;
+
+    // Jika setelah 2.5 detik halaman masih aktif → app tidak terinstall
+    const timer = setTimeout(() => {
+      if (!document.hidden) {
+        document.getElementById('state-opening').style.display = 'none';
+        document.getElementById('state-fallback').style.display  = 'block';
+      }
+    }, 2500);
+
+    // Kalau user kembali ke tab (dari app) → batalkan timer, tetap di loading
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) clearTimeout(timer);
+    }, { once: true });
+  }
+
+  // Tombol "Coba Buka Lagi"
+  document.getElementById('btn-retry').addEventListener('click', tryOpenApp);
+
+  // Langsung coba saat halaman pertama dibuka
+  tryOpenApp();
+</script>
+
+</body>
+</html>
