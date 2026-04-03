@@ -1,0 +1,93 @@
+-- ============================================================
+-- SKEMA LENGKAP - SISTEM ANTRIAN BANK
+-- ============================================================
+
+-- ============================================================
+-- TABEL: profiles
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id                  UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    nama                TEXT NOT NULL,
+    no_hp               TEXT,
+    role                TEXT NOT NULL DEFAULT 'cs',
+    onesignal_player_id TEXT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.profiles
+    DROP CONSTRAINT IF EXISTS profiles_role_check;
+ALTER TABLE public.profiles
+    ADD CONSTRAINT profiles_role_check
+    CHECK (role IN ('nasabah', 'cs', 'teller'));
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename  = 'profiles'
+          AND policyname = 'Service role akses penuh'
+    ) THEN
+        EXECUTE 'CREATE POLICY "Service role akses penuh"
+            ON public.profiles FOR ALL
+            USING (auth.role() = ''service_role'')';
+    END IF;
+END $$;
+
+-- ============================================================
+-- TABEL: antrian
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.antrian (
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID        REFERENCES public.profiles(id) ON DELETE SET NULL,
+    nama_nasabah    TEXT,
+    no_hp_nasabah   TEXT,
+    nomor_antrian   INTEGER     NOT NULL,
+    layanan         TEXT        NOT NULL CHECK (layanan IN ('Tabungan', 'Kredit', 'Umum')),
+    status          TEXT        NOT NULL DEFAULT 'menunggu'
+                                    CHECK (status IN ('menunggu', 'dipanggil', 'selesai', 'batal')),
+    notif_sent      BOOLEAN     NOT NULL DEFAULT FALSE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    called_at       TIMESTAMPTZ
+);
+
+ALTER TABLE public.antrian ALTER COLUMN user_id DROP NOT NULL;
+ALTER TABLE public.antrian ADD COLUMN IF NOT EXISTS nama_nasabah   TEXT;
+ALTER TABLE public.antrian ADD COLUMN IF NOT EXISTS no_hp_nasabah  TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_antrian_status     ON public.antrian (status);
+CREATE INDEX IF NOT EXISTS idx_antrian_user_id    ON public.antrian (user_id);
+CREATE INDEX IF NOT EXISTS idx_antrian_layanan    ON public.antrian (layanan);
+CREATE INDEX IF NOT EXISTS idx_antrian_created_at ON public.antrian (created_at);
+
+ALTER TABLE public.antrian ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename  = 'antrian'
+          AND policyname = 'Service role akses penuh antrian'
+    ) THEN
+        EXECUTE 'CREATE POLICY "Service role akses penuh antrian"
+            ON public.antrian FOR ALL
+            USING (auth.role() = ''service_role'')';
+    END IF;
+END $$;
+
+-- ============================================================
+-- DATA AWAL: Teller
+-- ============================================================
+INSERT INTO public.profiles (id, nama, no_hp, role)
+VALUES ('68ad68d5-69c8-4e39-ba1c-29f8ae525a1d', 'Teller Bank', '081234567890', 'teller')
+ON CONFLICT (id) DO UPDATE SET role = 'teller';
+
+-- ============================================================
+-- VERIFIKASI
+-- ============================================================
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public'
+AND table_name IN ('profiles', 'antrian');
