@@ -84,6 +84,7 @@ let qrPollInterval   = null;
 let layaniTimerStart = null;
 let layaniTimerInterval = null;
 let currentLayaniId  = null;
+let myLoketNumber    = null;  // Nomor loket teller yang sedang login
 
 const pageTitles = {
   dashboard: 'Dashboard',
@@ -176,6 +177,62 @@ async function loadStatistik() {
 }
 
 // ===========================
+// LOKET MANAGEMENT
+// ===========================
+function updateLoketBadge() {
+  const btn = document.getElementById('loket-select-btn');
+  const badgeText = document.getElementById('loket-badge-text');
+  const panelLabel = document.getElementById('panel-loket-label');
+  if (myLoketNumber) {
+    if (badgeText) badgeText.textContent = `Loket ${myLoketNumber} — Aktif`;
+    if (btn) btn.classList.add('loket-set');
+    if (panelLabel) panelLabel.textContent = `Loket ${myLoketNumber} — Sedang Dilayani`;
+  } else {
+    if (badgeText) badgeText.textContent = 'Set Loket Saya';
+    if (btn) btn.classList.remove('loket-set');
+    if (panelLabel) panelLabel.textContent = 'Sedang Dilayani';
+  }
+}
+
+function openLoketModal(occupiedLokets = []) {
+  const modal = document.getElementById('loket-modal');
+  const grid = document.getElementById('loket-grid');
+  if (!modal || !grid) return;
+  grid.innerHTML = Array.from({length: 8}, (_, i) => i + 1).map(n => {
+    const isOccupied = occupiedLokets.includes(n) && n !== myLoketNumber;
+    const isActive   = n === myLoketNumber;
+    const cls = isOccupied ? 'loket-btn occupied' : isActive ? 'loket-btn active' : 'loket-btn';
+    const onclick = isOccupied ? '' : `onclick="setMyLoket(${n})"`;
+    return `<button class="${cls}" ${onclick}>${n}</button>`;
+  }).join('');
+  modal.style.display = 'flex';
+}
+
+function closeLoketModal() {
+  const modal = document.getElementById('loket-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function setMyLoket(n) {
+  try {
+    const result = await api('PUT', '/antrian/loket', { loket_number: n });
+    if (result.success) {
+      myLoketNumber = n;
+      updateLoketBadge();
+      closeLoketModal();
+      loadQueueData();
+    } else {
+      alert(result.message || 'Gagal menyimpan loket');
+    }
+  } catch { alert('Gagal terhubung ke server'); }
+}
+
+document.getElementById('loket-select-btn')?.addEventListener('click', () => {
+  const occupiedLokets = Object.keys(window._loketAktifMap || {}).map(Number);
+  openLoketModal(occupiedLokets);
+});
+
+// ===========================
 // DASHBOARD & ANTRIAN: QUEUE DATA
 // ===========================
 async function loadQueueData() {
@@ -186,18 +243,38 @@ async function loadQueueData() {
       return;
     }
 
-    const { sedang_dilayani, antrian_menunggu, antrian_dipanggil, total_menunggu } = result.data;
+    const {
+      sedang_dilayani, antrian_menunggu, antrian_dipanggil,
+      total_menunggu, semua_loket_aktif, my_loket_number
+    } = result.data;
 
-    // Update panel sedang dilayani (dashboard)
+    // Sync loket number dari server (kalau belum diset di client)
+    if (my_loket_number && !myLoketNumber) {
+      myLoketNumber = my_loket_number;
+      updateLoketBadge();
+    }
+
+    // Simpan state loket aktif untuk modal
+    window._loketAktifMap = semua_loket_aktif || {};
+
+    // Update panel sedang dilayani (loket saya)
     if (sedang_dilayani) {
       if (currentNumberEl) currentNumberEl.textContent = sedang_dilayani.nomor_antrian;
-      if (currentInfoEl)   currentInfoEl.textContent   = `${getNamaNasabah(sedang_dilayani)} · ${sedang_dilayani.layanan}`;
-    } else if (antrian_dipanggil?.[0]) {
-      if (currentNumberEl) currentNumberEl.textContent = antrian_dipanggil[0].nomor_antrian;
-      if (currentInfoEl)   currentInfoEl.textContent   = `${getNamaNasabah(antrian_dipanggil[0])} · Dipanggil`;
+      if (currentInfoEl)   currentInfoEl.textContent   = `${getNamaNasabah(sedang_dilayani)} · ${sedang_dilayani.keperluan || sedang_dilayani.layanan}`;
     } else {
       if (currentNumberEl) currentNumberEl.textContent = '—';
-      if (currentInfoEl)   currentInfoEl.textContent   = 'Belum ada antrian dipanggil';
+      if (currentInfoEl)   currentInfoEl.textContent   = myLoketNumber
+        ? `Loket ${myLoketNumber} belum memanggil`
+        : 'Belum ada antrian dipanggil';
+    }
+
+    // Tampilkan ringkasan semua loket aktif
+    const loketInfoEl = document.getElementById('loket-aktif-info');
+    if (loketInfoEl && semua_loket_aktif) {
+      const loketList = Object.entries(semua_loket_aktif)
+        .map(([n, a]) => `Loket ${n}: No.${a.nomor_antrian}`)
+        .join(' · ');
+      loketInfoEl.textContent = loketList || '';
     }
 
     if (totalMenunggu) totalMenunggu.textContent = total_menunggu ?? 0;
@@ -728,11 +805,22 @@ function showInfoBanner(msg, isError = false) {
   if (loketNameDisplay) loketNameDisplay.textContent = 'Teller — Aktif';
   if (loketUserDisplay) loketUserDisplay.textContent = `${nama} · Teller`;
 
+  // Cek loket dari profile
+  if (userProfile.loket_number) {
+    myLoketNumber = userProfile.loket_number;
+  }
+  updateLoketBadge();
+
   startClock();
   setTopbarDate();
 
   navigateTo('dashboard');
   checkWAStatus();
+
+  // Tampilkan modal pilih loket kalau belum diset
+  if (!myLoketNumber) {
+    setTimeout(() => openLoketModal([]), 800);
+  }
 
   refreshInterval = setInterval(() => {
     if (currentPage === 'dashboard') { loadStatistik(); loadQueueData(); }

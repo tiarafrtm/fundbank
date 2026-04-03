@@ -148,13 +148,24 @@ export async function statusAntrian(req: Request, res: Response): Promise<void> 
 // Teller/CS melihat daftar antrian
 export async function listAntrian(req: Request, res: Response): Promise<void> {
   const { layanan, status, all } = req.query;
+  const user = (req as any).user;
   const showAll = all === "true";
+  const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
   try {
+    // Ambil loket_number user yang login (untuk filter "sedang dilayani" loket ini)
+    const { data: userProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("loket_number, nama")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const myLoketNumber: number | null = userProfile?.loket_number ?? null;
+
     let query = supabaseAdmin
       .from("antrian")
       .select(`*, profiles (nama, no_hp)`)
-      .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
+      .gte("created_at", todayStart)
       .order("nomor_antrian", { ascending: true });
 
     if (showAll) {
@@ -173,19 +184,44 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    // "Sedang dilayani" = antrian dipanggil di loket SAYA (kalau loket sudah diset)
+    // Kalau belum ada loket → tampilkan yang pertama dipanggil (backward compat)
     let dipanggilQuery = supabaseAdmin
       .from("antrian").select(`*, profiles (nama, no_hp)`)
       .eq("status", "dipanggil")
-      .order("called_at", { ascending: false }).limit(5);
+      .gte("created_at", todayStart)
+      .order("called_at", { ascending: false });
+
     if (layanan) dipanggilQuery = dipanggilQuery.eq("layanan", layanan as string);
-    const { data: dipanggilData } = await dipanggilQuery;
+
+    const { data: semuaDipanggil } = await dipanggilQuery;
+
+    // Filter: antrian di loket saya (kalau loket sudah diset)
+    let sedangDilayaniLoketIni = null;
+    if (myLoketNumber != null && semuaDipanggil) {
+      sedangDilayaniLoketIni = semuaDipanggil.find((a: any) => a.loket_number === myLoketNumber) ?? null;
+    } else {
+      sedangDilayaniLoketIni = semuaDipanggil?.[0] ?? null;
+    }
+
+    // Semua loket yang sedang aktif melayani (untuk display dashboard)
+    const loketAktifMap: Record<number, any> = {};
+    if (semuaDipanggil) {
+      for (const a of semuaDipanggil) {
+        if (a.loket_number != null && !loketAktifMap[a.loket_number]) {
+          loketAktifMap[a.loket_number] = a;
+        }
+      }
+    }
 
     res.json({
       success: true,
       message: "Daftar antrian berhasil diambil",
       data: {
-        sedang_dilayani: dipanggilData?.[0] ?? null,
-        antrian_dipanggil: dipanggilData ?? [],
+        my_loket_number: myLoketNumber,
+        sedang_dilayani: sedangDilayaniLoketIni,
+        semua_loket_aktif: loketAktifMap,
+        antrian_dipanggil: semuaDipanggil ?? [],
         antrian_menunggu: data,
         total_menunggu: data?.length ?? 0,
       },
@@ -195,9 +231,48 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
   }
 }
 
+// Teller/CS menetapkan nomor loket mereka
+export async function setLoket(req: Request, res: Response): Promise<void> {
+  const user = (req as any).user;
+  const { loket_number } = req.body;
+
+  if (!loket_number || typeof loket_number !== "number" || loket_number < 1 || loket_number > 20) {
+    res.status(400).json({
+      success: false,
+      message: "Nomor loket tidak valid (harus angka 1–20)",
+      data: {},
+    });
+    return;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .update({ loket_number })
+    .eq("id", user.id)
+    .select("id, nama, loket_number")
+    .single();
+
+  if (error || !data) {
+    res.status(500).json({
+      success: false,
+      message: "Gagal menyimpan nomor loket: " + (error?.message ?? ""),
+      data: {},
+    });
+    return;
+  }
+
+  actLog(req, "set_loket", { loket_number });
+  res.json({
+    success: true,
+    message: `Loket ${loket_number} berhasil ditetapkan`,
+    data: { loket_number: data.loket_number },
+  });
+}
+
 // Teller/CS memanggil nomor antrian berikutnya
 export async function panggilAntrian(req: Request, res: Response): Promise<void> {
   const { layanan } = req.body;
+  const user = (req as any).user;
   const role = (req as any).userRole as string;
 
   // Validasi: staff hanya boleh panggil layanannya sendiri
@@ -214,15 +289,25 @@ export async function panggilAntrian(req: Request, res: Response): Promise<void>
   // Gunakan layanan sesuai role kalau tidak dikirim dari body
   const targetLayanan = allowedLayanan ?? layanan;
 
+  // Ambil loket_number dari profile (untuk multi-loket)
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("loket_number")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const loketNumber: number | null = profile?.loket_number ?? null;
+
   try {
-    const { antrian, notifDikirim } = await panggilBerikutnya(targetLayanan);
+    const { antrian, notifDikirim } = await panggilBerikutnya(targetLayanan, loketNumber);
 
-    actLog(req, "panggil_antrian", { layanan: targetLayanan, nomor: antrian.nomor_antrian, id: antrian.id });
+    actLog(req, "panggil_antrian", { layanan: targetLayanan, nomor: antrian.nomor_antrian, loket: loketNumber, id: antrian.id });
 
+    const loketInfo = loketNumber ? ` (Loket ${loketNumber})` : "";
     res.json({
       success: true,
-      message: `Nomor ${antrian.nomor_antrian} dipanggil${notifDikirim ? ". Notifikasi dikirim ke antrian berikutnya" : ""}`,
-      data: { antrian, notif_dikirim: notifDikirim },
+      message: `Nomor ${antrian.nomor_antrian} dipanggil ke Loket ${loketNumber ?? "?"}${notifDikirim ? ". Notifikasi dikirim ke antrian berikutnya" : ""}`,
+      data: { antrian, notif_dikirim: notifDikirim, loket_number: loketNumber },
     });
   } catch (error: any) {
     const statusCode = error?.message?.includes("Tidak ada antrian") ? 404 : 500;

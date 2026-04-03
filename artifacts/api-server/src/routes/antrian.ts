@@ -8,6 +8,7 @@ import {
   batalAntrian,
   restoreAntrian,
   getStatistik,
+  setLoket,
 } from "../controllers/antrianController";
 import {
   authMiddleware,
@@ -20,9 +21,10 @@ router.get("/statistik",        anyStaffMiddleware, getStatistik);
 router.post("/ambil",           anyStaffMiddleware, ambilAntrian);
 router.get("/status",           authMiddleware,     statusAntrian);
 router.get("/list",             anyStaffMiddleware, listAntrian);
-router.put("/panggil",          anyStaffMiddleware, panggilAntrian);    // Fix: CS juga bisa panggil
-router.put("/selesai/:id",      anyStaffMiddleware, selesaiAntrian);    // Fix: CS juga bisa selesai
+router.put("/panggil",          anyStaffMiddleware, panggilAntrian);
+router.put("/selesai/:id",      anyStaffMiddleware, selesaiAntrian);
 router.put("/batal/:id",        anyStaffMiddleware, batalAntrian);
-router.put("/restore/:id",      anyStaffMiddleware, restoreAntrian);    // Baru: undo skip 60 detik
+router.put("/restore/:id",      anyStaffMiddleware, restoreAntrian);
+router.put("/loket",            anyStaffMiddleware, setLoket);          // Baru: set nomor loket
 
 export default router;

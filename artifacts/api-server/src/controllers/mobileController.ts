@@ -449,12 +449,15 @@ export async function statusAntrianMobile(req: Request, res: Response): Promise<
     data: {
       antrian,
       terlewati          : false,
+      selesai            : false,
       posisi             : antriDiDepan + 1,
       antrian_di_depan   : antriDiDepan,
-      jumlah_loket_aktif : jumlahLoketAktif,  // ← info tambahan untuk app
+      jumlah_loket_aktif : jumlahLoketAktif,
       estimasi_menit     : estimasiMenit,
-      estimasi_label     : estimasiLabel,      // ← teks siap tampil di app
+      estimasi_label     : estimasiLabel,
       menit_per_nasabah  : meniPerNasabah,
+      // Loket yang memanggil antrian ini (null jika belum dipanggil)
+      loket_number       : antrian.loket_number ?? null,
     },
   });
 }

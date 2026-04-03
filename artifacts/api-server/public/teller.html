@@ -72,6 +72,10 @@
       </nav>
 
       <div class="sidebar-footer">
+        <button class="loket-select-btn" id="loket-select-btn" title="Klik untuk ganti loket">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <span id="loket-badge-text">Set Loket</span>
+        </button>
         <div class="sb-user">
           <div class="sb-avatar" id="sb-avatar">T</div>
           <div class="sb-user-info">
@@ -88,6 +92,16 @@
         </div>
       </div>
     </aside>
+
+    <!-- Modal Pilih Loket -->
+    <div id="loket-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeLoketModal()">
+      <div class="modal-box">
+        <h3 style="margin:0 0 6px;font-size:16px;font-weight:600">Pilih Nomor Loket Teller</h3>
+        <p style="margin:0 0 16px;font-size:13px;color:var(--gray-500)">Pilih loket yang Anda gunakan hari ini. Setiap teller harus memilih loket berbeda.</p>
+        <div class="loket-grid" id="loket-grid"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:12px;width:100%" onclick="closeLoketModal()">Tutup</button>
+      </div>
+    </div>
 
     <!-- ===== AREA UTAMA ===== -->
     <div class="main-wrapper">
@@ -117,9 +131,10 @@
           <!-- 3 Kartu Atas -->
           <div class="top-row">
             <div class="panel-serving">
-              <p class="panel-label">Sedang Dilayani</p>
+              <p class="panel-label" id="panel-loket-label">Sedang Dilayani</p>
               <div id="current-number" class="serving-number">—</div>
               <p id="current-info" class="serving-info">Belum ada antrian dipanggil</p>
+              <div id="loket-aktif-info" style="margin-top:8px;font-size:11px;color:rgba(255,255,255,0.7)"></div>
             </div>
             <div class="panel-filter">
               <p class="panel-label">Antrian Teller</p>

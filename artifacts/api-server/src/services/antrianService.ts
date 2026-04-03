@@ -56,16 +56,19 @@ export async function getAntrianMenunggu() {
 }
 
 // Memanggil nomor antrian berikutnya — dengan atomic update untuk mencegah race condition
-export async function panggilBerikutnya(layanan?: string): Promise<{
+// loketNumber: nomor loket teller/CS yang sedang memanggil (opsional, untuk multi-loket)
+export async function panggilBerikutnya(layanan?: string, loketNumber?: number | null): Promise<{
   antrian: any;
   notifDikirim: boolean;
 }> {
+  const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+
   // STEP 1: Ambil antrian pertama yang masih menunggu
   let query = supabaseAdmin
     .from("antrian")
     .select(`*, profiles (nama, no_hp, onesignal_player_id)`)
     .eq("status", "menunggu")
-    .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
+    .gte("created_at", todayStart)
     .order("nomor_antrian", { ascending: true })
     .limit(1);
 
@@ -79,32 +82,45 @@ export async function panggilBerikutnya(layanan?: string): Promise<{
 
   const currentAntrian = antrianList[0];
 
-  // STEP 1B: Auto-selesaikan antrian "dipanggil" sebelumnya untuk layanan ini
+  // STEP 1B: Auto-selesaikan antrian "dipanggil" sebelumnya untuk LOKET INI saja
   // Skenario: teller langsung tekan "Panggil Berikutnya" tanpa klik "Selesai"
-  // → nasabah sebelumnya harus dianggap selesai agar statusnya tidak stuck
+  // → Dengan multi-loket: hanya selesai-kan antrian yang dipanggil loket ini
+  // → Tanpa loket (loketNumber null): selesai-kan semua dipanggil untuk layanan ini
   let autoSelesaiQuery = supabaseAdmin
     .from("antrian")
     .update({ status: "selesai", finished_at: new Date().toISOString() })
     .eq("status", "dipanggil")
-    .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+    .gte("created_at", todayStart);
 
   if (layanan) autoSelesaiQuery = autoSelesaiQuery.eq("layanan", layanan);
+
+  // Jika loket diketahui → hanya auto-selesai antrian yang dipanggil loket ini
+  // Ini penting supaya Loket 2 tidak mengganggu antrian yang sedang dilayani Loket 1
+  if (loketNumber != null) {
+    autoSelesaiQuery = autoSelesaiQuery.eq("loket_number", loketNumber);
+  }
 
   const { data: autoSelesai, error: autoSelesaiError } = await autoSelesaiQuery.select("id, nomor_antrian");
   if (autoSelesaiError) {
     logger.warn({ error: autoSelesaiError.message }, "Gagal auto-selesai antrian sebelumnya (non-fatal)");
   } else if (autoSelesai && autoSelesai.length > 0) {
     logger.info(
-      { nomorList: autoSelesai.map((a: any) => a.nomor_antrian) },
+      { nomorList: autoSelesai.map((a: any) => a.nomor_antrian), loket: loketNumber },
       "Auto-selesai antrian sebelumnya sebelum panggil berikutnya",
     );
   }
 
   // STEP 2: Atomic update — hanya update kalau status MASIH 'menunggu'
-  // Ini mencegah dua loket mengambil nomor yang sama (race condition)
+  // Set loket_number supaya dashboard loket lain bisa filter "sedang dilayani"
+  const updatePayload: Record<string, any> = {
+    status: "dipanggil",
+    called_at: new Date().toISOString(),
+  };
+  if (loketNumber != null) updatePayload.loket_number = loketNumber;
+
   const { data: updateResult, error: updateError } = await supabaseAdmin
     .from("antrian")
-    .update({ status: "dipanggil", called_at: new Date().toISOString() })
+    .update(updatePayload)
     .eq("id", currentAntrian.id)
     .eq("status", "menunggu") // ← Kunci: hanya sukses kalau masih menunggu
     .select();
