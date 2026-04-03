@@ -6,6 +6,8 @@ import {
   getAntrianMenunggu,
   panggilBerikutnya,
 } from "../services/antrianService";
+import { sendPushNotification } from "../services/onesignalService";
+import { sendWhatsAppMessage } from "../services/waService";
 
 // Map role → layanan yang diizinkan
 const ROLE_LAYANAN: Record<string, string> = {
@@ -321,6 +323,56 @@ export async function batalAntrian(req: Request, res: Response): Promise<void> {
   }
 
   actLog(req, "batal_antrian", { layanan: antrian.layanan, nomor: antrian.nomor_antrian, id });
+
+  // Kirim notifikasi ke nasabah yang diskip (WA + OneSignal push)
+  // Jalankan async — jangan block response dashboard
+  (async () => {
+    try {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("nama, no_hp, onesignal_player_id")
+        .eq("id", antrian.user_id)
+        .maybeSingle();
+
+      const namaNasabah   = profile?.nama ?? antrian.nama_nasabah ?? "Nasabah";
+      const noHp          = profile?.no_hp ?? antrian.no_hp_nasabah;
+      const layananDisplay = antrian.layanan === "CS" ? "Customer Service" : antrian.layanan;
+
+      // Push notification (OneSignal) — ditangkap Android sbg modal
+      if (profile?.onesignal_player_id) {
+        try {
+          await sendPushNotification(
+            profile.onesignal_player_id,
+            antrian.nomor_antrian,
+            "skip", // tipe notifikasi khusus skip
+          );
+          logger.info({ nomor: antrian.nomor_antrian }, "Push skip terkirim");
+        } catch (e: any) {
+          logger.warn({ error: e?.message }, "Push skip gagal");
+        }
+      }
+
+      // WhatsApp
+      if (noHp) {
+        const pesanWA =
+          `Halo, ${namaNasabah}!\n\n` +
+          `⚠️ Nomor antrian *${antrian.nomor_antrian}* (${layananDisplay}) Anda telah *dilewati* karena tidak hadir saat dipanggil.\n\n` +
+          `Mohon diperhatikan: Jika ada notifikasi WhatsApp dari kami, *segera datang ke loket* agar tidak dilewati kembali.\n\n` +
+          `Silakan ambil nomor antrian baru di aplikasi jika masih ingin dilayani.\n\n` +
+          `— FUND BANK`;
+
+        try {
+          await sendWhatsAppMessage(noHp, pesanWA);
+          logger.info({ noHp, nomor: antrian.nomor_antrian }, "WA skip terkirim");
+        } catch (e: any) {
+          logger.error({ noHp, error: e?.message }, "WA skip GAGAL");
+        }
+      }
+    } catch (e: any) {
+      logger.error({ error: e?.message }, "Notif skip error (non-fatal)");
+    }
+  })();
+
   res.json({ success: true, message: `Antrian nomor ${antrian.nomor_antrian} berhasil dibatalkan`, data: { antrian } });
 }
 

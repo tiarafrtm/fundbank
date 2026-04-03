@@ -273,6 +273,7 @@ export async function statusAntrianMobile(req: Request, res: Response): Promise<
   const user = (req as any).user;
   const today = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
+  // Ambil antrian aktif (menunggu / dipanggil) terlebih dahulu
   const { data: antrian } = await supabaseAdmin
     .from("antrian")
     .select("*")
@@ -283,7 +284,39 @@ export async function statusAntrianMobile(req: Request, res: Response): Promise<
     .limit(1)
     .maybeSingle();
 
+  // Tidak ada antrian aktif — cek apakah ada yg dilewati (batal) hari ini
   if (!antrian) {
+    const { data: antrianBatal } = await supabaseAdmin
+      .from("antrian")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "batal")
+      .gte("created_at", today)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (antrianBatal) {
+      // Hanya tampilkan modal skip jika dibatalkan dalam 10 menit terakhir
+      // (relevan untuk polling yang baru berjalan)
+      const dibatalkanSejak = (Date.now() - new Date(antrianBatal.updated_at).getTime()) / 1000;
+      if (dibatalkanSejak < 600) {
+        res.status(200).json({
+          success: true,
+          message: "Antrian Anda telah dilewati",
+          data: {
+            antrian: antrianBatal,
+            terlewati: true,          // ← Android baca flag ini → tampilkan modal
+            posisi: null,
+            antrian_di_depan: null,
+            estimasi_menit: null,
+            menit_per_nasabah: null,
+          },
+        });
+        return;
+      }
+    }
+
     res.status(404).json({
       success: false,
       message: "Tidak ada antrian aktif hari ini",
@@ -333,6 +366,7 @@ export async function statusAntrianMobile(req: Request, res: Response): Promise<
     message: "Status antrian",
     data: {
       antrian,
+      terlewati: false,              // ← Android: tidak perlu tampilkan modal skip
       posisi: antriDiDepan + 1,
       antrian_di_depan: antriDiDepan,
       estimasi_menit: estimasiMenit,
