@@ -337,8 +337,10 @@ async function loadAntrianPage() {
     const result = await api('GET', `/antrian/list?layanan=${encodeURIComponent(COUNTER_LAYANAN)}`);
     if (!result.success) return;
 
-    const { sedang_dilayani, antrian_menunggu, antrian_dipanggil, total_menunggu } = result.data;
-    const aktif = sedang_dilayani || antrian_dipanggil?.[0] || null;
+    const { sedang_dilayani, antrian_menunggu, total_menunggu } = result.data;
+    // Gunakan HANYA sedang_dilayani (sudah difilter per loket di backend)
+    // JANGAN gunakan antrian_dipanggil[0] sebagai fallback — bisa ambil antrian loket lain!
+    const aktif = sedang_dilayani ?? null;
 
     if (aktif) {
       if (aCurNum)  aCurNum.textContent  = aktif.nomor_antrian;

@@ -375,10 +375,11 @@ async function loadAntrianPage() {
     const result = await api('GET', `/antrian/list?layanan=${encodeURIComponent(COUNTER_LAYANAN)}`);
     if (!result.success) return;
 
-    const { sedang_dilayani, antrian_menunggu, antrian_dipanggil, total_menunggu } = result.data;
+    const { sedang_dilayani, antrian_menunggu, total_menunggu } = result.data;
 
-    // Ambil yang sedang dilayani (diprioritaskan sedang_dilayani, fallback antrian_dipanggil[0])
-    const aktif = sedang_dilayani || antrian_dipanggil?.[0] || null;
+    // Gunakan HANYA sedang_dilayani (sudah difilter per loket di backend)
+    // JANGAN gunakan antrian_dipanggil[0] sebagai fallback — bisa ambil antrian loket lain!
+    const aktif = sedang_dilayani ?? null;
 
     // Display card
     if (aktif) {

@@ -331,11 +331,12 @@ export async function panggilAntrian(req: Request, res: Response): Promise<void>
 // Teller/CS menandai antrian sebagai selesai
 export async function selesaiAntrian(req: Request, res: Response): Promise<void> {
   const { id } = req.params;
+  const user = (req as any).user;
   const role = (req as any).userRole as string;
 
-  // Cek status antrian sebelum update
+  // Cek status antrian sebelum update (termasuk loket_number)
   const { data: existing, error: checkErr } = await supabaseAdmin
-    .from("antrian").select("status, nomor_antrian, layanan").eq("id", id).single();
+    .from("antrian").select("status, nomor_antrian, layanan, loket_number").eq("id", id).single();
 
   if (checkErr || !existing) {
     res.status(404).json({ success: false, message: "Antrian tidak ditemukan", data: {} });
@@ -363,6 +364,20 @@ export async function selesaiAntrian(req: Request, res: Response): Promise<void>
     return;
   }
 
+  // Validasi loket: hanya boleh selesaikan antrian di loket sendiri
+  // (berlaku jika kedua pihak — antrian & user — sudah punya loket_number)
+  const { data: userProfile } = await supabaseAdmin
+    .from("profiles").select("loket_number").eq("id", user.id).maybeSingle();
+  const myLoket = userProfile?.loket_number ?? null;
+  if (myLoket && existing.loket_number && myLoket !== existing.loket_number) {
+    res.status(403).json({
+      success: false,
+      message: `Antrian ini sedang dilayani Loket ${existing.loket_number}, bukan Loket ${myLoket} Anda`,
+      data: {},
+    });
+    return;
+  }
+
   const { data: antrian, error } = await supabaseAdmin
     .from("antrian")
     .update({ status: "selesai", finished_at: new Date().toISOString() })
@@ -385,9 +400,9 @@ export async function batalAntrian(req: Request, res: Response): Promise<void> {
   const role = (req as any).userRole as string;
   const isStaff = ["teller", "cs"].includes(role);
 
-  // Cek antrian dulu
+  // Cek antrian dulu (termasuk loket_number)
   const { data: existing } = await supabaseAdmin
-    .from("antrian").select("status, nomor_antrian, layanan, user_id").eq("id", id).single();
+    .from("antrian").select("status, nomor_antrian, layanan, user_id, loket_number").eq("id", id).single();
 
   if (!existing) {
     res.status(404).json({ success: false, message: "Antrian tidak ditemukan", data: {} });
@@ -403,6 +418,22 @@ export async function batalAntrian(req: Request, res: Response): Promise<void> {
       data: {},
     });
     return;
+  }
+
+  // Validasi loket: staff hanya boleh skip/batal antrian di loket sendiri (jika antrian sudah dipanggil)
+  // Antrian yang masih "menunggu" boleh diskip oleh siapapun di layanan yang sama
+  if (isStaff && existing.status === "dipanggil" && existing.loket_number) {
+    const { data: userProf } = await supabaseAdmin
+      .from("profiles").select("loket_number").eq("id", user.id).maybeSingle();
+    const myLoket = userProf?.loket_number ?? null;
+    if (myLoket && myLoket !== existing.loket_number) {
+      res.status(403).json({
+        success: false,
+        message: `Antrian ini sedang dilayani Loket ${existing.loket_number}, bukan Loket ${myLoket} Anda`,
+        data: {},
+      });
+      return;
+    }
   }
 
   let query = supabaseAdmin
