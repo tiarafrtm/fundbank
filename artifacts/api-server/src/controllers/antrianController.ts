@@ -162,6 +162,18 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
 
     const myLoketNumber: number | null = userProfile?.loket_number ?? null;
 
+    // Ambil semua loket yang sudah dipilih staff lain (dari profiles)
+    const { data: allProfiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id, loket_number")
+      .in("role", ["teller", "cs"])
+      .not("loket_number", "is", null);
+
+    // loket_terpakai = loket yang dipakai staff LAIN (bukan saya)
+    const loketTerpakai: number[] = (allProfiles ?? [])
+      .filter((p: any) => p.id !== user.id && p.loket_number != null)
+      .map((p: any) => p.loket_number as number);
+
     let query = supabaseAdmin
       .from("antrian")
       .select(`*, profiles (nama, no_hp)`)
@@ -219,6 +231,7 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
       message: "Daftar antrian berhasil diambil",
       data: {
         my_loket_number: myLoketNumber,
+        loket_terpakai: loketTerpakai,
         sedang_dilayani: sedangDilayaniLoketIni,
         semua_loket_aktif: loketAktifMap,
         antrian_dipanggil: semuaDipanggil ?? [],

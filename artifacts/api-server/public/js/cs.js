@@ -69,6 +69,7 @@ let layaniTimerStart    = null;
 let layaniTimerInterval = null;
 let currentLayaniId     = null;
 let myLoketNumber       = null;  // Nomor loket CS yang sedang login
+let _firstQueueLoad     = true;  // Flag untuk buka modal setelah data pertama kali dimuat
 
 const pageTitles = {
   dashboard: 'Dashboard',
@@ -198,8 +199,7 @@ async function setMyLoket(n) {
 }
 
 document.getElementById('loket-select-btn')?.addEventListener('click', () => {
-  const occupiedLokets = Object.keys(window._loketAktifMap || {}).map(Number);
-  openLoketModal(occupiedLokets);
+  openLoketModal(window._loketTerpakai || []);
 });
 
 // ===========================
@@ -215,7 +215,7 @@ async function loadQueueData() {
 
     const {
       sedang_dilayani, antrian_menunggu, antrian_dipanggil,
-      total_menunggu, semua_loket_aktif, my_loket_number
+      total_menunggu, semua_loket_aktif, my_loket_number, loket_terpakai
     } = result.data;
 
     // Sync loket number dari server
@@ -224,8 +224,17 @@ async function loadQueueData() {
       updateLoketBadge();
     }
 
-    // Simpan state loket aktif untuk modal
+    // Simpan state loket aktif + terpakai untuk modal
     window._loketAktifMap = semua_loket_aktif || {};
+    window._loketTerpakai = loket_terpakai    || [];
+
+    // Kalau ini load pertama dan loket belum dipilih → tampilkan modal
+    if (_firstQueueLoad) {
+      _firstQueueLoad = false;
+      if (!myLoketNumber) {
+        setTimeout(() => openLoketModal(window._loketTerpakai), 300);
+      }
+    }
 
     // Update panel sedang dilayani (loket saya)
     if (sedang_dilayani) {
@@ -697,11 +706,6 @@ function showInfoBanner(msg, isError = false) {
 
   navigateTo('dashboard');
   checkWAStatus();
-
-  // Tampilkan modal pilih loket kalau belum diset
-  if (!myLoketNumber) {
-    setTimeout(() => openLoketModal([]), 800);
-  }
 
   refreshInterval = setInterval(() => {
     if (currentPage === 'dashboard') { loadStatistik(); loadQueueData(); }
