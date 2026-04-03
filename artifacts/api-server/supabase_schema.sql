@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Constraint role: cs | teller | nasabah
+-- Constraint role: nasabah | cs | teller
 ALTER TABLE public.profiles
     DROP CONSTRAINT IF EXISTS profiles_role_check;
 ALTER TABLE public.profiles
@@ -57,24 +57,66 @@ CREATE TABLE IF NOT EXISTS public.antrian (
     called_at       TIMESTAMPTZ
 );
 
--- Kolom opsional (aman jika sudah ada)
+-- Kolom tambahan — aman jika sudah ada
 ALTER TABLE public.antrian ALTER COLUMN user_id DROP NOT NULL;
 ALTER TABLE public.antrian ADD COLUMN IF NOT EXISTS nama_nasabah   TEXT;
 ALTER TABLE public.antrian ADD COLUMN IF NOT EXISTS no_hp_nasabah  TEXT;
 ALTER TABLE public.antrian ADD COLUMN IF NOT EXISTS called_at      TIMESTAMPTZ;
 ALTER TABLE public.antrian ADD COLUMN IF NOT EXISTS keperluan      TEXT;
 
--- *** PERBAIKAN CONSTRAINT LAYANAN ***
--- Menambahkan Teller dan CS ke daftar yang diizinkan
-ALTER TABLE public.antrian
-    DROP CONSTRAINT IF EXISTS antrian_layanan_check;
+-- ============================================================
+-- PERBAIKAN CONSTRAINT LAYANAN
+-- Hapus SEMUA constraint yang menyentuh kolom layanan
+-- (termasuk yang dibuat inline dengan nama auto-generate)
+-- ============================================================
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN
+        SELECT con.conname
+        FROM pg_constraint con
+        JOIN pg_class rel ON rel.oid = con.conrelid
+        JOIN pg_namespace ns  ON ns.oid  = rel.relnamespace
+        JOIN pg_attribute att ON att.attrelid = con.conrelid
+                              AND att.attnum = ANY(con.conkey)
+        WHERE ns.nspname  = 'public'
+          AND rel.relname = 'antrian'
+          AND con.contype = 'c'
+          AND att.attname = 'layanan'
+    LOOP
+        EXECUTE format('ALTER TABLE public.antrian DROP CONSTRAINT IF EXISTS %I', r.conname);
+    END LOOP;
+END $$;
+
 ALTER TABLE public.antrian
     ADD CONSTRAINT antrian_layanan_check
     CHECK (layanan IN ('Teller', 'CS', 'Tabungan', 'Kredit', 'Umum'));
 
--- Constraint status
-ALTER TABLE public.antrian
-    DROP CONSTRAINT IF EXISTS antrian_status_check;
+-- ============================================================
+-- PERBAIKAN CONSTRAINT STATUS
+-- Hapus SEMUA constraint yang menyentuh kolom status
+-- ============================================================
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN
+        SELECT con.conname
+        FROM pg_constraint con
+        JOIN pg_class rel ON rel.oid = con.conrelid
+        JOIN pg_namespace ns  ON ns.oid  = rel.relnamespace
+        JOIN pg_attribute att ON att.attrelid = con.conrelid
+                              AND att.attnum = ANY(con.conkey)
+        WHERE ns.nspname  = 'public'
+          AND rel.relname = 'antrian'
+          AND con.contype = 'c'
+          AND att.attname = 'status'
+    LOOP
+        EXECUTE format('ALTER TABLE public.antrian DROP CONSTRAINT IF EXISTS %I', r.conname);
+    END LOOP;
+END $$;
+
 ALTER TABLE public.antrian
     ADD CONSTRAINT antrian_status_check
     CHECK (status IN ('menunggu', 'dipanggil', 'selesai', 'batal'));
@@ -102,8 +144,10 @@ BEGIN
 END $$;
 
 -- ============================================================
--- VERIFIKASI
+-- VERIFIKASI — menampilkan tabel dan kolom antrian
 -- ============================================================
-SELECT table_name FROM information_schema.tables
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
 WHERE table_schema = 'public'
-AND table_name IN ('profiles', 'antrian');
+  AND table_name   = 'antrian'
+ORDER BY ordinal_position;
