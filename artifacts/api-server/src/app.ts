@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import pinoHttp from "pino-http";
 import router from "./routes";
@@ -30,6 +31,23 @@ app.use(express.urlencoded({ extended: true }));
 // ===========================
 app.use("/css", express.static(path.join(publicDir, "css")));
 app.use("/js",  express.static(path.join(publicDir, "js")));
+
+// ===========================
+// Android App Links — harus bisa diakses di:
+// https://antrianbank.site/.well-known/assetlinks.json
+// send/express tidak serve dotdir secara default, jadi baca file manual
+// ===========================
+app.get("/.well-known/assetlinks.json", (_req, res) => {
+  const filePath = path.join(publicDir, ".well-known", "assetlinks.json");
+  try {
+    const content = fs.readFileSync(filePath, "utf-8");
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(content);
+  } catch {
+    res.status(404).json({ error: "assetlinks.json not found" });
+  }
+});
 
 // ===========================
 // API Routes — semua endpoint backend
