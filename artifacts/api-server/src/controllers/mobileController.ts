@@ -174,9 +174,15 @@ export async function getSaya(req: Request, res: Response): Promise<void> {
 // ============================================================
 export async function ambilAntrianMobile(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
-  const { layanan, onesignal_player_id } = req.body;
+  const { layanan: layananRaw, onesignal_player_id } = req.body;
 
-  if (!layanan || !["Teller", "CS"].includes(layanan)) {
+  // Normalisasi case: "teller"/"TELLER"/"Teller" → "Teller", "cs"/"CS" → "CS"
+  const LAYANAN_MAP: Record<string, string> = {
+    teller: "Teller", cs: "CS",
+  };
+  const layanan = LAYANAN_MAP[(layananRaw ?? "").toString().toLowerCase()] ?? null;
+
+  if (!layanan) {
     res.status(400).json({
       success: false,
       message: "Jenis layanan wajib dipilih: Teller atau CS",

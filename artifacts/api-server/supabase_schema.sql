@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS public.antrian (
     nama_nasabah    TEXT,
     no_hp_nasabah   TEXT,
     nomor_antrian   INTEGER NOT NULL,
-    layanan         TEXT NOT NULL CHECK (layanan IN ('Tabungan', 'Kredit', 'Umum')),
+    layanan         TEXT NOT NULL CHECK (layanan IN ('Teller', 'CS', 'Tabungan', 'Kredit', 'Umum')),
     status          TEXT NOT NULL DEFAULT 'menunggu'
                         CHECK (status IN ('menunggu', 'dipanggil', 'selesai', 'batal')),
     notif_sent      BOOLEAN NOT NULL DEFAULT FALSE,
