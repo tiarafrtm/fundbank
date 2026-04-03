@@ -49,8 +49,8 @@ loginForm.addEventListener('submit', async (e) => {
     });
 
     if (!result.success) {
-      // Tampilkan pesan error dari server
-      loginError.textContent = result.message || 'Login gagal';
+      const debugInfo = result.debug ? ` (${result.debug})` : '';
+      loginError.textContent = (result.message || 'Login gagal') + debugInfo;
       loginError.classList.remove('hidden');
       return;
     }

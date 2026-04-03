@@ -1,5 +1,6 @@
 import { type Request, type Response } from "express";
 import { supabase, supabaseAdmin } from "../config/supabase";
+import { logger } from "../lib/logger";
 
 const VALID_ROLES = ["cs", "teller"];
 
@@ -84,7 +85,19 @@ export async function login(req: Request, res: Response): Promise<void> {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error || !data.session) {
-    res.status(401).json({ success: false, message: "Email atau password salah", data: {} });
+    // Log error detail dari Supabase untuk debugging
+    logger.warn({
+      loginEmail : email,
+      supabaseError: error?.message,
+      supabaseCode : error?.status,
+    }, "Login gagal — detail error Supabase");
+
+    res.status(401).json({
+      success: false,
+      message: "Email atau password salah",
+      debug  : process.env.NODE_ENV !== "production" ? error?.message : undefined,
+      data   : {},
+    });
     return;
   }
 
@@ -100,6 +113,58 @@ export async function login(req: Request, res: Response): Promise<void> {
     success: true,
     message: "Login berhasil",
     data: { token: data.session.access_token, user: userProfile },
+  });
+}
+
+// ================================================================
+// POST /api/auth/admin/reset-password
+// Hanya admin (service key) yang bisa memanggil ini via curl
+// Ganti password staf yang lupa password
+// ================================================================
+export async function adminResetPassword(req: Request, res: Response): Promise<void> {
+  const { email, password_baru } = req.body;
+
+  // Validasi secret header — harus cocok dengan SESSION_SECRET
+  const secret = req.headers["x-admin-secret"];
+  if (!secret || secret !== process.env.SESSION_SECRET) {
+    res.status(403).json({ success: false, message: "Akses ditolak", data: {} });
+    return;
+  }
+
+  if (!email || !password_baru) {
+    res.status(400).json({ success: false, message: "email dan password_baru wajib diisi", data: {} });
+    return;
+  }
+  if ((password_baru as string).length < 8) {
+    res.status(400).json({ success: false, message: "Password minimal 8 karakter", data: {} });
+    return;
+  }
+
+  // Cari user berdasarkan email
+  const { data: userList } = await supabaseAdmin.auth.admin.listUsers();
+  const target = userList?.users?.find((u: any) => u.email?.toLowerCase() === (email as string).toLowerCase());
+
+  if (!target) {
+    res.status(404).json({ success: false, message: `Akun ${email} tidak ditemukan`, data: {} });
+    return;
+  }
+
+  // Update password via admin API (tidak perlu tahu password lama)
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(target.id, {
+    password: password_baru as string,
+  });
+
+  if (error) {
+    logger.error({ error: error.message }, "Gagal reset password");
+    res.status(500).json({ success: false, message: error.message, data: {} });
+    return;
+  }
+
+  logger.info({ email, resetBy: "admin" }, "Password berhasil direset");
+  res.json({
+    success: true,
+    message: `Password untuk ${email} berhasil diubah. Silakan login dengan password baru.`,
+    data: { email },
   });
 }
 
