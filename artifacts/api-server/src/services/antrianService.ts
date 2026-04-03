@@ -3,24 +3,44 @@ import { sendPushNotification } from "./onesignalService";
 import { sendWhatsAppMessage } from "./waService";
 import { logger } from "../lib/logger";
 
-// Mengambil nomor antrian berikutnya untuk layanan tertentu
-export async function getNomorAntrian(layanan: string): Promise<number> {
-  const { data, error } = await supabaseAdmin
-    .from("antrian")
-    .select("nomor_antrian")
-    .eq("layanan", layanan)
-    .gte(
-      "created_at",
-      new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
-    )
-    .order("nomor_antrian", { ascending: false })
-    .limit(1);
+// Mutex sederhana per-layanan untuk mencegah race condition nomor antrian
+const layananLocks: Map<string, Promise<void>> = new Map();
 
-  if (error || !data || data.length === 0) {
-    return 1;
+async function withLayananLock<T>(layanan: string, fn: () => Promise<T>): Promise<T> {
+  const prev = layananLocks.get(layanan) ?? Promise.resolve();
+  let resolveLock!: () => void;
+  const lock = new Promise<void>((resolve) => { resolveLock = resolve; });
+  layananLocks.set(layanan, prev.then(() => lock));
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    resolveLock();
+    // Bersihkan map kalau tidak ada yang menunggu lagi
+    if (layananLocks.get(layanan) === lock) layananLocks.delete(layanan);
   }
+}
 
-  return data[0].nomor_antrian + 1;
+// Mengambil nomor antrian berikutnya — atomic via lock per layanan
+export async function getNomorAntrian(layanan: string): Promise<number> {
+  return withLayananLock(layanan, async () => {
+    const { data, error } = await supabaseAdmin
+      .from("antrian")
+      .select("nomor_antrian")
+      .eq("layanan", layanan)
+      .gte(
+        "created_at",
+        new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
+      )
+      .order("nomor_antrian", { ascending: false })
+      .limit(1);
+
+    if (error || !data || data.length === 0) {
+      return 1;
+    }
+
+    return data[0].nomor_antrian + 1;
+  });
 }
 
 // Mengambil daftar antrian yang masih menunggu

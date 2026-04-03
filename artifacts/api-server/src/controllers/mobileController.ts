@@ -2,6 +2,9 @@ import { type Request, type Response } from "express";
 import { supabase, supabaseAdmin } from "../config/supabase";
 import { getNomorAntrian } from "../services/antrianService";
 
+// Lock per user_id — mencegah 2 request masuk bersamaan dari user yang sama
+const processingUsers = new Set<string>();
+
 // ============================================================
 // POST /api/mobile/daftar — Pendaftaran nasabah baru
 // Field: nama, email, no_hp, password
@@ -176,94 +179,110 @@ export async function ambilAntrianMobile(req: Request, res: Response): Promise<v
   const user = (req as any).user;
   const { layanan: layananRaw, keperluan: keperluanRaw, onesignal_player_id } = req.body;
 
-  // Normalisasi case: "teller"/"TELLER"/"Teller" → "Teller", "cs"/"CS" → "CS"
-  const LAYANAN_MAP: Record<string, string> = {
-    teller: "Teller", cs: "CS",
-  };
-  const layanan = LAYANAN_MAP[(layananRaw ?? "").toString().toLowerCase()] ?? null;
-
-  if (!layanan) {
-    res.status(400).json({
+  // === GUARD: cegah double-tap / request bersamaan dari user yang sama ===
+  if (processingUsers.has(user.id)) {
+    res.status(429).json({
       success: false,
-      message: "Jenis layanan wajib dipilih: Teller atau CS",
+      message: "Permintaan sedang diproses, harap tunggu sebentar",
       data: {},
     });
     return;
   }
+  processingUsers.add(user.id);
 
-  // Keperluan: sub-layanan spesifik (opsional tapi sangat disarankan)
-  const KEPERLUAN_OPTIONS: Record<string, string[]> = {
-    Teller: ["Setor Tunai", "Tarik Tunai", "Transfer", "Pembayaran"],
-    CS: ["Buka Rekening", "Pengajuan Kartu ATM", "Info Produk Bank", "Konsultasi Keuangan"],
-  };
-  const keperluan = (keperluanRaw ?? "").toString().trim() || null;
-  if (keperluan && !KEPERLUAN_OPTIONS[layanan]?.includes(keperluan)) {
-    res.status(400).json({
-      success: false,
-      message: `Keperluan tidak valid untuk layanan ${layanan}. Pilihan: ${KEPERLUAN_OPTIONS[layanan]?.join(", ")}`,
-      data: {},
+  try {
+    // Normalisasi case: "teller"/"TELLER"/"Teller" → "Teller", "cs"/"CS" → "CS"
+    const LAYANAN_MAP: Record<string, string> = {
+      teller: "Teller", cs: "CS",
+    };
+    const layanan = LAYANAN_MAP[(layananRaw ?? "").toString().toLowerCase()] ?? null;
+
+    if (!layanan) {
+      res.status(400).json({
+        success: false,
+        message: "Jenis layanan wajib dipilih: Teller atau CS",
+        data: {},
+      });
+      return;
+    }
+
+    // Keperluan: sub-layanan spesifik (opsional tapi sangat disarankan)
+    const KEPERLUAN_OPTIONS: Record<string, string[]> = {
+      Teller: ["Setor Tunai", "Tarik Tunai", "Transfer", "Pembayaran"],
+      CS: ["Buka Rekening", "Pengajuan Kartu ATM", "Info Produk Bank", "Konsultasi Keuangan"],
+    };
+    const keperluan = (keperluanRaw ?? "").toString().trim() || null;
+    if (keperluan && !KEPERLUAN_OPTIONS[layanan]?.includes(keperluan)) {
+      res.status(400).json({
+        success: false,
+        message: `Keperluan tidak valid untuk layanan ${layanan}. Pilihan: ${KEPERLUAN_OPTIONS[layanan]?.join(", ")}`,
+        data: {},
+      });
+      return;
+    }
+
+    const today = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+
+    // Cek antrian aktif hari ini (menunggu ATAU dipanggil)
+    const { data: existingAntrian } = await supabaseAdmin
+      .from("antrian")
+      .select("*")
+      .eq("user_id", user.id)
+      .in("status", ["menunggu", "dipanggil"])
+      .gte("created_at", today)
+      .maybeSingle();
+
+    if (existingAntrian) {
+      res.status(400).json({
+        success: false,
+        message: "Anda sudah memiliki antrian aktif hari ini. Selesaikan antrian tersebut terlebih dahulu.",
+        data: { antrian: existingAntrian },
+      });
+      return;
+    }
+
+    // Simpan OneSignal player ID jika diberikan
+    if (onesignal_player_id) {
+      await supabaseAdmin
+        .from("profiles")
+        .update({ onesignal_player_id })
+        .eq("id", user.id);
+    }
+
+    // Dapatkan nomor antrian berikutnya (atomic via lock per layanan)
+    const nomorAntrian = await getNomorAntrian(layanan);
+
+    const { data: antrian, error } = await supabaseAdmin
+      .from("antrian")
+      .insert({
+        user_id: user.id,
+        nomor_antrian: nomorAntrian,
+        layanan,
+        ...(keperluan ? { keperluan } : {}),
+        status: "menunggu",
+        notif_sent: false,
+      })
+      .select()
+      .single();
+
+    if (error || !antrian) {
+      res.status(500).json({
+        success: false,
+        message: "Gagal membuat antrian: " + (error?.message ?? ""),
+        data: {},
+      });
+      return;
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Antrian ${layanan} nomor ${nomorAntrian} berhasil dibuat`,
+      data: { antrian, nomor_antrian: nomorAntrian },
     });
-    return;
+  } finally {
+    // Selalu lepas lock, baik sukses maupun error
+    processingUsers.delete(user.id);
   }
-
-  const today = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
-
-  // Cek antrian aktif hari ini
-  const { data: existingAntrian } = await supabaseAdmin
-    .from("antrian")
-    .select("*")
-    .eq("user_id", user.id)
-    .in("status", ["menunggu", "dipanggil"])
-    .gte("created_at", today)
-    .maybeSingle();
-
-  if (existingAntrian) {
-    res.status(400).json({
-      success: false,
-      message: "Anda sudah memiliki antrian aktif hari ini",
-      data: { antrian: existingAntrian },
-    });
-    return;
-  }
-
-  // Simpan OneSignal player ID jika diberikan
-  if (onesignal_player_id) {
-    await supabaseAdmin
-      .from("profiles")
-      .update({ onesignal_player_id })
-      .eq("id", user.id);
-  }
-
-  // Dapatkan nomor antrian berikutnya
-  const nomorAntrian = await getNomorAntrian(layanan);
-
-  const { data: antrian, error } = await supabaseAdmin
-    .from("antrian")
-    .insert({
-      user_id: user.id,
-      nomor_antrian: nomorAntrian,
-      layanan,
-      ...(keperluan ? { keperluan } : {}),
-      status: "menunggu",
-      notif_sent: false,
-    })
-    .select()
-    .single();
-
-  if (error || !antrian) {
-    res.status(500).json({
-      success: false,
-      message: "Gagal membuat antrian: " + (error?.message ?? ""),
-      data: {},
-    });
-    return;
-  }
-
-  res.status(201).json({
-    success: true,
-    message: `Antrian ${layanan} nomor ${nomorAntrian} berhasil dibuat`,
-    data: { antrian, nomor_antrian: nomorAntrian },
-  });
 }
 
 // ============================================================
