@@ -284,33 +284,71 @@ export async function statusAntrianMobile(req: Request, res: Response): Promise<
     .limit(1)
     .maybeSingle();
 
-  // Tidak ada antrian aktif — cek apakah ada yg dilewati (batal) hari ini
+  // Tidak ada antrian aktif — cek apakah batal atau baru selesai dilayani
   if (!antrian) {
-    const { data: antrianBatal } = await supabaseAdmin
-      .from("antrian")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("status", "batal")
-      .gte("created_at", today)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Ambil antrian terakhir hari ini (batal atau selesai) secara paralel
+    const [{ data: antrianBatal }, { data: antrianSelesai }] = await Promise.all([
+      supabaseAdmin
+        .from("antrian")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "batal")
+        .gte("created_at", today)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
 
+      supabaseAdmin
+        .from("antrian")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "selesai")
+        .gte("created_at", today)
+        .order("finished_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    // Cek antrian dilewati — tampilkan modal skip di Android
     if (antrianBatal) {
-      // Hanya tampilkan modal skip jika dibatalkan dalam 10 menit terakhir
-      // (relevan untuk polling yang baru berjalan)
       const dibatalkanSejak = (Date.now() - new Date(antrianBatal.updated_at).getTime()) / 1000;
       if (dibatalkanSejak < 600) {
         res.status(200).json({
           success: true,
           message: "Antrian Anda telah dilewati",
           data: {
-            antrian: antrianBatal,
-            terlewati: true,          // ← Android baca flag ini → tampilkan modal
-            posisi: null,
-            antrian_di_depan: null,
-            estimasi_menit: null,
-            menit_per_nasabah: null,
+            antrian  : antrianBatal,
+            terlewati: true,
+            selesai  : false,
+            posisi             : null,
+            antrian_di_depan   : null,
+            estimasi_menit     : null,
+            estimasi_label     : null,
+            jumlah_loket_aktif : null,
+            menit_per_nasabah  : null,
+          },
+        });
+        return;
+      }
+    }
+
+    // Cek antrian selesai — nasabah sudah dilayani
+    if (antrianSelesai) {
+      const selesaiSejak = (Date.now() - new Date(antrianSelesai.finished_at ?? antrianSelesai.updated_at).getTime()) / 1000;
+      if (selesaiSejak < 1800) {  // tampilkan status selesai dalam 30 menit terakhir
+        res.status(200).json({
+          success: true,
+          message: "Antrian Anda telah selesai dilayani",
+          data: {
+            antrian  : antrianSelesai,
+            terlewati: false,
+            selesai  : true,   // ← Android baca flag ini → tampilkan layar "Terima kasih"
+            posisi             : null,
+            antrian_di_depan   : null,
+            estimasi_menit     : null,
+            estimasi_label     : null,
+            jumlah_loket_aktif : null,
+            menit_per_nasabah  : null,
           },
         });
         return;

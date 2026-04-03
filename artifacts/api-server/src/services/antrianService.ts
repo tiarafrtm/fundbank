@@ -59,6 +59,27 @@ export async function panggilBerikutnya(layanan?: string): Promise<{
 
   const currentAntrian = antrianList[0];
 
+  // STEP 1B: Auto-selesaikan antrian "dipanggil" sebelumnya untuk layanan ini
+  // Skenario: teller langsung tekan "Panggil Berikutnya" tanpa klik "Selesai"
+  // → nasabah sebelumnya harus dianggap selesai agar statusnya tidak stuck
+  let autoSelesaiQuery = supabaseAdmin
+    .from("antrian")
+    .update({ status: "selesai", finished_at: new Date().toISOString() })
+    .eq("status", "dipanggil")
+    .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+
+  if (layanan) autoSelesaiQuery = autoSelesaiQuery.eq("layanan", layanan);
+
+  const { data: autoSelesai, error: autoSelesaiError } = await autoSelesaiQuery.select("id, nomor_antrian");
+  if (autoSelesaiError) {
+    logger.warn({ error: autoSelesaiError.message }, "Gagal auto-selesai antrian sebelumnya (non-fatal)");
+  } else if (autoSelesai && autoSelesai.length > 0) {
+    logger.info(
+      { nomorList: autoSelesai.map((a: any) => a.nomor_antrian) },
+      "Auto-selesai antrian sebelumnya sebelum panggil berikutnya",
+    );
+  }
+
   // STEP 2: Atomic update — hanya update kalau status MASIH 'menunggu'
   // Ini mencegah dua loket mengambil nomor yang sama (race condition)
   const { data: updateResult, error: updateError } = await supabaseAdmin
