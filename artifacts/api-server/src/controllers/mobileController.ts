@@ -2,31 +2,26 @@ import { type Request, type Response } from "express";
 import { supabase, supabaseAdmin } from "../config/supabase";
 import { getNomorAntrian } from "../services/antrianService";
 
-// Konversi NIK → email internal (tidak terlihat oleh user)
-function nikToEmail(nik: string): string {
-  return `${nik}@m.bankantrian.app`;
-}
-
 // ============================================================
 // POST /api/mobile/daftar — Pendaftaran nasabah baru
-// Field: nama, nik (16 digit), no_hp, password
+// Field: nama, email, no_hp, password
 // ============================================================
 export async function daftar(req: Request, res: Response): Promise<void> {
-  const { nama, nik, no_hp, password } = req.body;
+  const { nama, email, no_hp, password } = req.body;
 
-  if (!nama || !nik || !no_hp || !password) {
+  if (!nama || !email || !no_hp || !password) {
     res.status(400).json({
       success: false,
-      message: "Nama lengkap, NIK, nomor HP, dan password wajib diisi",
+      message: "Nama lengkap, email, nomor HP, dan password wajib diisi",
       data: {},
     });
     return;
   }
 
-  if (!/^\d{16}$/.test(nik)) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     res.status(400).json({
       success: false,
-      message: "NIK harus tepat 16 digit angka",
+      message: "Format email tidak valid",
       data: {},
     });
     return;
@@ -41,35 +36,20 @@ export async function daftar(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const email = nikToEmail(nik);
-
-  // Cek apakah NIK sudah terdaftar (cek lewat email Supabase)
-  const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-  const nikSudahAda = existingUsers?.users?.some(u => u.email === email);
-  if (nikSudahAda) {
-    res.status(400).json({
-      success: false,
-      message: "NIK sudah terdaftar, silakan masuk",
-      data: {},
-    });
-    return;
-  }
-
-  // Buat akun Supabase — email disembunyikan dari user
+  // Buat akun Supabase dengan email langsung
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email,
+    email: email.toLowerCase().trim(),
     password,
     email_confirm: true,
-    user_metadata: { nama, no_hp, nik, role: "nasabah" },
+    user_metadata: { nama, no_hp, role: "nasabah" },
     app_metadata: { role: "nasabah" },
   });
 
   if (authError || !authData.user) {
-    res.status(400).json({
-      success: false,
-      message: authError?.message ?? "Gagal mendaftarkan akun",
-      data: {},
-    });
+    const msg = authError?.message?.includes("already registered")
+      ? "Email sudah terdaftar, silakan masuk"
+      : (authError?.message ?? "Gagal mendaftarkan akun");
+    res.status(400).json({ success: false, message: msg, data: {} });
     return;
   }
 
@@ -83,47 +63,40 @@ export async function daftar(req: Request, res: Response): Promise<void> {
 
   res.status(201).json({
     success: true,
-    message: "Pendaftaran berhasil! Silakan masuk dengan NIK dan password Anda.",
+    message: "Pendaftaran berhasil! Silakan masuk dengan email dan password Anda.",
     data: {
       id: authData.user.id,
       nama,
-      nik,
+      email: email.toLowerCase().trim(),
       no_hp,
     },
   });
 }
 
 // ============================================================
-// POST /api/mobile/masuk — Login nasabah dengan NIK + password
+// POST /api/mobile/masuk — Login nasabah dengan email + password
 // ============================================================
 export async function masuk(req: Request, res: Response): Promise<void> {
-  const { nik, password } = req.body;
+  const { email, password } = req.body;
 
-  if (!nik || !password) {
+  if (!email || !password) {
     res.status(400).json({
       success: false,
-      message: "NIK dan password wajib diisi",
+      message: "Email dan password wajib diisi",
       data: {},
     });
     return;
   }
 
-  if (!/^\d{16}$/.test(nik)) {
-    res.status(400).json({
-      success: false,
-      message: "NIK harus 16 digit angka",
-      data: {},
-    });
-    return;
-  }
-
-  const email = nikToEmail(nik);
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.toLowerCase().trim(),
+    password,
+  });
 
   if (error || !data.session) {
     res.status(401).json({
       success: false,
-      message: "NIK atau password salah",
+      message: "Email atau password salah",
       data: {},
     });
     return;
@@ -159,7 +132,7 @@ export async function masuk(req: Request, res: Response): Promise<void> {
       user: {
         id: data.user.id,
         nama: profile?.nama ?? meta.nama ?? "Nasabah",
-        nik: meta.nik ?? nik,
+        email: data.user.email ?? "",
         no_hp: profile?.no_hp ?? meta.no_hp ?? "",
         role: role || "nasabah",
       },
@@ -180,9 +153,6 @@ export async function getSaya(req: Request, res: Response): Promise<void> {
     .eq("id", user.id)
     .single();
 
-  const email: string = user.email ?? "";
-  const nik = meta.nik ?? email.replace("@m.bankantrian.app", "");
-
   res.json({
     success: true,
     message: "Profil berhasil diambil",
@@ -190,7 +160,7 @@ export async function getSaya(req: Request, res: Response): Promise<void> {
       user: {
         id: user.id,
         nama: profile?.nama ?? meta.nama ?? "Nasabah",
-        nik,
+        email: user.email ?? "",
         no_hp: profile?.no_hp ?? meta.no_hp ?? "",
         role: "nasabah",
       },
@@ -358,8 +328,7 @@ export async function tiketAntrian(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
   const { id } = req.params;
   const meta = user.user_metadata ?? {};
-  const email: string = user.email ?? "";
-  const nik = meta.nik ?? email.replace("@m.bankantrian.app", "");
+  const userEmail: string = user.email ?? "";
 
   const { data: antrian } = await supabaseAdmin
     .from("antrian")
@@ -384,7 +353,7 @@ export async function tiketAntrian(req: Request, res: Response): Promise<void> {
     nomor: antrian.nomor_antrian,
     layanan: antrian.layanan,
     nama,
-    nik,
+    email: userEmail,
     waktu,
     status: antrian.status,
     antrianId: antrian.id,
@@ -397,8 +366,8 @@ export async function tiketAntrian(req: Request, res: Response): Promise<void> {
 // ============================================================
 // HTML tiket yang dapat dicetak / disimpan sebagai PDF
 // ============================================================
-function generateTiketHTML({ nomor, layanan, nama, nik, waktu, status, antrianId }: {
-  nomor: number; layanan: string; nama: string; nik: string;
+function generateTiketHTML({ nomor, layanan, nama, email, waktu, status, antrianId }: {
+  nomor: number; layanan: string; nama: string; email: string;
   waktu: string; status: string; antrianId: string;
 }) {
   const layananLabel = layanan === "CS" ? "Customer Service" : layanan;
@@ -468,8 +437,8 @@ function generateTiketHTML({ nomor, layanan, nama, nik, waktu, status, antrianId
       <div class="val">${escHtml(nama)}</div>
     </div>
     <div class="info-item">
-      <div class="lbl">NIK</div>
-      <div class="val">${escHtml(nik)}</div>
+      <div class="lbl">Email</div>
+      <div class="val">${escHtml(email)}</div>
     </div>
     <div class="info-item">
       <div class="lbl">Waktu Ambil</div>

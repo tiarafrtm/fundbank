@@ -139,13 +139,13 @@ Semua endpoint mobile ada di bawah prefix `/api/mobile/`.
 POST /api/mobile/daftar
 ```
 
-Tidak memerlukan token. Nasabah mendaftar menggunakan NIK sebagai identitas utama.
+Tidak memerlukan token. Nasabah mendaftar menggunakan **email dan password**.
 
 **Request Body:**
 ```json
 {
   "nama":     "Budi Santoso",
-  "nik":      "3201234567890001",
+  "email":    "budi@gmail.com",
   "no_hp":    "08123456789",
   "password": "password123"
 }
@@ -154,7 +154,7 @@ Tidak memerlukan token. Nasabah mendaftar menggunakan NIK sebagai identitas utam
 | Field | Wajib | Validasi |
 |-------|-------|----------|
 | `nama` | Ya | Tidak boleh kosong |
-| `nik` | Ya | Tepat **16 digit angka** |
+| `email` | Ya | Format email valid (contoh: `budi@gmail.com`) |
 | `no_hp` | Ya | Tidak boleh kosong |
 | `password` | Ya | Minimal **6 karakter** |
 
@@ -162,30 +162,30 @@ Tidak memerlukan token. Nasabah mendaftar menggunakan NIK sebagai identitas utam
 ```json
 {
   "success": true,
-  "message": "Pendaftaran berhasil! Silakan masuk dengan NIK dan password Anda.",
+  "message": "Pendaftaran berhasil! Silakan masuk dengan email dan password Anda.",
   "data": {
     "id":    "uuid-user",
     "nama":  "Budi Santoso",
-    "nik":   "3201234567890001",
+    "email": "budi@gmail.com",
     "no_hp": "08123456789"
   }
 }
 ```
 
-**Response error `400` — NIK sudah terdaftar:**
+**Response error `400` — email sudah terdaftar:**
 ```json
 {
   "success": false,
-  "message": "NIK sudah terdaftar, silakan masuk",
+  "message": "Email sudah terdaftar, silakan masuk",
   "data": {}
 }
 ```
 
-**Response error `400` — NIK tidak valid:**
+**Response error `400` — format email tidak valid:**
 ```json
 {
   "success": false,
-  "message": "NIK harus tepat 16 digit angka",
+  "message": "Format email tidak valid",
   "data": {}
 }
 ```
@@ -198,12 +198,12 @@ Tidak memerlukan token. Nasabah mendaftar menggunakan NIK sebagai identitas utam
 POST /api/mobile/masuk
 ```
 
-Tidak memerlukan token. Login menggunakan NIK + password.
+Tidak memerlukan token. Login menggunakan **email + password**.
 
 **Request Body:**
 ```json
 {
-  "nik":      "3201234567890001",
+  "email":    "budi@gmail.com",
   "password": "password123"
 }
 ```
@@ -218,7 +218,7 @@ Tidak memerlukan token. Login menggunakan NIK + password.
     "user": {
       "id":    "uuid-user",
       "nama":  "Budi Santoso",
-      "nik":   "3201234567890001",
+      "email": "budi@gmail.com",
       "no_hp": "08123456789",
       "role":  "nasabah"
     }
@@ -233,7 +233,7 @@ Tidak memerlukan token. Login menggunakan NIK + password.
 ```json
 {
   "success": false,
-  "message": "NIK atau password salah",
+  "message": "Email atau password salah",
   "data": {}
 }
 ```
@@ -267,7 +267,7 @@ Gunakan endpoint ini untuk memvalidasi token tersimpan saat app dibuka.
     "user": {
       "id":    "uuid-user",
       "nama":  "Budi Santoso",
-      "nik":   "3201234567890001",
+      "email": "budi@gmail.com",
       "no_hp": "08123456789",
       "role":  "nasabah"
     }
@@ -607,7 +607,7 @@ GET /api/mobile/antrian/tiket/uuid-antrian-123
 - Logo dan nama bank (Bank ABC, Cabang Sudirman)
 - Nomor antrian besar (font 84px, warna oranye)
 - Label layanan (Teller / Customer Service)
-- Nama nasabah, NIK
+- Nama nasabah, Email
 - Waktu ambil nomor (format lokal Indonesia)
 - Chip status berwarna (Menunggu / Dipanggil / Selesai / Dibatalkan)
 - Tombol cetak (menggunakan `window.print()`)
@@ -777,7 +777,7 @@ prefs.edit().apply {
     putString("bank_token", token)
     putString("bank_user_id", user.id)
     putString("bank_user_nama", user.nama)
-    putString("bank_user_nik", user.nik)
+    putString("bank_user_email", user.email)
     apply()
 }
 
@@ -869,8 +869,8 @@ SplashActivity
 
 | Method | Endpoint | Auth | Keterangan |
 |--------|----------|------|------------|
-| `POST` | `/api/mobile/daftar` | Tidak | Daftar akun baru dengan NIK |
-| `POST` | `/api/mobile/masuk` | Tidak | Login dengan NIK + password |
+| `POST` | `/api/mobile/daftar` | Tidak | Daftar akun baru dengan email |
+| `POST` | `/api/mobile/masuk` | Tidak | Login dengan email + password |
 | `GET` | `/api/mobile/saya` | Bearer | Profil nasabah, validasi token |
 | `POST` | `/api/mobile/antrian/ambil` | Bearer | Ambil nomor antrian (Teller/CS) |
 | `GET` | `/api/mobile/antrian/status` | Bearer | Status & posisi antrian aktif hari ini |
