@@ -44,7 +44,7 @@ loginForm.addEventListener('submit', async (e) => {
 
   try {
     const result = await api('POST', '/auth/login', {
-      email:    document.getElementById('email').value,
+      email:    document.getElementById('email').value.trim().toLowerCase(),
       password: document.getElementById('password').value,
     });
 
