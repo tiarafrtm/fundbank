@@ -325,52 +325,79 @@ export async function statusAntrianMobile(req: Request, res: Response): Promise<
     return;
   }
 
-  // Hitung posisi (berapa orang di depan)
-  const { count: posisiDepan } = await supabaseAdmin
-    .from("antrian")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "menunggu")
-    .eq("layanan", antrian.layanan)
-    .lt("nomor_antrian", antrian.nomor_antrian);
+  // Jalankan 3 query paralel sekaligus untuk hemat waktu
+  const [posisiResult, loketResult, selesaiResult] = await Promise.all([
+    // 1. Hitung berapa orang di depan (status menunggu, nomor lebih kecil)
+    supabaseAdmin
+      .from("antrian")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "menunggu")
+      .eq("layanan", antrian.layanan)
+      .lt("nomor_antrian", antrian.nomor_antrian),
 
-  const antriDiDepan = posisiDepan ?? 0;
+    // 2. Hitung berapa loket/staf yang SEDANG melayani (status dipanggil)
+    //    → semakin banyak loket aktif, estimasi semakin cepat
+    supabaseAdmin
+      .from("antrian")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "dipanggil")
+      .eq("layanan", antrian.layanan)
+      .gte("created_at", today),
 
-  // Hitung rata-rata waktu layanan dari data historis hari ini
-  // (antrian yang sudah selesai dan punya called_at + finished_at)
-  const { data: selesaiHariIni } = await supabaseAdmin
-    .from("antrian")
-    .select("called_at, finished_at")
-    .eq("status", "selesai")
-    .eq("layanan", antrian.layanan)
-    .gte("created_at", today)
-    .not("called_at", "is", null)
-    .not("finished_at", "is", null)
-    .limit(20);
+    // 3. Rata-rata durasi layanan dari histori hari ini
+    supabaseAdmin
+      .from("antrian")
+      .select("called_at, finished_at")
+      .eq("status", "selesai")
+      .eq("layanan", antrian.layanan)
+      .gte("created_at", today)
+      .not("called_at", "is", null)
+      .not("finished_at", "is", null)
+      .limit(20),
+  ]);
 
-  // Hitung rata-rata menit per nasabah
+  const antriDiDepan    = posisiResult.count ?? 0;
+  const jumlahLoketAktif = Math.max(1, loketResult.count ?? 1); // minimal 1 loket
+
+  // Hitung rata-rata menit per nasabah per loket
   const MENIT_DEFAULT = 10;
-  let meniPerNasabah = MENIT_DEFAULT;
-  if (selesaiHariIni && selesaiHariIni.length > 0) {
+  let meniPerNasabah  = MENIT_DEFAULT;
+  const selesaiHariIni = selesaiResult.data ?? [];
+
+  if (selesaiHariIni.length > 0) {
     const totalMenit = selesaiHariIni.reduce((sum: number, row: any) => {
       const durasi = (new Date(row.finished_at).getTime() - new Date(row.called_at).getTime()) / 60000;
-      return sum + (durasi > 0 && durasi < 60 ? durasi : MENIT_DEFAULT); // abaikan outlier
+      return sum + (durasi > 0 && durasi < 60 ? durasi : MENIT_DEFAULT);
     }, 0);
     meniPerNasabah = Math.round(totalMenit / selesaiHariIni.length);
     if (meniPerNasabah < 1) meniPerNasabah = MENIT_DEFAULT;
   }
 
-  const estimasiMenit = antriDiDepan * meniPerNasabah;
+  // Formula: ceil(antrian_di_depan / jumlah_loket) × menit_per_nasabah
+  // Contoh: 6 orang, 3 loket aktif, 10 menit → ceil(6/3) × 10 = 20 menit
+  const estimasiMenit = antriDiDepan === 0
+    ? 0
+    : Math.ceil(antriDiDepan / jumlahLoketAktif) * meniPerNasabah;
+
+  // Label estimasi yang ditampilkan di app
+  const estimasiLabel = antriDiDepan === 0
+    ? "Segera dipanggil!"
+    : estimasiMenit < 1
+      ? "< 1 menit"
+      : `± ${estimasiMenit} menit`;
 
   res.json({
     success: true,
     message: "Status antrian",
     data: {
       antrian,
-      terlewati: false,              // ← Android: tidak perlu tampilkan modal skip
-      posisi: antriDiDepan + 1,
-      antrian_di_depan: antriDiDepan,
-      estimasi_menit: estimasiMenit,
-      menit_per_nasabah: meniPerNasabah,
+      terlewati          : false,
+      posisi             : antriDiDepan + 1,
+      antrian_di_depan   : antriDiDepan,
+      jumlah_loket_aktif : jumlahLoketAktif,  // ← info tambahan untuk app
+      estimasi_menit     : estimasiMenit,
+      estimasi_label     : estimasiLabel,      // ← teks siap tampil di app
+      menit_per_nasabah  : meniPerNasabah,
     },
   });
 }

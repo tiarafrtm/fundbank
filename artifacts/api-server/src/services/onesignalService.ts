@@ -2,53 +2,57 @@ import { onesignalConfig } from "../config/onesignal";
 import { logger } from "../lib/logger";
 
 // Tipe notifikasi
-type NotifTipe = "normal" | "skip";
+// "normal"    → nasabah bersiap (dalam 3 posisi ke depan)
+// "dipanggil" → giliran nasabah sekarang! segera ke loket
+// "skip"      → antrian nasabah dilewati → tampilkan modal di Android
+export type NotifTipe = "normal" | "dipanggil" | "skip";
 
-// Mengirim push notification ke nasabah via OneSignal
-// tipe "normal" → segera bersiap dipanggil
-// tipe "skip"   → antrian dilewati, tampilkan modal di Android
 export async function sendPushNotification(
   playerId: string,
   nomorAntrian: number,
   tipe: NotifTipe = "normal",
+  layanan?: string,                    // untuk pesan "dipanggil" yang lebih spesifik
 ): Promise<boolean> {
   try {
-    const isSkip = tipe === "skip";
+    const layananLabel = layanan === "CS" ? "Customer Service" : (layanan ?? "Loket");
+
+    const config: Record<NotifTipe, { heading: string; content: string }> = {
+      normal: {
+        heading : "Segera Bersiap!",
+        content : `Antrian Anda nomor ${nomorAntrian} akan segera dipanggil. Silakan menuju ruang tunggu.`,
+      },
+      dipanggil: {
+        heading : "🔔 Giliran Anda Sekarang!",
+        content : `Nomor antrian ${nomorAntrian} sedang dipanggil di ${layananLabel}. Segera menuju loket!`,
+      },
+      skip: {
+        heading : "Antrian Anda Dilewati",
+        content : `Nomor antrian ${nomorAntrian} telah dilewati. Segera datang ke loket jika ingin dilayani.`,
+      },
+    };
+
+    const { heading, content } = config[tipe];
 
     const payload = {
-      app_id: onesignalConfig.appId,
+      app_id           : onesignalConfig.appId,
       include_player_ids: [playerId],
-
-      headings: {
-        en: isSkip ? "Antrian Anda Dilewati" : "Segera Bersiap!",
-        id: isSkip ? "Antrian Anda Dilewati" : "Segera Bersiap!",
-      },
-      contents: {
-        en: isSkip
-          ? `Nomor antrian ${nomorAntrian} telah dilewati. Segera datang ke loket jika ingin dilayani.`
-          : `Antrian Anda nomor ${nomorAntrian} akan segera dipanggil. Silakan menuju ruang tunggu.`,
-        id: isSkip
-          ? `Nomor antrian ${nomorAntrian} telah dilewati. Segera datang ke loket jika ingin dilayani.`
-          : `Antrian Anda nomor ${nomorAntrian} akan segera dipanggil. Silakan menuju ruang tunggu.`,
-      },
-
-      // Data tambahan — ditangkap Android di notificationOpenedHandler
-      // Android membaca "tipe" untuk menampilkan modal yang sesuai
+      headings         : { en: heading, id: heading },
+      contents         : { en: content, id: content },
+      // Data tambahan — dibaca Android untuk tampilkan UI yang sesuai
       data: {
-        tipe,                        // "normal" atau "skip"
-        nomor_antrian: nomorAntrian, // nomor antrian yang bersangkutan
+        tipe,
+        nomor_antrian : nomorAntrian,
+        layanan       : layanan ?? null,
       },
-
-      // Push langsung — jangan batching
-      priority: 10,
-      ttl: 60, // detik — notif kadaluarsa setelah 1 menit (relevansi antrian)
+      priority : 10,
+      ttl      : tipe === "dipanggil" ? 120 : 60,  // "dipanggil" lebih lama: 2 menit
     };
 
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Key ${onesignalConfig.apiKey}`,
+      method  : "POST",
+      headers : {
+        "Content-Type" : "application/json",
+        Authorization  : `Key ${onesignalConfig.apiKey}`,
       },
       body: JSON.stringify(payload),
     });

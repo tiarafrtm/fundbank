@@ -80,6 +80,22 @@ export async function panggilBerikutnya(layanan?: string): Promise<{
     "Antrian berhasil dipanggil (atomic update OK)",
   );
 
+  // STEP 2B: Kirim push "Giliran Anda!" ke nasabah yang BARU DIPANGGIL
+  const profileDipanggil = currentAntrian.profiles as any;
+  if (profileDipanggil?.onesignal_player_id) {
+    try {
+      await sendPushNotification(
+        profileDipanggil.onesignal_player_id,
+        currentAntrian.nomor_antrian,
+        "dipanggil",
+        currentAntrian.layanan,
+      );
+      logger.info({ nomor: currentAntrian.nomor_antrian }, "Push 'dipanggil' terkirim ke nasabah");
+    } catch (e: any) {
+      logger.warn({ error: e?.message }, "Push 'dipanggil' gagal (non-fatal)");
+    }
+  }
+
   // STEP 3: Cari SEMUA nasabah dalam 3 posisi ke depan yang belum dapat notif
   let notifQuery = supabaseAdmin
     .from("antrian")
