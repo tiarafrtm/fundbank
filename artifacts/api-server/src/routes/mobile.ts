@@ -6,6 +6,7 @@ import {
   ambilAntrianMobile,
   statusAntrianMobile,
   batalAntrianMobile,
+  riwayatAntrianMobile,
   tiketAntrian,
 } from "../controllers/mobileController";
 import { nasabahMiddleware } from "../middleware/authMiddleware";
@@ -20,6 +21,7 @@ router.post("/masuk",  masuk);
 router.get("/saya",                   nasabahMiddleware, getSaya);
 router.post("/antrian/ambil",         nasabahMiddleware, ambilAntrianMobile);
 router.get("/antrian/status",         nasabahMiddleware, statusAntrianMobile);
+router.get("/antrian/riwayat",        nasabahMiddleware, riwayatAntrianMobile);  // ← BARU
 router.delete("/antrian/:id",         nasabahMiddleware, batalAntrianMobile);
 router.get("/antrian/tiket/:id",      nasabahMiddleware, tiketAntrian);
 

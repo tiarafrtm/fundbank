@@ -408,6 +408,125 @@ export async function batalAntrianMobile(req: Request, res: Response): Promise<v
 }
 
 // ============================================================
+// GET /api/mobile/antrian/riwayat — Riwayat antrian nasabah
+// Query params:
+//   page   : halaman (default 1)
+//   limit  : jumlah per halaman (default 10, maks 50)
+//   status : filter status (selesai | batal | semua) — default: semua
+//   hari   : filter N hari ke belakang (default 30)
+// ============================================================
+export async function riwayatAntrianMobile(req: Request, res: Response): Promise<void> {
+  const user   = (req as any).user;
+  const page   = Math.max(1, parseInt(req.query.page  as string) || 1);
+  const limit  = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
+  const status = (req.query.status as string) || "semua";
+  const hari   = Math.min(365, Math.max(1, parseInt(req.query.hari as string) || 30));
+
+  const offset = (page - 1) * limit;
+
+  // Hitung batas tanggal awal
+  const batasAwal = new Date();
+  batasAwal.setDate(batasAwal.getDate() - hari);
+  batasAwal.setHours(0, 0, 0, 0);
+
+  // Build query dasar
+  let query = supabaseAdmin
+    .from("antrian")
+    .select("id, nomor_antrian, layanan, keperluan, status, created_at, called_at, finished_at", { count: "exact" })
+    .eq("user_id", user.id)
+    .gte("created_at", batasAwal.toISOString())
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  // Filter status
+  if (status === "selesai") {
+    query = query.eq("status", "selesai");
+  } else if (status === "batal") {
+    query = query.eq("status", "batal");
+  } else {
+    // "semua" — tampilkan semua status kecuali yang masih aktif hari ini
+    // aktif (menunggu/dipanggil) tetap ditampilkan supaya riwayat lengkap
+    query = query.in("status", ["selesai", "batal", "menunggu", "dipanggil"]);
+  }
+
+  const { data: riwayat, error, count } = await query;
+
+  if (error) {
+    res.status(500).json({ success: false, message: "Gagal mengambil riwayat", data: {} });
+    return;
+  }
+
+  // Hitung durasi layanan untuk setiap antrian
+  const riwayatDenganDurasi = (riwayat ?? []).map((item: any) => {
+    let durasi_menit: number | null = null;
+    let durasi_label: string        = "—";
+
+    if (item.called_at && item.finished_at) {
+      const menit = Math.round(
+        (new Date(item.finished_at).getTime() - new Date(item.called_at).getTime()) / 60000
+      );
+      if (menit >= 0 && menit < 300) {
+        durasi_menit  = menit;
+        durasi_label  = menit < 1 ? "< 1 menit" : `${menit} menit`;
+      }
+    }
+
+    // Format tanggal yang ramah untuk ditampilkan di app
+    const tanggal = new Date(item.created_at).toLocaleDateString("id-ID", {
+      weekday: "short", day: "numeric", month: "short", year: "numeric",
+    });
+    const jam = new Date(item.created_at).toLocaleTimeString("id-ID", {
+      hour: "2-digit", minute: "2-digit",
+    });
+
+    // Label status dalam Bahasa Indonesia
+    const statusLabel: Record<string, string> = {
+      menunggu  : "Menunggu",
+      dipanggil : "Dipanggil",
+      selesai   : "Selesai",
+      batal     : "Dilewati / Batal",
+    };
+
+    return {
+      id              : item.id,
+      nomor_antrian   : item.nomor_antrian,
+      layanan         : item.layanan,
+      keperluan       : item.keperluan ?? null,
+      status          : item.status,
+      status_label    : statusLabel[item.status] ?? item.status,
+      tanggal         : tanggal,
+      jam             : jam,
+      created_at      : item.created_at,
+      called_at       : item.called_at,
+      finished_at     : item.finished_at,
+      durasi_menit    : durasi_menit,
+      durasi_label    : durasi_label,
+    };
+  });
+
+  const totalHalaman = Math.ceil((count ?? 0) / limit);
+
+  res.json({
+    success : true,
+    message : "Riwayat antrian",
+    data    : {
+      riwayat      : riwayatDenganDurasi,
+      pagination   : {
+        halaman_saat_ini : page,
+        total_halaman    : totalHalaman,
+        total_data       : count ?? 0,
+        per_halaman      : limit,
+        ada_halaman_lagi : page < totalHalaman,
+      },
+      filter       : {
+        status : status,
+        hari   : hari,
+      },
+    },
+  });
+}
+
+// ============================================================
 // GET /api/mobile/antrian/tiket/:id — Tiket antrian (HTML, dapat dicetak)
 // ============================================================
 export async function tiketAntrian(req: Request, res: Response): Promise<void> {
