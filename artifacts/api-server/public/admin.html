@@ -94,7 +94,8 @@
     }
     .monitor-close-btn:hover { background: var(--gray-200); }
 
-    .monitor-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; }
+    .monitor-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 22px; display: block; }
+    .monitor-body > * + * { margin-top: 16px; }
 
     /* Now serving besar */
     .monitor-now-serving {
