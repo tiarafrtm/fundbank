@@ -101,4 +101,7 @@ app.get("/admin/cabang",   (_req, res) => res.sendFile(path.join(publicDir, "adm
 app.get("/admin/staff",    (_req, res) => res.sendFile(path.join(publicDir, "admin.html")));
 app.get("/admin/laporan",  (_req, res) => res.sendFile(path.join(publicDir, "admin.html")));
 
+// API Documentation
+app.get("/docs", (_req, res) => res.sendFile(path.join(publicDir, "docs.html")));
+
 export default app;
