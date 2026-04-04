@@ -118,16 +118,18 @@ function getNamaNasabah(item) {
   return item.profiles?.nama ?? item.nama_nasabah ?? 'Tidak diketahui';
 }
 
-// Update badge nama cabang di sidebar
+// Update badge nama cabang di sidebar (tampilkan kode singkat, mis. CBG1)
 function updateCabangBadge(cabangInfo) {
   const badge = document.getElementById('sb-cabang-badge');
   if (!badge) return;
-  if (!cabangInfo || !cabangInfo.nama) {
+  if (!cabangInfo) {
     badge.style.display = 'none';
     return;
   }
-  badge.textContent = cabangInfo.nama;
-  badge.style.display = 'inline-block';
+  const label = cabangInfo.kode_cabang || cabangInfo.kode || cabangInfo.nama || '';
+  if (!label) { badge.style.display = 'none'; return; }
+  badge.textContent = label;
+  badge.style.display = 'flex';
 }
 
 // ===========================
