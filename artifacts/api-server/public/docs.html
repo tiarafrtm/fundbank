@@ -268,7 +268,7 @@
     .doc-section:target .section-title { color: var(--orange); }
   </style>
 </head>
-<body class="sidebar-open">
+<body>
 
 <!-- Toggle button -->
 <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle menu">
@@ -1871,6 +1871,14 @@ Authorization: Bearer &lt;token&gt;</pre>
 </main>
 
 <script>
+  // Mode embed: sidebar tertutup by default, toggle button tersembunyi
+  const isEmbed = new URLSearchParams(location.search).has('embed');
+  if (!isEmbed) {
+    document.body.classList.add('sidebar-open');
+  } else {
+    document.querySelector('.sidebar-toggle').style.display = 'none';
+  }
+
   function toggleSidebar() {
     document.body.classList.toggle('sidebar-open');
   }

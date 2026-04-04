@@ -46,9 +46,21 @@ function navigateTo(page) {
   if (pageEl) pageEl.classList.add('active');
 
   // Update topbar title
-  const titles = { dashboard: 'Dashboard', cabang: 'Kelola Cabang', staff: 'Kelola Staff', nasabah: 'Kelola Nasabah', laporan: 'Laporan' };
+  const titles = { dashboard: 'Dashboard', cabang: 'Kelola Cabang', staff: 'Kelola Staff', nasabah: 'Kelola Nasabah', laporan: 'Laporan', docs: 'Docs API' };
   const titleEl = document.getElementById('topbar-page-title');
   if (titleEl) titleEl.textContent = titles[page] ?? 'Admin';
+
+  // Mode docs: hilangkan padding agar iframe penuh
+  const mainContent = document.querySelector('.main-content');
+  if (mainContent) {
+    if (page === 'docs') {
+      mainContent.style.padding = '0';
+      mainContent.style.gap = '0';
+    } else {
+      mainContent.style.padding = '';
+      mainContent.style.gap = '';
+    }
+  }
 
   // Load data sesuai halaman
   if (page === 'dashboard') loadDashboard();

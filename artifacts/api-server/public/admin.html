@@ -209,17 +209,13 @@
         <span class="nav-label">Laporan</span>
       </button>
 
-      <a class="nav-item" href="/docs" target="_blank" style="text-decoration:none; margin-top:4px; border-top: 1px solid var(--gray-100); padding-top: 12px;">
+      <button class="nav-item" data-page="docs" style="margin-top:4px; border-top: 1px solid var(--gray-100); padding-top: 12px;">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+          <circle cx="12" cy="12" r="10"/>
           <path d="M12 16v-4M12 8h.01"/>
         </svg>
         <span class="nav-label">Docs API</span>
-        <svg style="width:11px;height:11px;margin-left:auto;opacity:.5;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-          <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-        </svg>
-      </a>
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -467,6 +463,11 @@
             <button class="btn btn-outline btn-sm" id="lap-prev" onclick="laporanPrev()" disabled>← Sebelumnya</button>
             <button class="btn btn-outline btn-sm" id="lap-next" onclick="laporanNext()">Selanjutnya →</button>
           </div>
+        </div>
+
+        <!-- ===== DOCS API ===== -->
+        <div id="page-docs" class="sub-page" style="padding:0; margin:0;">
+          <iframe src="/docs?embed=1" style="width:100%; height:calc(100vh - 60px); border:none; display:block;" title="API Documentation"></iframe>
         </div>
 
       </div>
