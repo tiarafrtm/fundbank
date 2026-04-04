@@ -29,8 +29,9 @@ app.use(express.urlencoded({ extended: true }));
 // ===========================
 // Static assets (CSS, JS, gambar)
 // ===========================
-app.use("/css", express.static(path.join(publicDir, "css")));
-app.use("/js",  express.static(path.join(publicDir, "js")));
+app.use("/css",    express.static(path.join(publicDir, "css")));
+app.use("/js",     express.static(path.join(publicDir, "js")));
+app.use("/images", express.static(path.join(publicDir, "images")));
 
 // ===========================
 // Android App Links — harus bisa diakses di:

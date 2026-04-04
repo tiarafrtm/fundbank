@@ -103,13 +103,20 @@ body {
 }
 
 .sb-icon {
-  width: 36px; height: 36px;
-  background: var(--orange);
+  width: 40px; height: 40px;
+  background: transparent;
   border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 3px 8px rgba(249,115,22,.28);
   transition: opacity .18s, width .22s;
+  overflow: hidden;
+}
+
+.sb-logo-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
 }
 
 .sb-text {
