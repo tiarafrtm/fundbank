@@ -56,6 +56,7 @@ function navigateTo(page) {
   else if (page === 'staff')   loadStaff();
   else if (page === 'nasabah') loadNasabah();
   else if (page === 'laporan') initLaporan();
+  else if (page === 'docs')    initDocs();
 }
 
 // ===========================
@@ -940,6 +941,211 @@ function updateTopbarDate() {
   const tgl = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const el = document.getElementById('topbar-date');
   if (el) el.textContent = tgl;
+}
+
+// ===========================
+// DOCS API
+// ===========================
+const DOCS_SECTIONS = [
+  {
+    id: 'auth', label: 'Autentikasi', icon: '🔑',
+    endpoints: [
+      { method:'POST', path:'/api/auth/register',        auth:'Publik',  desc:'Daftarkan akun Teller atau CS baru',
+        body: '{\n  "email": "john@teller.com",\n  "password": "pass123",\n  "nama": "John",\n  "cabang_id": 1,\n  "no_loket": "T01"\n}',
+        response: '{ "success": true, "data": { "token": "eyJ...", "user": { "role": "teller" } } }' },
+      { method:'POST', path:'/api/auth/login',           auth:'Publik',  desc:'Login Teller, CS, dan Admin — mengembalikan JWT token',
+        body: '{ "email": "john@teller.com", "password": "pass123" }',
+        response: '{ "success": true, "data": { "token": "eyJ...", "user": { "nama": "John", "role": "teller" } } }' },
+      { method:'GET',  path:'/api/auth/me',              auth:'Staff',   desc:'Info profil user yang sedang login',
+        body: null,
+        response: '{ "data": { "nama": "John", "role": "teller", "cabang": { "nama": "Cabang Sudirman" } } }' },
+      { method:'POST', path:'/api/auth/admin/reset-password', auth:'Publik', desc:'Kirim link reset password ke email via Supabase',
+        body: '{ "email": "john@teller.com" }',
+        response: '{ "success": true, "message": "Link reset terkirim" }' },
+    ]
+  },
+  {
+    id: 'antrian', label: 'Antrian (Staff)', icon: '🎫',
+    endpoints: [
+      { method:'GET',  path:'/api/antrian/statistik',  auth:'Staff',  desc:'Statistik antrian hari ini: total, menunggu, dilayani, selesai, batal',
+        body: null, response: '{ "data": { "total": 42, "menunggu": 8, "dilayani": 1, "selesai": 30, "batal": 3 } }' },
+      { method:'GET',  path:'/api/antrian/list',       auth:'Staff',  desc:'Daftar antrian hari ini, bisa filter per status (menunggu/dilayani/selesai/batal)',
+        body: null, response: '[{ "id": "uuid", "nomor": 5, "layanan": "Teller", "keperluan": "Transfer", "status": "menunggu" }]' },
+      { method:'PUT',  path:'/api/antrian/panggil',    auth:'Staff',  desc:'Panggil antrian berikutnya — otomatis kirim push notif OneSignal + WhatsApp',
+        body: null, response: '{ "data": { "nomor": 5, "status": "dilayani" } }' },
+      { method:'PUT',  path:'/api/antrian/selesai/:id',auth:'Staff',  desc:'Tandai antrian yang sedang dilayani sebagai selesai',
+        body: null, response: '{ "success": true, "message": "Antrian selesai" }' },
+      { method:'PUT',  path:'/api/antrian/batal/:id',  auth:'Staff',  desc:'Batalkan antrian yang menunggu atau sedang dilayani',
+        body: null, response: '{ "success": true, "message": "Antrian dibatalkan" }' },
+      { method:'PUT',  path:'/api/antrian/restore/:id',auth:'Staff',  desc:'Pulihkan antrian batal kembali ke status menunggu',
+        body: null, response: '{ "success": true, "message": "Antrian dipulihkan" }' },
+      { method:'POST', path:'/api/antrian/ambil',      auth:'Staff',  desc:'Staff buat antrian baru untuk nasabah walk-in tanpa mobile app',
+        body: '{ "keperluan": "Transfer", "nama_nasabah": "Budi", "no_hp": "0812..." }',
+        response: '{ "data": { "nomor": 7, "layanan": "Teller" } }' },
+      { method:'PUT',  path:'/api/antrian/loket',      auth:'Staff',  desc:'Ubah nomor loket yang tampil saat nasabah dipanggil',
+        body: '{ "no_loket": "T02" }', response: '{ "success": true, "message": "Loket diperbarui" }' },
+      { method:'GET',  path:'/api/antrian/cabang',     auth:'Staff',  desc:'Daftar semua cabang yang terdaftar',
+        body: null, response: '[{ "id": 1, "nama": "Cabang Sudirman", "kode": "CBG1" }]' },
+    ]
+  },
+  {
+    id: 'notif', label: 'Notifikasi', icon: '🔔',
+    endpoints: [
+      { method:'GET',  path:'/api/notif/status',            auth:'Staff',  desc:'Status koneksi OneSignal dan WhatsApp',
+        body: null, response: '{ "data": { "onesignal": true, "whatsapp": "connected", "wa_number": "628..." } }' },
+      { method:'GET',  path:'/api/notif/wa/qr',             auth:'Teller', desc:'QR code base64 untuk scan WhatsApp Web di dashboard Teller',
+        body: null, response: '{ "data": { "qr": "data:image/png;base64,...", "status": "waiting_scan" } }' },
+      { method:'POST', path:'/api/notif/wa/pairing-code',   auth:'Teller', desc:'Connect WhatsApp dengan kode pairing tanpa scan QR',
+        body: '{ "phone": "6281234567890" }', response: '{ "data": { "code": "AB12-CD34" } }' },
+      { method:'POST', path:'/api/notif/wa/disconnect',     auth:'Teller', desc:'Putuskan koneksi WhatsApp yang aktif',
+        body: null, response: '{ "message": "WhatsApp terputus" }' },
+      { method:'POST', path:'/api/notif/test-push',         auth:'Staff',  desc:'Kirim push notif test ke semua perangkat OneSignal terdaftar',
+        body: null, response: '{ "message": "Push notification terkirim" }' },
+    ]
+  },
+  {
+    id: 'mobile', label: 'Mobile Nasabah', icon: '📱',
+    endpoints: [
+      { method:'POST', path:'/api/mobile/daftar',           auth:'Publik', desc:'Daftarkan akun nasabah baru via mobile app',
+        body: '{ "nama": "Budi", "no_hp": "0812...", "password": "pass123", "cabang_id": 1 }',
+        response: '{ "data": { "token": "eyJ..." } }' },
+      { method:'POST', path:'/api/mobile/masuk',            auth:'Publik', desc:'Login nasabah dengan nomor HP (dikonversi ke email internal)',
+        body: '{ "no_hp": "081234567890", "password": "pass123" }',
+        response: '{ "data": { "token": "eyJ..." } }' },
+      { method:'GET',  path:'/api/mobile/cabang',           auth:'Publik', desc:'Daftar semua cabang untuk dipilih saat daftar nasabah',
+        body: null, response: '[{ "id": 1, "nama": "Cabang Sudirman" }]' },
+      { method:'GET',  path:'/api/mobile/saya',             auth:'Nasabah',desc:'Profil nasabah yang sedang login',
+        body: null, response: '{ "data": { "nama": "Budi", "no_hp": "081..." } }' },
+      { method:'POST', path:'/api/mobile/antrian/ambil',    auth:'Nasabah',desc:'Ambil nomor antrian — hanya 1 antrian aktif per nasabah',
+        body: '{ "layanan": "Teller", "keperluan": "Transfer" }',
+        response: '{ "data": { "nomor": 12, "posisi": 3 } }' },
+      { method:'GET',  path:'/api/mobile/antrian/status',   auth:'Nasabah',desc:'Cek status antrian aktif milik nasabah sekarang',
+        body: null, response: '{ "data": { "ada_antrian": true, "antrian": { "nomor": 12, "posisi": 3 } } }' },
+      { method:'GET',  path:'/api/mobile/antrian/riwayat',  auth:'Nasabah',desc:'Riwayat antrian nasabah dengan paginasi (param: limit, offset)',
+        body: null, response: '[{ "nomor": 5, "layanan": "Teller", "status": "selesai" }]' },
+      { method:'DELETE',path:'/api/mobile/antrian/:id',     auth:'Nasabah',desc:'Batalkan antrian berstatus menunggu (tidak bisa batalkan yang sudah dilayani)',
+        body: null, response: '{ "message": "Antrian dibatalkan" }' },
+    ]
+  },
+  {
+    id: 'admin', label: 'Admin', icon: '⚙️',
+    endpoints: [
+      { method:'GET',  path:'/api/admin/statistik',              auth:'Admin', desc:'Statistik global: total antrian hari ini, staff, nasabah, cabang',
+        body: null, response: '{ "data": { "total_antrian_hari_ini": 142, "total_staff": 8, "total_nasabah": 320, "total_cabang": 2 } }' },
+      { method:'GET',  path:'/api/admin/cabang',                 auth:'Admin', desc:'Daftar semua cabang beserta jumlah staff per cabang',
+        body: null, response: '[{ "id": 1, "nama": "Cabang Sudirman", "kode": "CBG1", "total_staff": 4 }]' },
+      { method:'POST', path:'/api/admin/cabang',                 auth:'Admin', desc:'Tambah cabang baru',
+        body: '{ "nama": "Cabang Merdeka", "kode": "CBG3", "alamat": "Jl. Merdeka 5" }',
+        response: '{ "data": { "id": 3 } }' },
+      { method:'PUT',  path:'/api/admin/cabang/:id',             auth:'Admin', desc:'Edit data cabang yang sudah ada',
+        body: '{ "nama": "Nama Baru", "alamat": "..." }', response: '{ "success": true, "message": "Cabang diperbarui" }' },
+      { method:'GET',  path:'/api/admin/staff',                  auth:'Admin', desc:'Daftar staff — bisa filter per cabang_id dan role (teller/cs)',
+        body: null, response: '[{ "nama": "John", "role": "teller", "no_loket": "T01" }]' },
+      { method:'POST', path:'/api/admin/staff',                  auth:'Admin', desc:'Tambah akun staff (Teller atau CS) oleh admin',
+        body: '{ "nama": "Jane", "email": "jane@cs.com", "password": "pass", "no_loket": "CS01", "cabang_id": 1 }',
+        response: '{ "data": { "id": "uuid" } }' },
+      { method:'GET',  path:'/api/admin/staff/:id/monitor',      auth:'Admin', desc:'Aktivitas real-time staff: antrian hari ini, nomor dilayani, statistik',
+        body: null, response: '{ "data": { "staff": { "nama": "John" }, "now_serving": { "nomor": 8 }, "stats": { "selesai": 12 } } }' },
+      { method:'GET',  path:'/api/admin/nasabah',                auth:'Admin', desc:'Daftar nasabah — filter cabang_id, pencarian nama (q), paginasi',
+        body: null, response: '{ "data": { "stats": { "total": 320 }, "nasabah": [{ "nama": "Budi", "total_antrian": 17 }] } }' },
+      { method:'GET',  path:'/api/admin/nasabah/:id/riwayat',    auth:'Admin', desc:'100 riwayat antrian terakhir nasabah beserta statistik lengkap',
+        body: null, response: '{ "data": { "profile": { "nama": "Budi" }, "stats": { "total": 17 }, "antrian": [...] } }' },
+      { method:'PUT',  path:'/api/admin/nasabah/:id/toggle',     auth:'Admin', desc:'Blokir atau aktifkan akun nasabah via Supabase Auth ban',
+        body: '{ "is_active": false }', response: '{ "message": "Nasabah dinonaktifkan" }' },
+      { method:'POST', path:'/api/admin/nasabah/:id/reset-password', auth:'Admin', desc:'Reset password akun nasabah',
+        body: '{ "password": "passwordbaru" }', response: '{ "message": "Password berhasil direset" }' },
+      { method:'GET',  path:'/api/admin/laporan',                auth:'Admin', desc:'Laporan antrian dengan filter tanggal (dari/sampai) dan cabang_id',
+        body: null, response: '{ "data": { "total": 450, "selesai": 400, "per_hari": [...], "per_cabang": [...] } }' },
+      { method:'POST', path:'/api/admin/bootstrap',              auth:'Publik',desc:'Buat akun admin pertama saat setup awal (sekali pakai)',
+        body: '{ "email": "admin@admin.com", "password": "password", "nama": "Administrator" }',
+        response: '{ "message": "Admin berhasil dibuat" }' },
+    ]
+  }
+];
+
+const AUTH_COLORS = {
+  'Publik':  { bg:'#F3F4F6', color:'#6B7280' },
+  'Staff':   { bg:'#FFF7ED', color:'#C2410C' },
+  'Teller':  { bg:'#F0FDF4', color:'#15803D' },
+  'Nasabah': { bg:'#EFF6FF', color:'#1D4ED8' },
+  'Admin':   { bg:'#FAF5FF', color:'#7E22CE' },
+};
+const METHOD_COLORS = {
+  'GET':    { bg:'#F0FDF4', color:'#15803D' },
+  'POST':   { bg:'#EFF6FF', color:'#1D4ED8' },
+  'PUT':    { bg:'#FEFCE8', color:'#92400E' },
+  'DELETE': { bg:'#FEF2F2', color:'#B91C1C' },
+};
+
+let _docsInitialized = false;
+
+function initDocs() {
+  if (_docsInitialized) return;
+  _docsInitialized = true;
+  renderDocs(DOCS_SECTIONS);
+}
+
+function renderDocs(sections) {
+  const container = document.getElementById('docs-endpoint-list');
+  if (!container) return;
+  container.innerHTML = sections.map(sec => {
+    const rows = sec.endpoints.map((ep, i) => {
+      const mc = METHOD_COLORS[ep.method] || { bg:'#F3F4F6', color:'#374151' };
+      const ac = AUTH_COLORS[ep.auth]     || { bg:'#F3F4F6', color:'#374151' };
+      const bodyHtml = ep.body
+        ? `<div style="margin-top:10px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9CA3AF;margin-bottom:5px;">Request Body</div>
+           <pre style="background:#1F2937;color:#E2E8F0;font-family:'Courier New',monospace;font-size:11.5px;border-radius:8px;padding:11px 13px;overflow-x:auto;white-space:pre;margin:0;">${escHtml(ep.body)}</pre></div>`
+        : '';
+      const resHtml = `<div style="margin-top:10px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9CA3AF;margin-bottom:5px;">Response</div>
+           <pre style="background:#1F2937;color:#86EFAC;font-family:'Courier New',monospace;font-size:11.5px;border-radius:8px;padding:11px 13px;overflow-x:auto;white-space:pre;margin:0;">${escHtml(ep.response)}</pre></div>`;
+      return `<div class="docs-ep-row" data-idx="${sec.id}-${i}">
+        <div class="docs-ep-header" onclick="docsToggle('${sec.id}-${i}')">
+          <span class="docs-method" style="background:${mc.bg};color:${mc.color}">${ep.method}</span>
+          <span class="docs-path">${ep.path}</span>
+          <span class="docs-ep-desc">${ep.desc}</span>
+          <span class="docs-auth-tag" style="background:${ac.bg};color:${ac.color}">${ep.auth}</span>
+          <span class="docs-chevron">›</span>
+        </div>
+        <div class="docs-ep-body" id="ep-body-${sec.id}-${i}" style="display:none;">
+          ${bodyHtml}${resHtml}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="docs-section-block" data-section="${sec.id}">
+      <div class="docs-sec-title"><span>${sec.icon}</span> ${sec.label}</div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+
+function docsToggle(id) {
+  const body = document.getElementById(`ep-body-${id}`);
+  const row  = document.querySelector(`[data-idx="${id}"]`);
+  if (!body || !row) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  const ch = row.querySelector('.docs-chevron');
+  if (ch) ch.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
+
+function docsSearch(q) {
+  const query = q.trim().toLowerCase();
+  const blocks = document.querySelectorAll('.docs-section-block');
+  blocks.forEach(block => {
+    const rows = block.querySelectorAll('.docs-ep-row');
+    let anyVisible = false;
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      const match = !query || text.includes(query);
+      row.style.display = match ? '' : 'none';
+      if (match) anyVisible = true;
+    });
+    block.style.display = anyVisible ? '' : 'none';
+  });
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // Sidebar toggle
