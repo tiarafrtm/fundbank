@@ -1,0 +1,32 @@
+# Version control
+.git
+.gitignore
+
+# Replit / editor configs
+.cache/
+.local/
+.replit
+.env
+*.env
+.cursor/
+
+# Dependencies — diinstall ulang di dalam Docker
+node_modules
+**/node_modules
+
+# Build output di host — dibuild ulang di dalam Docker
+dist
+**/dist
+
+# WhatsApp session — JANGAN masuk image, pakai volume Railway
+**/wa_session
+
+# Logs & debug
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Test & misc
+coverage
+.DS_Store
+Thumbs.db

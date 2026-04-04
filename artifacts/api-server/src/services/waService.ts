@@ -25,9 +25,8 @@ export async function initWhatsApp(): Promise<void> {
     const path = await import("path");
     const QRCode = await import("qrcode");
 
-    const { state, saveCreds } = await useMultiFileAuthState(
-      path.join(process.cwd(), "wa_session"),
-    );
+    const sessionDir = process.env["WA_SESSION_PATH"] ?? path.join(process.cwd(), "wa_session");
+    const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
 
     const { version, isLatest } = await fetchLatestBaileysVersion();
     logger.info({ version, isLatest }, "Versi WhatsApp Web digunakan");
@@ -169,7 +168,7 @@ export async function disconnectWhatsApp(): Promise<void> {
 
   const fs = await import("fs");
   const path = await import("path");
-  const sessionDir = path.join(process.cwd(), "wa_session");
+  const sessionDir = process.env["WA_SESSION_PATH"] ?? path.join(process.cwd(), "wa_session");
   if (fs.existsSync(sessionDir)) {
     fs.rmSync(sessionDir, { recursive: true, force: true });
   }

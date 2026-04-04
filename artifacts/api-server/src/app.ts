@@ -55,6 +55,13 @@ app.get("/.well-known/assetlinks.json", (_req, res) => {
 app.use("/api", router);
 
 // ===========================
+// Health check — dipakai Railway untuk deteksi container siap
+// ===========================
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", ts: new Date().toISOString() });
+});
+
+// ===========================
 // Web Pages — masing-masing halaman punya file HTML sendiri
 // ===========================
 
