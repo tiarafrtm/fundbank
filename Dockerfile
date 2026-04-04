@@ -31,7 +31,7 @@ RUN pnpm --filter @workspace/api-server run build
 # pnpm deploy buat folder produksi:
 # - Salin package + node_modules (hanya prod deps, workspace deps di-flatten)
 # - dist/ & public/ ikut karena ada di package dir saat deploy dijalankan
-RUN pnpm --filter @workspace/api-server deploy --prod /deploy
+RUN pnpm --filter @workspace/api-server deploy --prod --legacy /deploy
 
 # ==============================================================
 # Stage 2 — Runner (image sekecil mungkin)
