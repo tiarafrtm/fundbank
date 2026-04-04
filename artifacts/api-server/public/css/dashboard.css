@@ -75,6 +75,7 @@ body {
   position: fixed;
   top: 0; left: 0;
   height: 100vh;
+  height: 100dvh;
   z-index: 100;
   transition: width .22s cubic-bezier(.4,0,.2,1);
   overflow: hidden;
@@ -1021,6 +1022,9 @@ body {
     z-index: 200;
     box-shadow: none;
     width: 260px !important;
+    /* Override overflow agar sidebar mobile bisa di-scroll jika konten melebihi layar */
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   .sidebar.mobile-open {
     transform: translateX(0);
@@ -1042,6 +1046,10 @@ body {
   .sidebar.collapsed .wa-dot-side    { opacity: 1; width: 7px; }
   .sidebar.collapsed .btn-logout     { opacity: 1; width: auto; padding: 5px; pointer-events: auto; }
   .sidebar.collapsed .loket-select-btn { display: flex; }
+  /* Pada mobile, sidebar-nav tidak perlu flex:1 karena sidebar sendiri yang scroll */
+  .sidebar-nav { flex: unset; overflow-y: visible; }
+  /* Pastikan footer tidak kena clip */
+  .sidebar-footer { flex-shrink: 0; }
 
   /* Main wrapper full width */
   .main-wrapper { margin-left: 0 !important; }

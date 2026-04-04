@@ -125,7 +125,17 @@ document.querySelectorAll('.nav-item').forEach(el => {
   el.addEventListener('click', e => { e.preventDefault(); navigateTo(el.dataset.page); });
 });
 
-topbarToggle?.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+// Restore collapsed state dari localStorage
+if (window.innerWidth > 768 && localStorage.getItem('sidebar-collapsed') === '1') {
+  sidebar?.classList.add('collapsed');
+}
+topbarToggle?.addEventListener('click', () => {
+  sidebar.classList.toggle('collapsed');
+  // Simpan state ke localStorage (hanya berlaku di desktop)
+  if (window.innerWidth > 768) {
+    localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
+  }
+});
 
 logoutBtn?.addEventListener('click', () => {
   if (confirm('Yakin ingin keluar?')) { clearSession(); window.location.href = '/login'; }
