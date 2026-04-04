@@ -86,31 +86,34 @@ body {
 
 /* Brand */
 .sidebar-top {
-  height: var(--topbar-h);
-  padding: 0 12px;
+  min-height: var(--topbar-h);
+  height: auto;
+  padding: 16px 14px 14px;
   border-bottom: 1px solid var(--gray-100);
   flex-shrink: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  background: linear-gradient(135deg, #fff 60%, rgba(249,115,22,.04) 100%);
 }
 
 .sidebar-brand {
   display: flex;
   flex-direction: row;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 11px;
   width: 100%;
   overflow: hidden;
 }
 
 .sb-icon {
-  width: 32px; height: 32px;
-  background: var(--orange);
-  border-radius: 8px;
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, var(--orange) 0%, #FB923C 100%);
+  border-radius: 11px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 10px rgba(249,115,22,.3);
+  box-shadow: 0 4px 12px rgba(249,115,22,.35);
   transition: opacity .18s, transform .22s;
+  margin-top: 1px;
 }
 
 .sb-text {
@@ -121,40 +124,53 @@ body {
 }
 
 .sb-title {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--gray-800);
   white-space: nowrap;
-  line-height: 1.2;
+  line-height: 1.25;
+  letter-spacing: -.01em;
 }
 
 .sb-subtitle {
   font-size: 10.5px;
   color: var(--gray-400);
   white-space: nowrap;
+  margin-top: 1px;
+  display: block;
 }
 
 /* Badge nama cabang di sidebar */
 .sb-cabang-badge {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 2px 8px;
-  background: rgba(249, 115, 22, 0.18);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 7px;
+  padding: 3px 9px;
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.25);
   color: #EA580C;
   border-radius: 20px;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 130px;
+  max-width: 140px;
+}
+.sb-cabang-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--orange);
+  flex-shrink: 0;
 }
 
 /* Tombol hamburger di dalam sidebar */
 .sb-toggle {
   flex-shrink: 0;
-  width: 32px; height: 32px;
+  width: 30px; height: 30px;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -164,14 +180,16 @@ body {
   transition: background .15s, color .15s;
   margin-left: auto;
   font-family: var(--font);
+  margin-top: 2px;
 }
 .sb-toggle:hover { background: var(--gray-100); color: var(--gray-700); }
 
 /* Collapsed: sembunyikan icon brand + teks, hamburger tetap terlihat dan terpusat */
+.sidebar.collapsed .sidebar-top  { padding: 0; align-items: center; justify-content: center; background: transparent; }
 .sidebar.collapsed .sb-icon { opacity: 0; width: 0; margin: 0; overflow: hidden; }
 .sidebar.collapsed .sb-text { opacity: 0; width: 0; overflow: hidden; pointer-events: none; }
-.sidebar.collapsed .sidebar-brand { justify-content: center; gap: 0; }
-.sidebar.collapsed .sb-toggle { margin-left: 0; }
+.sidebar.collapsed .sidebar-brand { justify-content: center; gap: 0; align-items: center; }
+.sidebar.collapsed .sb-toggle { margin-left: 0; margin-top: 0; }
 
 /* Nav */
 .sidebar-nav {
@@ -1033,13 +1051,14 @@ body {
   /* Reset collapsed state di mobile */
   .sidebar.collapsed { width: 260px !important; transform: translateX(-100%); }
   .sidebar.collapsed.mobile-open { transform: translateX(0); }
+  .sidebar.collapsed .sidebar-top    { padding: 16px 14px 14px; align-items: flex-start; justify-content: flex-start; background: linear-gradient(135deg, #fff 60%, rgba(249,115,22,.04) 100%); }
   .sidebar.collapsed .sb-text        { opacity: 1; width: auto; pointer-events: auto; }
-  .sidebar.collapsed .sb-icon        { opacity: 1; width: 32px; margin: 0; }
+  .sidebar.collapsed .sb-icon        { opacity: 1; width: 38px; margin-top: 1px; }
   .sidebar.collapsed .nav-label      { opacity: 1; }
   .sidebar.collapsed .nav-badge      { display: flex; }
   .sidebar.collapsed .nav-section-label { opacity: 1; }
-  .sidebar.collapsed .sidebar-brand  { justify-content: flex-start; gap: 10px; }
-  .sidebar.collapsed .sb-toggle      { margin-left: auto; }
+  .sidebar.collapsed .sidebar-brand  { justify-content: flex-start; gap: 11px; align-items: flex-start; }
+  .sidebar.collapsed .sb-toggle      { margin-left: auto; margin-top: 2px; }
   .sidebar.collapsed .sidebar-footer { padding: 12px 10px; }
   .sidebar.collapsed .sb-user        { padding: 10px; justify-content: flex-start; gap: 9px; }
   .sidebar.collapsed .sb-user-info   { opacity: 1; width: auto; pointer-events: auto; }
