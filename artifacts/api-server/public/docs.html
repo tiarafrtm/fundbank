@@ -22,13 +22,47 @@
     }
     body { font-family: 'Poppins', sans-serif; background: var(--gray-50); color: var(--gray-800); display: flex; min-height: 100vh; }
 
+    /* ===== TOGGLE BUTTON ===== */
+    .sidebar-toggle {
+      position: fixed; top: 16px; left: 16px; z-index: 300;
+      width: 38px; height: 38px; border-radius: 10px;
+      background: var(--white); border: 1px solid var(--gray-200);
+      box-shadow: 0 2px 8px rgba(0,0,0,.10);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 5px; cursor: pointer; transition: background .15s, box-shadow .15s;
+    }
+    .sidebar-toggle:hover { background: var(--gray-50); box-shadow: 0 4px 14px rgba(0,0,0,.13); }
+    .sidebar-toggle span {
+      display: block; width: 18px; height: 2px;
+      background: var(--gray-700); border-radius: 2px;
+      transition: transform .25s, opacity .25s, width .25s;
+      transform-origin: center;
+    }
+    /* X state saat open */
+    body.sidebar-open .sidebar-toggle span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    body.sidebar-open .sidebar-toggle span:nth-child(2) { opacity: 0; width: 0; }
+    body.sidebar-open .sidebar-toggle span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* overlay backdrop (mobile) */
+    .sidebar-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35);
+      z-index: 150; opacity: 0; transition: opacity .25s;
+    }
+    body.sidebar-open .sidebar-backdrop { opacity: 1; }
+
     /* ===== SIDEBAR ===== */
     .sidebar {
       width: var(--sidebar-w); flex-shrink: 0;
       position: fixed; top: 0; left: 0; bottom: 0;
       background: var(--white); border-right: 1px solid var(--gray-200);
-      display: flex; flex-direction: column; overflow-y: auto; z-index: 100;
+      display: flex; flex-direction: column; overflow-y: auto; z-index: 200;
+      transform: translateX(0);
+      transition: transform .28s cubic-bezier(.4,0,.2,1);
     }
+    /* Sidebar tertutup */
+    body:not(.sidebar-open) .sidebar { transform: translateX(calc(-1 * var(--sidebar-w))); }
+    body:not(.sidebar-open) .main { margin-left: 0; }
+    body.sidebar-open .sidebar-backdrop { display: block; }
     .sidebar-logo {
       padding: 24px 20px 18px;
       border-bottom: 1px solid var(--gray-100);
@@ -67,7 +101,7 @@
     }
 
     /* ===== MAIN CONTENT ===== */
-    .main { margin-left: var(--sidebar-w); flex: 1; min-width: 0; }
+    .main { margin-left: var(--sidebar-w); flex: 1; min-width: 0; transition: margin-left .28s cubic-bezier(.4,0,.2,1); }
 
     /* hero */
     .hero {
@@ -234,7 +268,15 @@
     .doc-section:target .section-title { color: var(--orange); }
   </style>
 </head>
-<body>
+<body class="sidebar-open">
+
+<!-- Toggle button -->
+<button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle menu">
+  <span></span><span></span><span></span>
+</button>
+
+<!-- Backdrop (tutup sidebar saat klik di luar) -->
+<div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
 
 <!-- ===== SIDEBAR ===== -->
 <nav class="sidebar">
@@ -1829,6 +1871,10 @@ Authorization: Bearer &lt;token&gt;</pre>
 </main>
 
 <script>
+  function toggleSidebar() {
+    document.body.classList.toggle('sidebar-open');
+  }
+
   function toggleCard(card) {
     card.classList.toggle('open');
   }
@@ -1837,6 +1883,10 @@ Authorization: Bearer &lt;token&gt;</pre>
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
     event.currentTarget.classList.add('active');
+    // Tutup sidebar di layar kecil setelah klik link
+    if (window.innerWidth < 900) {
+      document.body.classList.remove('sidebar-open');
+    }
   }
 
   // Scroll spy
