@@ -556,11 +556,31 @@ function setModalAlert(elId, type, msg) {
   }
 })();
 
-// Sidebar toggle (reuse dari shared.js)
+// Clock topbar
+function startClock() {
+  function tick() {
+    const now = new Date();
+    const el  = document.getElementById('clock');
+    if (el) el.textContent = now.toLocaleTimeString('id-ID', { hour12: false });
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// Topbar date
+function updateTopbarDate() {
+  const tgl = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const el = document.getElementById('topbar-date');
+  if (el) el.textContent = tgl;
+}
+
+// Sidebar toggle
 document.addEventListener('DOMContentLoaded', () => {
   const sidebar = document.getElementById('sidebar');
   const toggle  = document.getElementById('topbar-toggle');
   if (toggle && sidebar) {
     toggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
   }
+  startClock();
+  updateTopbarDate();
 });

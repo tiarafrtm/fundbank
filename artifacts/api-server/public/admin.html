@@ -197,18 +197,30 @@
     </div>
   </aside>
 
-  <!-- ===== MAIN CONTENT ===== -->
-  <main class="main-content">
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
 
-    <!-- Topbar mobile -->
-    <div class="topbar-mobile">
-      <button class="topbar-menu-btn" onclick="openMobileSidebar()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-        </svg>
-      </button>
-      <span class="topbar-title" id="topbar-page-title">Dashboard</span>
-    </div>
+  <!-- ===== MAIN WRAPPER ===== -->
+  <div class="main-wrapper">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="tb-hamburger" id="mobile-menu-btn" onclick="openMobileSidebar()" aria-label="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <div class="topbar-title-wrap">
+          <h2 class="page-title" id="topbar-page-title">Dashboard</h2>
+          <span class="page-sub" id="topbar-date"></span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="time-chip" id="clock">--:--:--</div>
+      </div>
+    </header>
+
+    <main class="main-content">
 
     <!-- ===================== PAGE: DASHBOARD ===================== -->
     <div id="page-dashboard" class="page active">
@@ -360,11 +372,9 @@
       </div>
     </div>
 
-  </main>
-</div>
-
-<!-- Sidebar backdrop mobile -->
-<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+    </main>
+  </div><!-- end .main-wrapper -->
+</div><!-- end .app-layout -->
 
 <!-- ===================== MODAL: CABANG ===================== -->
 <div class="modal-backdrop hidden" id="modal-cabang">
