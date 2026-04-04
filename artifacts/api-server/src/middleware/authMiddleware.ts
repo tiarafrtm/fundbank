@@ -76,6 +76,19 @@ export async function anyStaffMiddleware(
   next();
 }
 
+export async function adminMiddleware(
+  req: Request, res: Response, next: NextFunction,
+): Promise<void> {
+  const user = await resolveUser(req, res);
+  if (!user) return;
+  const role = await resolveRole(req, user);
+  if (role !== "admin") {
+    res.status(403).json({ success: false, message: "Akses ditolak. Hanya Admin yang diizinkan", data: {} });
+    return;
+  }
+  next();
+}
+
 export async function nasabahMiddleware(
   req: Request, res: Response, next: NextFunction,
 ): Promise<void> {

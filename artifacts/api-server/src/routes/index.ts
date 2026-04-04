@@ -4,6 +4,7 @@ import authRouter from "./auth";
 import antrianRouter from "./antrian";
 import notifRouter from "./notif";
 import mobileRouter from "./mobile";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -21,5 +22,8 @@ router.use("/notif", notifRouter);
 
 // Mobile app routes: /api/mobile/*
 router.use("/mobile", mobileRouter);
+
+// Admin routes: /api/admin/*
+router.use("/admin", adminRouter);
 
 export default router;

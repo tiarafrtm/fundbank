@@ -58,7 +58,7 @@ loginForm.addEventListener('submit', async (e) => {
     const role = result.data.user?.role;
 
     // Pastikan role dikenali
-    if (!['teller', 'cs'].includes(role)) {
+    if (!['teller', 'cs', 'admin'].includes(role)) {
       loginError.textContent = 'Akses ditolak. Role tidak dikenali.';
       loginError.classList.remove('hidden');
       return;
@@ -70,6 +70,8 @@ loginForm.addEventListener('submit', async (e) => {
     // Redirect ke dashboard sesuai role
     if (role === 'teller') {
       window.location.href = '/dashboard';
+    } else if (role === 'admin') {
+      window.location.href = '/admin';
     } else {
       window.location.href = '/cs';
     }
@@ -149,8 +151,9 @@ registerForm.addEventListener('submit', async (e) => {
     const result = await api('GET', '/auth/me');
     if (result.success) {
       const role = result.data.profile?.role;
-      if (role === 'teller') window.location.href = '/dashboard';
-      else if (role === 'cs') window.location.href = '/cs';
+      if (role === 'teller')      window.location.href = '/dashboard';
+      else if (role === 'cs')     window.location.href = '/cs';
+      else if (role === 'admin')  window.location.href = '/admin';
       else clearSession(); // Role tidak dikenali, bersihkan session
     } else {
       clearSession(); // Token tidak valid

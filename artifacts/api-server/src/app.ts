@@ -95,4 +95,10 @@ app.get("/cs/buat",    (_req, res) => res.sendFile(path.join(publicDir, "cs.html
 // URL: https://antrianbank.site/tiket?ticket=17
 app.get("/tiket", (_req, res) => res.sendFile(path.join(publicDir, "tiket.html")));
 
+// Dashboard Admin — semua sub-path ke admin.html (navigasi diurus admin.js)
+app.get("/admin",          (_req, res) => res.sendFile(path.join(publicDir, "admin.html")));
+app.get("/admin/cabang",   (_req, res) => res.sendFile(path.join(publicDir, "admin.html")));
+app.get("/admin/staff",    (_req, res) => res.sendFile(path.join(publicDir, "admin.html")));
+app.get("/admin/laporan",  (_req, res) => res.sendFile(path.join(publicDir, "admin.html")));
+
 export default app;

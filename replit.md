@@ -18,6 +18,18 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (ESM bundle)
 
+## Roles
+
+| Role | Email Domain | Halaman |
+|------|-------------|---------|
+| Teller | @teller.com | `/dashboard` |
+| CS | @cs.com | `/cs` |
+| Admin | Bebas (dibuat via bootstrap) | `/admin` |
+| Nasabah | — | Mobile app |
+
+Admin dibuat via `POST /api/admin/bootstrap` dengan header `x-admin-secret: <SESSION_SECRET>`.
+Admin bisa melihat statistik semua cabang, CRUD cabang & staff, dan laporan antrian + export CSV.
+
 ## Structure
 
 ```text
