@@ -178,11 +178,13 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
     const cabangId: number | null      = staffProfile?.cabang_id ?? null;
     const cabangInfo: any              = staffProfile?.cabang ?? null;
 
-    // Ambil loket_terpakai — hanya dari staff di cabang yang sama
+    // Ambil loket_terpakai — hanya dari staff ROLE SAMA di cabang yang sama
+    // (Teller dan CS punya loket terpisah — loket Teller tidak konflik dengan loket CS)
+    const myRole = (req as any).userRole as string;
     let profilesQuery = supabaseAdmin
       .from("profiles")
       .select("id, loket_number")
-      .in("role", ["teller", "cs"])
+      .eq("role", myRole)
       .not("loket_number", "is", null);
 
     if (cabangId != null) profilesQuery = profilesQuery.eq("cabang_id", cabangId);
@@ -280,6 +282,30 @@ export async function setLoket(req: Request, res: Response): Promise<void> {
   }
 
   const layanan = ROLE_LAYANAN[role] ?? null;
+
+  // Ambil cabang staff yang sedang login
+  const staffProfile = await getStaffProfile(user.id);
+  const cabangId = staffProfile?.cabang_id ?? null;
+
+  // Cek konflik: apakah loket sudah dipakai staff lain dengan role yang sama di cabang yang sama
+  let conflictQuery = supabaseAdmin
+    .from("profiles")
+    .select("id, nama")
+    .eq("role", role)
+    .eq("loket_number", loket_number)
+    .neq("id", user.id);
+
+  if (cabangId != null) conflictQuery = conflictQuery.eq("cabang_id", cabangId);
+
+  const { data: conflict } = await conflictQuery.maybeSingle();
+  if (conflict) {
+    res.status(409).json({
+      success: false,
+      message: `Loket ${loket_number} sudah dipakai oleh ${conflict.nama}. Pilih nomor lain.`,
+      data: {},
+    });
+    return;
+  }
 
   const { data, error } = await supabaseAdmin
     .from("profiles")

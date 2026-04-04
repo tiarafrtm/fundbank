@@ -199,7 +199,7 @@ function openLoketModal(occupiedLokets = []) {
   const modal = document.getElementById('loket-modal');
   const grid = document.getElementById('loket-grid');
   if (!modal || !grid) return;
-  grid.innerHTML = Array.from({length: 8}, (_, i) => i + 1).map(n => {
+  grid.innerHTML = Array.from({length: 10}, (_, i) => i + 1).map(n => {
     const isOccupied = occupiedLokets.includes(n) && n !== myLoketNumber;
     const isActive   = n === myLoketNumber;
     const cls = isOccupied ? 'loket-btn occupied' : isActive ? 'loket-btn active' : 'loket-btn';
@@ -223,9 +223,12 @@ async function setMyLoket(n) {
       closeLoketModal();
       loadQueueData();
     } else {
-      alert(result.message || 'Gagal menyimpan loket');
+      // Refresh loket modal agar loket yang konflik langsung terlihat occupied
+      showToast(result.message || 'Gagal menyimpan loket', 'error');
+      await loadQueueData();
+      openLoketModal(window._loketTerpakai || []);
     }
-  } catch { alert('Gagal terhubung ke server'); }
+  } catch { showToast('Gagal terhubung ke server', 'error'); }
 }
 
 document.getElementById('loket-select-btn')?.addEventListener('click', () => {
