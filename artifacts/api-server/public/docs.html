@@ -3,1925 +3,845 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>API Docs — Dashboard Teller</title>
+  <title>Docs API — Dashboard Teller</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --orange: #F97316; --orange-light: #FFF7ED; --orange-mid: #FFEDD5;
-      --gray-50: #F9FAFB; --gray-100: #F3F4F6; --gray-200: #E5E7EB;
-      --gray-300: #D1D5DB; --gray-400: #9CA3AF; --gray-500: #6B7280;
-      --gray-600: #4B5563; --gray-700: #374151; --gray-800: #1F2937;
-      --white: #FFFFFF;
-      --green: #22C55E; --green-bg: #F0FDF4;
-      --blue: #3B82F6; --blue-bg: #EFF6FF;
-      --red: #EF4444; --red-bg: #FEF2F2;
-      --purple: #A855F7; --purple-bg: #FAF5FF;
-      --yellow: #EAB308; --yellow-bg: #FEFCE8;
-      --sidebar-w: 280px;
+    /* ===== DOCS-SPECIFIC STYLES ===== */
+    .docs-nav-group { padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
+    .docs-nav-group:last-child { border-bottom: none; }
+    .docs-nav-group-title {
+      font-size: 9px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--gray-400);
+      padding: 10px 20px 4px;
     }
-    body { font-family: 'Poppins', sans-serif; background: var(--gray-50); color: var(--gray-800); display: flex; min-height: 100vh; }
-
-    /* ===== TOGGLE BUTTON ===== */
-    .sidebar-toggle {
-      position: fixed; top: 16px; left: 16px; z-index: 300;
-      width: 38px; height: 38px; border-radius: 10px;
-      background: var(--white); border: 1px solid var(--gray-200);
-      box-shadow: 0 2px 8px rgba(0,0,0,.10);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 5px; cursor: pointer; transition: background .15s, box-shadow .15s;
-    }
-    .sidebar-toggle:hover { background: var(--gray-50); box-shadow: 0 4px 14px rgba(0,0,0,.13); }
-    .sidebar-toggle span {
-      display: block; width: 18px; height: 2px;
-      background: var(--gray-700); border-radius: 2px;
-      transition: transform .25s, opacity .25s, width .25s;
-      transform-origin: center;
-    }
-    /* X state saat open */
-    body.sidebar-open .sidebar-toggle span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
-    body.sidebar-open .sidebar-toggle span:nth-child(2) { opacity: 0; width: 0; }
-    body.sidebar-open .sidebar-toggle span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
-
-    /* overlay backdrop (mobile) */
-    .sidebar-backdrop {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35);
-      z-index: 150; opacity: 0; transition: opacity .25s;
-    }
-    body.sidebar-open .sidebar-backdrop { opacity: 1; }
-
-    /* ===== SIDEBAR ===== */
-    .sidebar {
-      width: var(--sidebar-w); flex-shrink: 0;
-      position: fixed; top: 0; left: 0; bottom: 0;
-      background: var(--white); border-right: 1px solid var(--gray-200);
-      display: flex; flex-direction: column; overflow-y: auto; z-index: 200;
-      transform: translateX(0);
-      transition: transform .28s cubic-bezier(.4,0,.2,1);
-    }
-    /* Sidebar tertutup */
-    body:not(.sidebar-open) .sidebar { transform: translateX(calc(-1 * var(--sidebar-w))); }
-    body:not(.sidebar-open) .main { margin-left: 0; }
-    body.sidebar-open .sidebar-backdrop { display: block; }
-    .sidebar-logo {
-      padding: 24px 20px 18px;
-      border-bottom: 1px solid var(--gray-100);
-    }
-    .sidebar-logo .brand { display: flex; align-items: center; gap: 10px; }
-    .sidebar-logo .brand-icon {
-      width: 36px; height: 36px; background: var(--orange); border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; color: #fff;
-    }
-    .sidebar-logo .brand-name { font-size: 14px; font-weight: 700; color: var(--gray-800); line-height: 1.2; }
-    .sidebar-logo .brand-sub { font-size: 10px; color: var(--gray-400); font-weight: 500; margin-top: 1px; }
-    .sidebar-logo .base-url {
-      margin-top: 12px; background: var(--gray-50); border: 1px solid var(--gray-200);
-      border-radius: 8px; padding: 8px 12px; font-family: 'JetBrains Mono', monospace;
-      font-size: 10px; color: var(--orange); word-break: break-all; line-height: 1.5;
-    }
-
-    .sidebar-section { padding: 12px 0; }
-    .sidebar-section-title {
-      font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
-      color: var(--gray-400); padding: 0 20px 6px;
-    }
-    .sidebar-link {
+    .docs-nav-item {
       display: flex; align-items: center; gap: 8px;
-      padding: 7px 20px; font-size: 12px; font-weight: 500; color: var(--gray-600);
-      text-decoration: none; cursor: pointer; transition: background .15s, color .15s;
+      padding: 7px 20px; font-size: 12px; font-weight: 500;
+      color: var(--gray-600); cursor: pointer;
+      border: none; background: none; width: 100%; text-align: left;
       border-left: 3px solid transparent;
+      transition: background .15s, color .15s;
+      font-family: inherit;
     }
-    .sidebar-link:hover { background: var(--gray-50); color: var(--gray-800); }
-    .sidebar-link.active { background: var(--orange-light); color: var(--orange); border-left-color: var(--orange); font-weight: 600; }
-    .sidebar-link .link-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .sidebar-count {
+    .docs-nav-item:hover { background: var(--gray-50); color: var(--gray-800); }
+    .docs-nav-item.active {
+      background: var(--orange-soft); color: var(--orange);
+      border-left-color: var(--orange); font-weight: 600;
+    }
+    .docs-nav-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .docs-nav-count {
       margin-left: auto; background: var(--gray-100); color: var(--gray-500);
       font-size: 10px; font-weight: 600; border-radius: 10px; padding: 1px 7px;
     }
-
-    /* ===== MAIN CONTENT ===== */
-    .main { margin-left: var(--sidebar-w); flex: 1; min-width: 0; transition: margin-left .28s cubic-bezier(.4,0,.2,1); }
-
-    /* hero */
-    .hero {
-      background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
-      padding: 56px 48px 48px; color: #fff;
+    .docs-back-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; margin: 12px 12px;
+      border-radius: 9px; border: 1px solid var(--gray-200);
+      background: var(--gray-50); color: var(--gray-600);
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      text-decoration: none; transition: background .15s, color .15s;
+      font-family: inherit;
     }
-    .hero-badge {
+    .docs-back-btn:hover { background: var(--orange-soft); color: var(--orange); border-color: var(--orange-mid); }
+
+    /* ===== DOCS CONTENT ===== */
+    .docs-hero {
+      background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+      border-radius: 16px; padding: 36px 36px 32px; color: #fff; margin-bottom: 4px;
+    }
+    .docs-hero-badge {
       display: inline-flex; align-items: center; gap: 6px;
       background: rgba(249,115,22,.2); border: 1px solid rgba(249,115,22,.4);
-      color: var(--orange); font-size: 11px; font-weight: 600; letter-spacing: .06em;
-      text-transform: uppercase; border-radius: 20px; padding: 4px 12px; margin-bottom: 18px;
+      color: var(--orange); font-size: 11px; font-weight: 600;
+      letter-spacing: .06em; text-transform: uppercase;
+      border-radius: 20px; padding: 4px 12px; margin-bottom: 14px;
     }
-    .hero h1 { font-size: 32px; font-weight: 800; margin-bottom: 10px; }
-    .hero p { font-size: 14px; color: #9CA3AF; line-height: 1.7; max-width: 600px; }
-    .hero-meta {
-      display: flex; gap: 16px; margin-top: 24px; flex-wrap: wrap;
-    }
-    .hero-chip {
+    .docs-hero h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
+    .docs-hero p { font-size: 13px; color: #9CA3AF; line-height: 1.7; }
+    .docs-hero-meta { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .docs-hero-chip {
       background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
-      border-radius: 8px; padding: 8px 14px; font-size: 11px; color: #D1D5DB;
-      display: flex; align-items: center; gap: 6px;
+      border-radius: 8px; padding: 6px 12px; font-size: 11px; color: #D1D5DB;
     }
-    .hero-chip strong { color: #fff; }
+    .docs-hero-chip strong { color: #fff; }
 
-    /* section */
-    .doc-section { padding: 40px 48px; border-bottom: 1px solid var(--gray-200); scroll-margin-top: 0; }
-    .doc-section:last-child { border-bottom: none; }
-    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-    .section-icon {
-      width: 36px; height: 36px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+    /* Section */
+    .docs-section { scroll-margin-top: 20px; }
+    .docs-section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .docs-section-icon {
+      width: 32px; height: 32px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0;
     }
-    .section-title { font-size: 20px; font-weight: 700; color: var(--gray-800); }
-    .section-desc { font-size: 13px; color: var(--gray-500); line-height: 1.6; margin-bottom: 24px; margin-left: 48px; }
+    .docs-section-title { font-size: 17px; font-weight: 700; color: var(--gray-800); }
+    .docs-section-desc { font-size: 12.5px; color: var(--gray-500); line-height: 1.65; margin-bottom: 16px; margin-left: 42px; }
 
-    /* endpoint card */
-    .endpoint-card {
-      border: 1px solid var(--gray-200); border-radius: 14px;
-      overflow: hidden; margin-bottom: 14px; background: var(--white);
-      transition: box-shadow .15s;
+    /* Endpoint card */
+    .ep-card {
+      border: 1px solid var(--gray-200); border-radius: 12px;
+      overflow: hidden; margin-bottom: 10px; background: var(--white);
     }
-    .endpoint-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.06); }
-    .endpoint-header {
-      display: flex; align-items: center; gap: 12px;
-      padding: 16px 20px; cursor: pointer; user-select: none;
+    .ep-card-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 13px 18px; cursor: pointer; user-select: none;
     }
+    .ep-card-header:hover { background: var(--gray-50); }
     .method-badge {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 11px; font-weight: 700; letter-spacing: .05em;
-      border-radius: 6px; padding: 3px 9px; flex-shrink: 0; min-width: 56px; text-align: center;
+      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      border-radius: 5px; padding: 3px 8px; flex-shrink: 0; min-width: 52px; text-align: center;
     }
-    .method-GET    { background: var(--green-bg);  color: var(--green); }
-    .method-POST   { background: var(--blue-bg);   color: var(--blue); }
-    .method-PUT    { background: var(--yellow-bg); color: var(--yellow); }
-    .method-DELETE { background: var(--red-bg);    color: var(--red); }
-    .method-PATCH  { background: var(--purple-bg); color: var(--purple); }
-
-    .endpoint-path {
-      font-family: 'JetBrains Mono', monospace; font-size: 13px;
-      color: var(--gray-700); font-weight: 500; flex: 1; min-width: 0; word-break: break-all;
+    .m-GET    { background: #F0FDF4; color: #16A34A; }
+    .m-POST   { background: #EFF6FF; color: #2563EB; }
+    .m-PUT    { background: #FEFCE8; color: #CA8A04; }
+    .m-DELETE { background: #FEF2F2; color: #DC2626; }
+    .ep-path {
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+      color: var(--gray-700); flex: 1; word-break: break-all;
     }
-    .endpoint-summary { font-size: 12px; color: var(--gray-400); margin-left: auto; flex-shrink: 0; padding-left: 12px; }
-    .auth-chip {
-      font-size: 10px; font-weight: 600; border-radius: 5px;
-      padding: 2px 8px; flex-shrink: 0;
+    .ep-auth {
+      font-size: 9.5px; font-weight: 600; border-radius: 5px;
+      padding: 2px 7px; flex-shrink: 0;
     }
-    .auth-none     { background: var(--gray-100); color: var(--gray-400); }
-    .auth-staff    { background: var(--orange-mid); color: var(--orange); }
-    .auth-mobile   { background: var(--blue-bg); color: var(--blue); }
-    .auth-admin    { background: #FDF4FF; color: #9333EA; }
-    .auth-teller   { background: var(--green-bg); color: var(--green); }
-    .chevron { font-size: 12px; color: var(--gray-400); margin-left: 8px; transition: transform .2s; flex-shrink: 0; }
-    .endpoint-card.open .chevron { transform: rotate(180deg); }
-
-    .endpoint-body {
-      display: none; border-top: 1px solid var(--gray-100); padding: 20px 20px 24px;
-      background: var(--gray-50);
+    .auth-pub    { background: var(--gray-100); color: var(--gray-500); }
+    .auth-staff  { background: #FFF7ED; color: var(--orange); }
+    .auth-mobile { background: #EFF6FF; color: #2563EB; }
+    .auth-admin  { background: #FAF5FF; color: #9333EA; }
+    .auth-teller { background: #F0FDF4; color: #16A34A; }
+    .ep-chevron { font-size: 11px; color: var(--gray-400); margin-left: 4px; transition: transform .2s; flex-shrink: 0; }
+    .ep-card.open .ep-chevron { transform: rotate(180deg); }
+    .ep-card-body {
+      display: none; border-top: 1px solid var(--gray-100);
+      padding: 18px 18px 20px; background: var(--gray-50);
     }
-    .endpoint-card.open .endpoint-body { display: block; }
-
-    .ep-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    @media (max-width: 900px) { .ep-grid { grid-template-columns: 1fr; } }
-
-    .ep-block { }
-    .ep-label {
-      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
-      color: var(--gray-400); margin-bottom: 8px;
+    .ep-card.open .ep-card-body { display: block; }
+    .ep-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .ep-lbl {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--gray-400); margin-bottom: 7px;
     }
-    .ep-desc { font-size: 12px; color: var(--gray-600); line-height: 1.6; margin-bottom: 12px; }
-
+    .ep-desc { font-size: 12px; color: var(--gray-600); line-height: 1.6; margin-bottom: 10px; }
     pre.code-block {
-      background: var(--gray-800); color: #e2e8f0;
-      font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.7;
-      border-radius: 10px; padding: 14px 16px; overflow-x: auto; white-space: pre;
+      background: #1F2937; color: #E2E8F0;
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.7;
+      border-radius: 10px; padding: 13px 15px; overflow-x: auto; white-space: pre; margin: 0;
     }
-    pre.code-block .key   { color: #7DD3FC; }
-    pre.code-block .str   { color: #86EFAC; }
-    pre.code-block .num   { color: #FCA5A5; }
-    pre.code-block .bool  { color: #FDE68A; }
-    pre.code-block .comment { color: #6B7280; font-style: italic; }
+    pre.code-block .k { color: #7DD3FC; }
+    pre.code-block .s { color: #86EFAC; }
+    pre.code-block .n { color: #FCA5A5; }
+    pre.code-block .b { color: #FDE68A; }
+    pre.code-block .c { color: #6B7280; font-style: italic; }
 
-    .param-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .param-table th { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--gray-400); padding: 6px 10px; text-align: left; background: var(--gray-100); }
-    .param-table td { padding: 8px 10px; border-top: 1px solid var(--gray-200); color: var(--gray-600); vertical-align: top; }
-    .param-table td:first-child { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--gray-800); font-weight: 500; }
-    .param-table .required { color: var(--red); font-size: 9px; font-weight: 700; text-transform: uppercase; }
-    .param-table .optional { color: var(--gray-400); font-size: 9px; font-weight: 600; text-transform: uppercase; }
-    .param-type { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--blue); }
+    .param-tbl { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+    .param-tbl th { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--gray-400); padding: 6px 10px; background: var(--gray-100); text-align: left; }
+    .param-tbl td { padding: 7px 10px; border-top: 1px solid var(--gray-200); color: var(--gray-600); vertical-align: top; }
+    .param-tbl td:first-child { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--gray-800); font-weight: 500; }
+    .p-req { color: #DC2626; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+    .p-type { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #2563EB; }
 
-    /* concept boxes */
-    .concept-box {
-      border-radius: 12px; padding: 18px 20px; margin-bottom: 20px;
-      display: flex; gap: 14px; align-items: flex-start;
+    /* Concept boxes */
+    .info-box {
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;
+      display: flex; gap: 12px;
     }
-    .concept-box.info { background: var(--blue-bg); border: 1px solid #BFDBFE; }
-    .concept-box.warn { background: var(--yellow-bg); border: 1px solid #FDE68A; }
-    .concept-box.tip  { background: var(--green-bg); border: 1px solid #BBF7D0; }
-    .concept-box.orange { background: var(--orange-light); border: 1px solid var(--orange-mid); }
-    .cb-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
-    .cb-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
-    .cb-text { font-size: 12px; line-height: 1.65; }
-    .concept-box.info .cb-title { color: var(--blue); }
-    .concept-box.warn .cb-title { color: #92400E; }
-    .concept-box.tip  .cb-title { color: #166534; }
-    .concept-box.orange .cb-title { color: var(--orange); }
-    .cb-text { color: var(--gray-600); }
+    .info-box.blue   { background: #EFF6FF; border: 1px solid #BFDBFE; }
+    .info-box.orange { background: #FFF7ED; border: 1px solid #FFEDD5; }
+    .info-box.green  { background: #F0FDF4; border: 1px solid #BBF7D0; }
+    .info-box.yellow { background: #FEFCE8; border: 1px solid #FDE68A; }
+    .ib-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .ib-title { font-size: 12.5px; font-weight: 700; margin-bottom: 4px; }
+    .info-box.blue .ib-title   { color: #1D4ED8; }
+    .info-box.orange .ib-title { color: var(--orange); }
+    .info-box.green .ib-title  { color: #15803D; }
+    .info-box.yellow .ib-title { color: #92400E; }
+    .ib-text { font-size: 11.5px; color: var(--gray-600); line-height: 1.65; }
 
-    /* role table */
-    .role-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
-    @media (max-width: 800px) { .role-grid { grid-template-columns: repeat(2, 1fr); } }
-    .role-card {
-      border-radius: 12px; border: 1px solid var(--gray-200); padding: 16px;
-      background: var(--white);
-    }
-    .role-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
-    .role-email { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--gray-400); margin-bottom: 10px; }
-    .role-badge-list { display: flex; flex-direction: column; gap: 4px; }
-    .role-perm { font-size: 11px; color: var(--gray-600); display: flex; align-items: center; gap: 5px; }
-    .role-perm::before { content: '✓'; color: var(--green); font-weight: 700; font-size: 10px; }
+    /* Role cards */
+    .role-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+    .role-card { border-radius: 10px; border: 1px solid var(--gray-200); padding: 14px; background: var(--white); }
+    .role-name { font-size: 12.5px; font-weight: 700; margin-bottom: 3px; }
+    .role-email { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--gray-400); margin-bottom: 10px; }
+    .role-perm { font-size: 11px; color: var(--gray-600); display: flex; align-items: center; gap: 5px; padding: 2px 0; }
+    .role-perm::before { content: '✓'; color: #16A34A; font-weight: 700; font-size: 10px; }
 
-    /* keperluan */
-    .keperluan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .kep-card { border-radius: 10px; border: 1px solid var(--gray-200); padding: 14px 16px; background: var(--white); }
-    .kep-title { font-size: 12px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap-6px; }
-    .kep-items { display: flex; flex-direction: column; gap: 4px; }
-    .kep-item { font-size: 11px; color: var(--gray-600); display: flex; align-items: center; gap: 6px; }
+    /* Keperluan */
+    .kep-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .kep-card { border-radius: 10px; border: 1px solid var(--gray-200); padding: 14px; background: var(--white); }
+    .kep-title { font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+    .kep-item { font-size: 11px; color: var(--gray-600); padding: 2px 0; display: flex; align-items: center; gap: 6px; }
     .kep-item::before { content: '•'; color: var(--orange); font-weight: 700; }
 
-    /* top-of-page TOC */
-    .toc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 28px; }
-    @media (max-width: 700px) { .toc-grid { grid-template-columns: 1fr 1fr; } }
-    .toc-btn {
-      background: var(--white); border: 1px solid var(--gray-200);
-      border-radius: 10px; padding: 12px 14px; cursor: pointer;
-      text-align: left; font-family: inherit; transition: all .15s;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .toc-btn:hover { border-color: var(--orange); background: var(--orange-light); }
-    .toc-btn .tb-icon { font-size: 18px; }
-    .toc-btn .tb-label { font-size: 12px; font-weight: 600; color: var(--gray-700); }
-    .toc-btn .tb-count { font-size: 10px; color: var(--gray-400); }
+    /* Error table */
+    .err-tbl { width: 100%; border-collapse: collapse; font-size: 12px; border-radius: 10px; overflow: hidden; border: 1px solid var(--gray-200); }
+    .err-tbl th { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--gray-400); padding: 8px 14px; background: var(--gray-50); text-align: left; }
+    .err-tbl td { padding: 10px 14px; border-top: 1px solid var(--gray-100); color: var(--gray-600); }
+    .err-tbl tr:hover td { background: var(--gray-50); }
 
-    /* scroll spy highlight */
-    .doc-section:target .section-title { color: var(--orange); }
+    /* TOC quick-jump */
+    .toc-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .toc-card {
+      border: 1px solid var(--gray-200); border-radius: 10px;
+      padding: 12px 14px; background: var(--white); cursor: pointer;
+      display: flex; align-items: center; gap: 10px;
+      transition: border-color .15s, background .15s;
+      font-family: inherit; text-align: left;
+    }
+    .toc-card:hover { border-color: var(--orange); background: var(--orange-soft); }
+    .toc-icon { font-size: 18px; }
+    .toc-label { font-size: 12px; font-weight: 600; color: var(--gray-700); }
+    .toc-count { font-size: 10px; color: var(--gray-400); }
+
+    /* Sidebar nav scroll spy */
+    .sidebar { overflow-y: auto; }
   </style>
 </head>
 <body>
+<div class="app-layout">
 
-<!-- Toggle button -->
-<button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle menu">
-  <span></span><span></span><span></span>
-</button>
-
-<!-- Backdrop (tutup sidebar saat klik di luar) -->
-<div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
-
-<!-- ===== SIDEBAR ===== -->
-<nav class="sidebar">
-  <div class="sidebar-logo">
-    <div class="brand">
-      <div class="brand-icon">🏦</div>
-      <div>
-        <div class="brand-name">Dashboard Teller</div>
-        <div class="brand-sub">API Documentation</div>
-      </div>
-    </div>
-    <div class="base-url">https://antrianbank.site</div>
-  </div>
-
-  <div class="sidebar-section">
-    <div class="sidebar-section-title">Mulai</div>
-    <a class="sidebar-link active" onclick="scrollTo('overview')">
-      <div class="link-dot" style="background:#F97316"></div> Overview
-    </a>
-    <a class="sidebar-link" onclick="scrollTo('konsep')">
-      <div class="link-dot" style="background:#8B5CF6"></div> Konsep & Arsitektur
-    </a>
-    <a class="sidebar-link" onclick="scrollTo('autentikasi')">
-      <div class="link-dot" style="background:#3B82F6"></div> Autentikasi
-    </a>
-  </div>
-
-  <div class="sidebar-section">
-    <div class="sidebar-section-title">Endpoint</div>
-    <a class="sidebar-link" onclick="scrollTo('auth')">
-      <div class="link-dot" style="background:#22C55E"></div> Auth
-      <span class="sidebar-count">4</span>
-    </a>
-    <a class="sidebar-link" onclick="scrollTo('antrian')">
-      <div class="link-dot" style="background:#F97316"></div> Antrian (Staff)
-      <span class="sidebar-count">9</span>
-    </a>
-    <a class="sidebar-link" onclick="scrollTo('notif')">
-      <div class="link-dot" style="background:#EAB308"></div> Notifikasi
-      <span class="sidebar-count">5</span>
-    </a>
-    <a class="sidebar-link" onclick="scrollTo('mobile')">
-      <div class="link-dot" style="background:#3B82F6"></div> Mobile Nasabah
-      <span class="sidebar-count">8</span>
-    </a>
-    <a class="sidebar-link" onclick="scrollTo('admin')">
-      <div class="link-dot" style="background:#A855F7"></div> Admin
-      <span class="sidebar-count">16</span>
-    </a>
-  </div>
-
-  <div class="sidebar-section">
-    <div class="sidebar-section-title">Referensi</div>
-    <a class="sidebar-link" onclick="scrollTo('response')">
-      <div class="link-dot" style="background:#6B7280"></div> Format Response
-    </a>
-    <a class="sidebar-link" onclick="scrollTo('error')">
-      <div class="link-dot" style="background:#EF4444"></div> Kode Error
-    </a>
-  </div>
-
-  <div style="padding: 12px 16px 20px; border-top: 1px solid var(--gray-100); margin-top: auto;">
-    <a href="/admin" style="
-      display: flex; align-items: center; gap: 8px;
-      padding: 9px 14px; border-radius: 9px;
-      background: var(--gray-50); border: 1px solid var(--gray-200);
-      font-size: 12px; font-weight: 600; color: var(--gray-600);
-      text-decoration: none; transition: background .15s, color .15s;
-    " onmouseover="this.style.background='var(--orange-light)';this.style.color='var(--orange)'"
-       onmouseout="this.style.background='var(--gray-50)';this.style.color='var(--gray-600)'">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <path d="M19 12H5M12 5l-7 7 7 7"/>
-      </svg>
-      Kembali ke Admin
-    </a>
-  </div>
-</nav>
-
-<!-- ===== MAIN ===== -->
-<main class="main">
-
-  <!-- Hero -->
-  <div class="hero">
-    <div class="hero-badge">📋 REST API</div>
-    <h1>Dashboard Teller API</h1>
-    <p>Dokumentasi lengkap REST API sistem antrian FUND BANK. Digunakan oleh Dashboard Admin/Teller/CS dan aplikasi mobile nasabah (Android Studio).</p>
-    <div class="hero-meta">
-      <div class="hero-chip">🌐 Base URL: <strong>https://antrianbank.site</strong></div>
-      <div class="hero-chip">📦 Format: <strong>JSON</strong></div>
-      <div class="hero-chip">🔐 Auth: <strong>Bearer JWT</strong></div>
-      <div class="hero-chip">🗄️ DB: <strong>Supabase PostgreSQL</strong></div>
-    </div>
-  </div>
-
-  <!-- ===== OVERVIEW ===== -->
-  <section class="doc-section" id="overview">
-    <div class="section-header">
-      <div class="section-icon" style="background:#FFF7ED">🏦</div>
-      <div class="section-title">Overview</div>
-    </div>
-    <div class="section-desc">Gambaran umum sistem dan cara pemakaian API ini.</div>
-
-    <div class="toc-grid">
-      <button class="toc-btn" onclick="scrollTo('auth')">
-        <span class="tb-icon">🔐</span>
-        <div><div class="tb-label">Auth</div><div class="tb-count">4 endpoint</div></div>
-      </button>
-      <button class="toc-btn" onclick="scrollTo('antrian')">
-        <span class="tb-icon">🎫</span>
-        <div><div class="tb-label">Antrian (Staff)</div><div class="tb-count">9 endpoint</div></div>
-      </button>
-      <button class="toc-btn" onclick="scrollTo('notif')">
-        <span class="tb-icon">🔔</span>
-        <div><div class="tb-label">Notifikasi</div><div class="tb-count">5 endpoint</div></div>
-      </button>
-      <button class="toc-btn" onclick="scrollTo('mobile')">
-        <span class="tb-icon">📱</span>
-        <div><div class="tb-label">Mobile Nasabah</div><div class="tb-count">8 endpoint</div></div>
-      </button>
-      <button class="toc-btn" onclick="scrollTo('admin')">
-        <span class="tb-icon">⚙️</span>
-        <div><div class="tb-label">Admin</div><div class="tb-count">16 endpoint</div></div>
-      </button>
-      <button class="toc-btn" onclick="scrollTo('error')">
-        <span class="tb-icon">⚠️</span>
-        <div><div class="tb-label">Kode Error</div><div class="tb-count">Referensi</div></div>
-      </button>
-    </div>
-
-    <div class="role-grid">
-      <div class="role-card" style="border-top:3px solid #F97316">
-        <div class="role-name">🟠 Teller</div>
-        <div class="role-email">@teller.com</div>
-        <div class="role-badge-list">
-          <div class="role-perm">Kelola antrian Teller</div>
-          <div class="role-perm">Akses WhatsApp QR</div>
-          <div class="role-perm">Set nomor loket</div>
-        </div>
-      </div>
-      <div class="role-card" style="border-top:3px solid #3B82F6">
-        <div class="role-name">🔵 CS (Customer Service)</div>
-        <div class="role-email">@cs.com</div>
-        <div class="role-badge-list">
-          <div class="role-perm">Kelola antrian CS</div>
-          <div class="role-perm">Buat antrian manual</div>
-          <div class="role-perm">Set nomor loket</div>
-        </div>
-      </div>
-      <div class="role-card" style="border-top:3px solid #22C55E">
-        <div class="role-name">🟢 Nasabah</div>
-        <div class="role-email">Mobile App</div>
-        <div class="role-badge-list">
-          <div class="role-perm">Ambil antrian</div>
-          <div class="role-perm">Cek status & tiket</div>
-          <div class="role-perm">Riwayat antrian</div>
-        </div>
-      </div>
-      <div class="role-card" style="border-top:3px solid #A855F7">
-        <div class="role-name">🟣 Admin</div>
-        <div class="role-email">@admin.com</div>
-        <div class="role-badge-list">
-          <div class="role-perm">Kelola semua cabang</div>
-          <div class="role-perm">Kelola staff & nasabah</div>
-          <div class="role-perm">Laporan global</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== KONSEP ===== -->
-  <section class="doc-section" id="konsep">
-    <div class="section-header">
-      <div class="section-icon" style="background:#FAF5FF">🧠</div>
-      <div class="section-title">Konsep & Arsitektur</div>
-    </div>
-    <div class="section-desc">Bagaimana sistem ini dirancang dan bekerja dari ujung ke ujung.</div>
-
-    <div class="concept-box orange">
-      <div class="cb-icon">🏗️</div>
-      <div>
-        <div class="cb-title">Stack Teknologi</div>
-        <div class="cb-text">
-          <strong>Backend:</strong> Node.js + Express + TypeScript, di-deploy di Railway (Docker).<br>
-          <strong>Database & Auth:</strong> Supabase PostgreSQL + Supabase Auth (JWT).<br>
-          <strong>Push Notifikasi:</strong> OneSignal — dikirim ke perangkat nasabah saat antrian dipanggil.<br>
-          <strong>WhatsApp:</strong> Baileys (WA Web multi-device) — kirim notifikasi WA ke nasabah.<br>
-          <strong>Mobile:</strong> Android Studio (Java/Kotlin) memanggil endpoint <code>/api/mobile/*</code>.
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <!-- Brand -->
+    <div class="sidebar-header">
+      <div class="brand-logo">
+        <div class="brand-icon">🏦</div>
+        <div>
+          <div class="brand-name">Antrian Bank</div>
+          <div class="brand-role">Dokumentasi API</div>
         </div>
       </div>
     </div>
 
-    <div class="concept-box info">
-      <div class="cb-icon">🗂️</div>
-      <div>
-        <div class="cb-title">Multi-Cabang (Multi-Branch)</div>
-        <div class="cb-text">
-          Setiap cabang (<strong>cabang</strong>) punya antrian independen. Staff hanya melihat & melayani antrian di cabang mereka sendiri.
-          Nasabah memilih cabang saat daftar di mobile app. Admin bisa melihat data semua cabang sekaligus.<br><br>
-          Contoh cabang: <strong>CBG1</strong> — Cabang Sudirman, <strong>CBG2</strong> — Cabang Gunung Ibul.
+    <!-- Nav -->
+    <nav style="flex:1; overflow-y:auto; padding: 8px 0;">
+      <div class="docs-nav-group">
+        <div class="docs-nav-group-title">Mulai</div>
+        <button class="docs-nav-item active" onclick="goTo('overview', this)">
+          <div class="docs-nav-dot" style="background:var(--orange)"></div> Overview
+        </button>
+        <button class="docs-nav-item" onclick="goTo('konsep', this)">
+          <div class="docs-nav-dot" style="background:#8B5CF6"></div> Konsep & Arsitektur
+        </button>
+        <button class="docs-nav-item" onclick="goTo('autentikasi', this)">
+          <div class="docs-nav-dot" style="background:#2563EB"></div> Autentikasi
+        </button>
+      </div>
+      <div class="docs-nav-group">
+        <div class="docs-nav-group-title">Endpoint</div>
+        <button class="docs-nav-item" onclick="goTo('auth', this)">
+          <div class="docs-nav-dot" style="background:#16A34A"></div> Auth
+          <span class="docs-nav-count">4</span>
+        </button>
+        <button class="docs-nav-item" onclick="goTo('antrian', this)">
+          <div class="docs-nav-dot" style="background:var(--orange)"></div> Antrian (Staff)
+          <span class="docs-nav-count">9</span>
+        </button>
+        <button class="docs-nav-item" onclick="goTo('notif', this)">
+          <div class="docs-nav-dot" style="background:#CA8A04"></div> Notifikasi
+          <span class="docs-nav-count">5</span>
+        </button>
+        <button class="docs-nav-item" onclick="goTo('mobile', this)">
+          <div class="docs-nav-dot" style="background:#2563EB"></div> Mobile Nasabah
+          <span class="docs-nav-count">8</span>
+        </button>
+        <button class="docs-nav-item" onclick="goTo('admin', this)">
+          <div class="docs-nav-dot" style="background:#9333EA"></div> Admin
+          <span class="docs-nav-count">16</span>
+        </button>
+      </div>
+      <div class="docs-nav-group">
+        <div class="docs-nav-group-title">Referensi</div>
+        <button class="docs-nav-item" onclick="goTo('response', this)">
+          <div class="docs-nav-dot" style="background:var(--gray-500)"></div> Format Response
+        </button>
+        <button class="docs-nav-item" onclick="goTo('error', this)">
+          <div class="docs-nav-dot" style="background:#DC2626"></div> Kode Error
+        </button>
+      </div>
+    </nav>
+
+    <!-- Back to admin -->
+    <div style="padding: 0 0 12px; flex-shrink:0;">
+      <a href="/admin" class="docs-back-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Kembali ke Admin
+      </a>
+    </div>
+
+    <!-- Footer -->
+    <div class="sidebar-footer">
+      <div class="sb-user">
+        <div class="sb-avatar">📋</div>
+        <div class="sb-user-info">
+          <span class="sb-user-name">REST API</span>
+          <span class="sb-user-role">v1 · Node.js + Supabase</span>
         </div>
       </div>
     </div>
+  </aside>
 
-    <div class="concept-box tip">
-      <div class="cb-icon">🎫</div>
-      <div>
-        <div class="cb-title">Alur Antrian</div>
-        <div class="cb-text">
-          1. <strong>Nasabah ambil antrian</strong> via mobile (<code>POST /api/mobile/antrian/ambil</code>) → status <em>menunggu</em>.<br>
-          2. <strong>Staff panggil</strong> antrian berikutnya (<code>PUT /api/antrian/panggil</code>) → status berubah ke <em>dilayani</em>.<br>
-          3. <strong>Push notif</strong> (OneSignal) + <strong>WA</strong> otomatis dikirim ke nasabah.<br>
-          4. Staff menandai <strong>selesai</strong> (<code>PUT /api/antrian/selesai/:id</code>) atau <strong>batal</strong>.<br>
-          5. Nomor antrian di-reset ke 1 setiap hari (midnight).
+  <!-- ===== MAIN WRAPPER ===== -->
+  <div class="main-wrapper">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-title-wrap">
+          <h2 class="page-title">Docs API</h2>
+          <span class="page-sub" id="topbar-date"></span>
         </div>
       </div>
-    </div>
-
-    <div class="concept-box warn">
-      <div class="cb-icon">📋</div>
-      <div>
-        <div class="cb-title">Keperluan (Jenis Layanan)</div>
-        <div class="cb-text">
-          Setiap keperluan terikat ke layanan tertentu — tidak bisa ditukar:
+      <div class="topbar-right">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--gray-400); background:var(--gray-100); padding:6px 12px; border-radius:8px;">
+          https://antrianbank.site
         </div>
       </div>
-    </div>
+    </header>
 
-    <div class="keperluan-grid">
-      <div class="kep-card">
-        <div class="kep-title" style="color:#F97316">🟠 Teller</div>
-        <div class="kep-items">
-          <div class="kep-item">Setor Tunai</div>
-          <div class="kep-item">Tarik Tunai</div>
-          <div class="kep-item">Transfer</div>
-          <div class="kep-item">Pembayaran</div>
+    <!-- Content -->
+    <main class="main-content" style="gap: 28px;">
+
+      <!-- ========== OVERVIEW ========== -->
+      <div id="overview" class="docs-section">
+        <div class="docs-hero">
+          <div class="docs-hero-badge">📋 REST API</div>
+          <h1>Dashboard Teller API</h1>
+          <p>Dokumentasi lengkap REST API sistem antrian FUND BANK. Digunakan oleh Dashboard Admin/Teller/CS dan aplikasi mobile nasabah (Android Studio).</p>
+          <div class="docs-hero-meta">
+            <div class="docs-hero-chip">📦 Format: <strong>JSON</strong></div>
+            <div class="docs-hero-chip">🔐 Auth: <strong>Bearer JWT</strong></div>
+            <div class="docs-hero-chip">🗄️ DB: <strong>Supabase PostgreSQL</strong></div>
+            <div class="docs-hero-chip">🚀 Deploy: <strong>Railway</strong></div>
+          </div>
+        </div>
+
+        <div class="toc-grid">
+          <button class="toc-card" onclick="goTo('auth', null)"><span class="toc-icon">🔑</span><div><div class="toc-label">Auth</div><div class="toc-count">4 endpoint</div></div></button>
+          <button class="toc-card" onclick="goTo('antrian', null)"><span class="toc-icon">🎫</span><div><div class="toc-label">Antrian (Staff)</div><div class="toc-count">9 endpoint</div></div></button>
+          <button class="toc-card" onclick="goTo('notif', null)"><span class="toc-icon">🔔</span><div><div class="toc-label">Notifikasi</div><div class="toc-count">5 endpoint</div></div></button>
+          <button class="toc-card" onclick="goTo('mobile', null)"><span class="toc-icon">📱</span><div><div class="toc-label">Mobile Nasabah</div><div class="toc-count">8 endpoint</div></div></button>
+          <button class="toc-card" onclick="goTo('admin', null)"><span class="toc-icon">⚙️</span><div><div class="toc-label">Admin</div><div class="toc-count">16 endpoint</div></div></button>
+          <button class="toc-card" onclick="goTo('error', null)"><span class="toc-icon">⚠️</span><div><div class="toc-label">Kode Error</div><div class="toc-count">Referensi</div></div></button>
+        </div>
+
+        <div class="role-grid">
+          <div class="role-card" style="border-top:3px solid var(--orange)">
+            <div class="role-name">🟠 Teller</div>
+            <div class="role-email">@teller.com</div>
+            <div class="role-perm">Kelola antrian Teller</div>
+            <div class="role-perm">Akses WhatsApp QR</div>
+            <div class="role-perm">Set nomor loket</div>
+          </div>
+          <div class="role-card" style="border-top:3px solid #2563EB">
+            <div class="role-name">🔵 CS</div>
+            <div class="role-email">@cs.com</div>
+            <div class="role-perm">Kelola antrian CS</div>
+            <div class="role-perm">Buat antrian manual</div>
+            <div class="role-perm">Set nomor loket</div>
+          </div>
+          <div class="role-card" style="border-top:3px solid #16A34A">
+            <div class="role-name">🟢 Nasabah</div>
+            <div class="role-email">Mobile App</div>
+            <div class="role-perm">Ambil antrian</div>
+            <div class="role-perm">Cek status & tiket</div>
+            <div class="role-perm">Riwayat antrian</div>
+          </div>
+          <div class="role-card" style="border-top:3px solid #9333EA">
+            <div class="role-name">🟣 Admin</div>
+            <div class="role-email">@admin.com</div>
+            <div class="role-perm">Kelola semua cabang</div>
+            <div class="role-perm">Kelola staff & nasabah</div>
+            <div class="role-perm">Laporan global</div>
+          </div>
         </div>
       </div>
-      <div class="kep-card">
-        <div class="kep-title" style="color:#3B82F6">🔵 CS (Customer Service)</div>
-        <div class="kep-items">
-          <div class="kep-item">Buka Rekening</div>
-          <div class="kep-item">Pengajuan Kartu ATM</div>
-          <div class="kep-item">Info Produk Bank</div>
-          <div class="kep-item">Konsultasi Keuangan</div>
+
+      <!-- ========== KONSEP ========== -->
+      <div class="card" id="konsep" style="scroll-margin-top:20px;">
+        <div class="card-header">
+          <div class="docs-section-header">
+            <div class="docs-section-icon" style="background:#FAF5FF">🧠</div>
+            <div class="docs-section-title">Konsep & Arsitektur</div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="info-box orange">
+            <div class="ib-icon">🏗️</div>
+            <div>
+              <div class="ib-title">Stack Teknologi</div>
+              <div class="ib-text"><strong>Backend:</strong> Node.js + Express + TypeScript, di-deploy di Railway (Docker).<br><strong>Database & Auth:</strong> Supabase PostgreSQL + Supabase Auth (JWT).<br><strong>Push Notifikasi:</strong> OneSignal — dikirim ke perangkat nasabah saat antrian dipanggil.<br><strong>WhatsApp:</strong> Baileys (WA Web multi-device) — kirim notifikasi WA ke nasabah.<br><strong>Mobile:</strong> Android Studio memanggil endpoint <code>/api/mobile/*</code>.</div>
+            </div>
+          </div>
+          <div class="info-box blue">
+            <div class="ib-icon">🗂️</div>
+            <div>
+              <div class="ib-title">Multi-Cabang</div>
+              <div class="ib-text">Setiap cabang punya antrian independen. Staff hanya melihat antrian di cabang mereka. Nasabah memilih cabang saat daftar. Admin bisa melihat semua cabang sekaligus.<br><br>Contoh: <strong>CBG1</strong> — Cabang Sudirman, <strong>CBG2</strong> — Cabang Gunung Ibul.</div>
+            </div>
+          </div>
+          <div class="info-box green">
+            <div class="ib-icon">🎫</div>
+            <div>
+              <div class="ib-title">Alur Antrian</div>
+              <div class="ib-text">1. Nasabah <strong>ambil antrian</strong> via mobile → status <em>menunggu</em>.<br>2. Staff <strong>panggil</strong> berikutnya → status → <em>dilayani</em>.<br>3. <strong>Push notif</strong> (OneSignal) + <strong>WA</strong> otomatis dikirim ke nasabah.<br>4. Staff tandai <strong>selesai</strong> atau <strong>batal</strong>.<br>5. Nomor antrian di-reset ke 1 setiap hari (midnight).</div>
+            </div>
+          </div>
+          <div class="info-box yellow">
+            <div class="ib-icon">📋</div>
+            <div>
+              <div class="ib-title">Keperluan per Layanan</div>
+              <div class="ib-text">Setiap keperluan terikat ke layanan tertentu — tidak bisa ditukar:</div>
+            </div>
+          </div>
+          <div class="kep-grid">
+            <div class="kep-card"><div class="kep-title" style="color:var(--orange)">🟠 Teller</div><div class="kep-item">Setor Tunai</div><div class="kep-item">Tarik Tunai</div><div class="kep-item">Transfer</div><div class="kep-item">Pembayaran</div></div>
+            <div class="kep-card"><div class="kep-title" style="color:#2563EB">🔵 CS (Customer Service)</div><div class="kep-item">Buka Rekening</div><div class="kep-item">Pengajuan Kartu ATM</div><div class="kep-item">Info Produk Bank</div><div class="kep-item">Konsultasi Keuangan</div></div>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
 
-  <!-- ===== AUTENTIKASI ===== -->
-  <section class="doc-section" id="autentikasi">
-    <div class="section-header">
-      <div class="section-icon" style="background:#EFF6FF">🔐</div>
-      <div class="section-title">Autentikasi</div>
-    </div>
-    <div class="section-desc">Cara menyertakan token di setiap request yang membutuhkan autentikasi.</div>
-
-    <div class="concept-box info">
-      <div class="cb-icon">🪙</div>
-      <div>
-        <div class="cb-title">Bearer Token (JWT dari Supabase)</div>
-        <div class="cb-text">
-          Setelah login, simpan <code>token</code> dari response. Kirimkan di setiap request sebagai HTTP header:<br><br>
-          <code>Authorization: Bearer &lt;token&gt;</code><br><br>
-          Token berlaku selama <strong>1 jam</strong>. Setelah expired, login ulang untuk mendapatkan token baru.
+      <!-- ========== AUTENTIKASI ========== -->
+      <div class="card" id="autentikasi" style="scroll-margin-top:20px;">
+        <div class="card-header">
+          <div class="docs-section-header">
+            <div class="docs-section-icon" style="background:#EFF6FF">🔐</div>
+            <div class="docs-section-title">Autentikasi</div>
+          </div>
         </div>
-      </div>
-    </div>
-
-    <div class="ep-label">Arti label auth di setiap endpoint:</div>
-    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; margin-bottom:20px;">
-      <span class="auth-chip auth-none">Publik</span> — Tidak butuh token<br>
-      <span class="auth-chip auth-staff">Staff</span> — Token Teller atau CS<br>
-      <span class="auth-chip auth-teller">Teller</span> — Token Teller saja<br>
-      <span class="auth-chip auth-mobile">Nasabah</span> — Token dari login mobile<br>
-      <span class="auth-chip auth-admin">Admin</span> — Token akun Admin
-    </div>
-
-    <pre class="code-block"><span class="comment">// Contoh request dengan autentikasi</span>
-fetch(<span class="str">'https://antrianbank.site/api/antrian/list'</span>, {
+        <div class="info-box blue">
+          <div class="ib-icon">🪙</div>
+          <div>
+            <div class="ib-title">Bearer Token (JWT dari Supabase)</div>
+            <div class="ib-text">Setelah login, simpan <code>token</code> dari response. Kirim di setiap request sebagai header:<br><br><code>Authorization: Bearer &lt;token&gt;</code><br><br>Token berlaku <strong>1 jam</strong>. Setelah expired, login ulang.</div>
+          </div>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; font-size:12px; color:var(--gray-600);">
+          <span class="ep-auth auth-pub">Publik</span> Tidak butuh token &nbsp;
+          <span class="ep-auth auth-staff">Staff</span> Token Teller atau CS &nbsp;
+          <span class="ep-auth auth-teller">Teller</span> Token Teller saja &nbsp;
+          <span class="ep-auth auth-mobile">Nasabah</span> Token dari mobile login &nbsp;
+          <span class="ep-auth auth-admin">Admin</span> Token akun Admin
+        </div>
+        <pre class="code-block"><span class="c">// Contoh request dengan token</span>
+fetch(<span class="s">'https://antrianbank.site/api/antrian/list'</span>, {
   headers: {
-    <span class="str">'Authorization'</span>: <span class="str">`Bearer ${token}`</span>,
-    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>
+    <span class="s">'Authorization'</span>: <span class="s">`Bearer ${token}`</span>,
+    <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span>
   }
 })</pre>
-  </section>
-
-  <!-- ===== AUTH ENDPOINTS ===== -->
-  <section class="doc-section" id="auth">
-    <div class="section-header">
-      <div class="section-icon" style="background:#F0FDF4">🔑</div>
-      <div class="section-title">Auth</div>
-    </div>
-    <div class="section-desc">Endpoint untuk registrasi, login, dan info user yang sedang login.</div>
-
-    <!-- POST /api/auth/register -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/auth/register</span>
-        <span class="auth-chip auth-none">Publik</span>
-        <span class="endpoint-summary">Daftarkan akun Staff</span>
-        <span class="chevron">▼</span>
       </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Mendaftarkan akun Teller atau CS baru. Email harus berakhiran <code>@teller.com</code> atau <code>@cs.com</code>.</div>
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"email"</span>: <span class="str">"john@teller.com"</span>,
-  <span class="key">"password"</span>: <span class="str">"password123"</span>,
-  <span class="key">"nama"</span>: <span class="str">"John Doe"</span>,
-  <span class="key">"cabang_id"</span>: <span class="num">1</span>,
-  <span class="key">"no_loket"</span>: <span class="str">"T01"</span>
-}</pre>
+
+      <!-- ========== AUTH ENDPOINTS ========== -->
+      <div class="card" id="auth" style="scroll-margin-top:20px;">
+        <div class="card-header">
+          <div class="docs-section-header">
+            <div class="docs-section-icon" style="background:#F0FDF4">🔑</div>
+            <div class="docs-section-title">Auth</div>
           </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 201</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Akun berhasil dibuat"</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"token"</span>: <span class="str">"eyJ..."</span>,
-    <span class="key">"user"</span>: {
-      <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-      <span class="key">"email"</span>: <span class="str">"john@teller.com"</span>,
-      <span class="key">"nama"</span>: <span class="str">"John Doe"</span>,
-      <span class="key">"role"</span>: <span class="str">"teller"</span>
+        </div>
+        <div class="docs-section-desc">Endpoint registrasi, login, dan info user aktif.</div>
+
+        <div class="ep-card" onclick="toggle(this)">
+          <div class="ep-card-header">
+            <span class="method-badge m-POST">POST</span>
+            <span class="ep-path">/api/auth/register</span>
+            <span class="ep-auth auth-pub">Publik</span>
+            <span class="ep-chevron">▼</span>
+          </div>
+          <div class="ep-card-body">
+            <div class="ep-desc">Daftarkan akun Teller atau CS. Email harus berakhiran <code>@teller.com</code> atau <code>@cs.com</code>.</div>
+            <div class="ep-grid">
+              <div><div class="ep-lbl">Request Body</div><pre class="code-block">{
+  <span class="k">"email"</span>: <span class="s">"john@teller.com"</span>,
+  <span class="k">"password"</span>: <span class="s">"password123"</span>,
+  <span class="k">"nama"</span>: <span class="s">"John Doe"</span>,
+  <span class="k">"cabang_id"</span>: <span class="n">1</span>,
+  <span class="k">"no_loket"</span>: <span class="s">"T01"</span>
+}</pre></div>
+              <div><div class="ep-lbl">Response 201</div><pre class="code-block">{
+  <span class="k">"success"</span>: <span class="b">true</span>,
+  <span class="k">"data"</span>: {
+    <span class="k">"token"</span>: <span class="s">"eyJ..."</span>,
+    <span class="k">"user"</span>: {
+      <span class="k">"id"</span>: <span class="s">"uuid"</span>,
+      <span class="k">"role"</span>: <span class="s">"teller"</span>
     }
   }
-}</pre>
+}</pre></div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- POST /api/auth/login -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/auth/login</span>
-        <span class="auth-chip auth-none">Publik</span>
-        <span class="endpoint-summary">Login Staff/Admin</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Login untuk Teller, CS, dan Admin. Mengembalikan JWT token untuk digunakan di request selanjutnya.</div>
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"email"</span>: <span class="str">"john@teller.com"</span>,
-  <span class="key">"password"</span>: <span class="str">"password123"</span>
-}</pre>
+        <div class="ep-card" onclick="toggle(this)">
+          <div class="ep-card-header">
+            <span class="method-badge m-POST">POST</span>
+            <span class="ep-path">/api/auth/login</span>
+            <span class="ep-auth auth-pub">Publik</span>
+            <span class="ep-chevron">▼</span>
           </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Login berhasil"</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"token"</span>: <span class="str">"eyJhbGci..."</span>,
-    <span class="key">"user"</span>: {
-      <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-      <span class="key">"email"</span>: <span class="str">"john@teller.com"</span>,
-      <span class="key">"nama"</span>: <span class="str">"John Doe"</span>,
-      <span class="key">"role"</span>: <span class="str">"teller"</span>,
-      <span class="key">"no_loket"</span>: <span class="str">"T01"</span>,
-      <span class="key">"cabang_id"</span>: <span class="num">1</span>
+          <div class="ep-card-body">
+            <div class="ep-desc">Login Teller, CS, dan Admin. Mengembalikan JWT token.</div>
+            <div class="ep-grid">
+              <div><div class="ep-lbl">Request Body</div><pre class="code-block">{
+  <span class="k">"email"</span>: <span class="s">"john@teller.com"</span>,
+  <span class="k">"password"</span>: <span class="s">"password123"</span>
+}</pre></div>
+              <div><div class="ep-lbl">Response 200</div><pre class="code-block">{
+  <span class="k">"success"</span>: <span class="b">true</span>,
+  <span class="k">"data"</span>: {
+    <span class="k">"token"</span>: <span class="s">"eyJhbGci..."</span>,
+    <span class="k">"user"</span>: {
+      <span class="k">"nama"</span>: <span class="s">"John Doe"</span>,
+      <span class="k">"role"</span>: <span class="s">"teller"</span>,
+      <span class="k">"no_loket"</span>: <span class="s">"T01"</span>,
+      <span class="k">"cabang_id"</span>: <span class="n">1</span>
     }
   }
-}</pre>
+}</pre></div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- GET /api/auth/me -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/auth/me</span>
-        <span class="auth-chip auth-staff">Staff</span>
-        <span class="endpoint-summary">Info user aktif</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Mengembalikan profil user yang sedang login berdasarkan token yang dikirim.</div>
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Tidak ada request body</div>
-            <pre class="code-block"><span class="comment">// Cukup kirim Authorization header</span>
-GET /api/auth/me
-Authorization: Bearer &lt;token&gt;</pre>
+        <div class="ep-card" onclick="toggle(this)">
+          <div class="ep-card-header">
+            <span class="method-badge m-GET">GET</span>
+            <span class="ep-path">/api/auth/me</span>
+            <span class="ep-auth auth-staff">Staff</span>
+            <span class="ep-chevron">▼</span>
           </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-    <span class="key">"email"</span>: <span class="str">"john@teller.com"</span>,
-    <span class="key">"nama"</span>: <span class="str">"John Doe"</span>,
-    <span class="key">"role"</span>: <span class="str">"teller"</span>,
-    <span class="key">"no_loket"</span>: <span class="str">"T01"</span>,
-    <span class="key">"cabang"</span>: {
-      <span class="key">"id"</span>: <span class="num">1</span>,
-      <span class="key">"nama"</span>: <span class="str">"Cabang Sudirman"</span>,
-      <span class="key">"kode"</span>: <span class="str">"CBG1"</span>
+          <div class="ep-card-body">
+            <div class="ep-desc">Info profil user yang sedang login berdasarkan token.</div>
+            <div class="ep-grid">
+              <div><div class="ep-lbl">Tidak ada body</div><pre class="code-block">GET /api/auth/me
+Authorization: Bearer &lt;token&gt;</pre></div>
+              <div><div class="ep-lbl">Response 200</div><pre class="code-block">{
+  <span class="k">"data"</span>: {
+    <span class="k">"nama"</span>: <span class="s">"John Doe"</span>,
+    <span class="k">"role"</span>: <span class="s">"teller"</span>,
+    <span class="k">"cabang"</span>: {
+      <span class="k">"nama"</span>: <span class="s">"Cabang Sudirman"</span>
     }
   }
-}</pre>
+}</pre></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ep-card" onclick="toggle(this)">
+          <div class="ep-card-header">
+            <span class="method-badge m-POST">POST</span>
+            <span class="ep-path">/api/auth/admin/reset-password</span>
+            <span class="ep-auth auth-pub">Publik</span>
+            <span class="ep-chevron">▼</span>
+          </div>
+          <div class="ep-card-body">
+            <div class="ep-desc">Kirim link reset password ke email via Supabase.</div>
+            <div class="ep-grid">
+              <div><div class="ep-lbl">Request Body</div><pre class="code-block">{ <span class="k">"email"</span>: <span class="s">"john@teller.com"</span> }</pre></div>
+              <div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"success"</span>: <span class="b">true</span>,
+  <span class="k">"message"</span>: <span class="s">"Link reset terkirim"</span> }</pre></div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- POST /api/auth/admin/reset-password -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/auth/admin/reset-password</span>
-        <span class="auth-chip auth-none">Publik</span>
-        <span class="endpoint-summary">Reset password via email</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Mengirim link reset password ke email Supabase. Digunakan dari halaman login jika lupa password.</div>
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"email"</span>: <span class="str">"john@teller.com"</span>
-}</pre>
-          </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Link reset password terkirim"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
+      <!-- ========== ANTRIAN ========== -->
+      <div class="card" id="antrian" style="scroll-margin-top:20px;">
+        <div class="card-header">
+          <div class="docs-section-header">
+            <div class="docs-section-icon" style="background:#FFF7ED">🎫</div>
+            <div class="docs-section-title">Antrian (Staff)</div>
           </div>
         </div>
-      </div>
-    </div>
-  </section>
+        <div class="docs-section-desc">Semua endpoint mengembalikan data cabang sesuai staff yang login. Teller hanya lihat antrian Teller, CS hanya lihat antrian CS.</div>
 
-  <!-- ===== ANTRIAN ===== -->
-  <section class="doc-section" id="antrian">
-    <div class="section-header">
-      <div class="section-icon" style="background:#FFF7ED">🎫</div>
-      <div class="section-title">Antrian (Staff)</div>
-    </div>
-    <div class="section-desc">Endpoint untuk Teller dan CS mengelola antrian di cabang mereka. Semua endpoint ini hanya mengembalikan data cabang yang sesuai dengan staff yang login.</div>
-
-    <!-- GET /api/antrian/statistik -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/antrian/statistik</span>
-        <span class="auth-chip auth-staff">Staff</span>
-        <span class="endpoint-summary">Statistik antrian hari ini</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Mengembalikan statistik antrian hari ini untuk cabang staff yang login: total, menunggu, dilayani, selesai, batal.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Tidak ada parameter</div><pre class="code-block">GET /api/antrian/statistik</pre></div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"total"</span>: <span class="num">42</span>,
-    <span class="key">"menunggu"</span>: <span class="num">8</span>,
-    <span class="key">"dilayani"</span>: <span class="num">1</span>,
-    <span class="key">"selesai"</span>: <span class="num">30</span>,
-    <span class="key">"batal"</span>: <span class="num">3</span>
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/antrian/statistik</span><span class="ep-auth auth-staff">Staff</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Statistik antrian hari ini: total, menunggu, dilayani, selesai, batal.</div><div class="ep-grid"><div><div class="ep-lbl">Tidak ada parameter</div><pre class="code-block">GET /api/antrian/statistik</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{
+  <span class="k">"data"</span>: {
+    <span class="k">"total"</span>: <span class="n">42</span>, <span class="k">"menunggu"</span>: <span class="n">8</span>,
+    <span class="k">"dilayani"</span>: <span class="n">1</span>, <span class="k">"selesai"</span>: <span class="n">30</span>, <span class="k">"batal"</span>: <span class="n">3</span>
   }
-}</pre>
+}</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/antrian/list</span><span class="ep-auth auth-staff">Staff</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Daftar antrian hari ini. Query param: <code>status</code> (menunggu/dilayani/selesai/batal).</div><div class="ep-grid"><div><div class="ep-lbl">Query Params (opsional)</div><table class="param-tbl"><tr><th>Param</th><th>Tipe</th><th>Keterangan</th></tr><tr><td>status</td><td class="p-type">string</td><td>Filter status antrian</td></tr></table></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">[{
+  <span class="k">"id"</span>: <span class="s">"uuid"</span>, <span class="k">"nomor"</span>: <span class="n">5</span>,
+  <span class="k">"layanan"</span>: <span class="s">"Teller"</span>,
+  <span class="k">"keperluan"</span>: <span class="s">"Transfer"</span>,
+  <span class="k">"status"</span>: <span class="s">"menunggu"</span>
+}]</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-PUT">PUT</span><span class="ep-path">/api/antrian/panggil</span><span class="ep-auth auth-staff">Staff</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Panggil antrian berikutnya. Otomatis kirim push notif OneSignal + WhatsApp ke nasabah.</div><div class="ep-grid"><div><div class="ep-lbl">Tidak ada body</div><pre class="code-block">PUT /api/antrian/panggil</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"data"</span>: { <span class="k">"nomor"</span>: <span class="n">5</span>, <span class="k">"status"</span>: <span class="s">"dilayani"</span> } }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-PUT">PUT</span><span class="ep-path">/api/antrian/selesai/:id</span><span class="ep-auth auth-staff">Staff</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Tandai antrian yang sedang dilayani sebagai selesai.</div><div class="ep-grid"><div><div class="ep-lbl">URL Param</div><table class="param-tbl"><tr><th>Param</th><th>Keterangan</th></tr><tr><td>id</td><td>UUID antrian <span class="p-req">wajib</span></td></tr></table></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"success"</span>: <span class="b">true</span>, <span class="k">"message"</span>: <span class="s">"Antrian selesai"</span> }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-PUT">PUT</span><span class="ep-path">/api/antrian/batal/:id</span><span class="ep-auth auth-staff">Staff</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Batalkan antrian yang menunggu/dilayani → status batal.</div><div class="ep-grid"><div><div class="ep-lbl">URL Param</div><table class="param-tbl"><tr><th>Param</th><th>Keterangan</th></tr><tr><td>id</td><td>UUID antrian <span class="p-req">wajib</span></td></tr></table></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"success"</span>: <span class="b">true</span>, <span class="k">"message"</span>: <span class="s">"Antrian dibatalkan"</span> }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-PUT">PUT</span><span class="ep-path">/api/antrian/restore/:id</span><span class="ep-auth auth-staff">Staff</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Pulihkan antrian batal → kembali ke status menunggu (dimasukkan ke belakang antrian).</div><div class="ep-grid"><div><div class="ep-lbl">URL Param</div><table class="param-tbl"><tr><th>Param</th><th>Keterangan</th></tr><tr><td>id</td><td>UUID antrian <span class="p-req">wajib</span></td></tr></table></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"success"</span>: <span class="b">true</span>, <span class="k">"message"</span>: <span class="s">"Antrian dipulihkan"</span> }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-POST">POST</span><span class="ep-path">/api/antrian/ambil</span><span class="ep-auth auth-staff">Staff</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Staff buat antrian baru untuk nasabah walk-in (tanpa mobile app).</div><div class="ep-grid"><div><div class="ep-lbl">Request Body</div><pre class="code-block">{
+  <span class="k">"keperluan"</span>: <span class="s">"Transfer"</span>,
+  <span class="k">"nama_nasabah"</span>: <span class="s">"Budi"</span>,
+  <span class="k">"no_hp"</span>: <span class="s">"08123..."</span>
+}</pre></div><div><div class="ep-lbl">Response 201</div><pre class="code-block">{ <span class="k">"data"</span>: { <span class="k">"nomor"</span>: <span class="n">7</span>, <span class="k">"layanan"</span>: <span class="s">"Teller"</span> } }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-PUT">PUT</span><span class="ep-path">/api/antrian/loket</span><span class="ep-auth auth-staff">Staff</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Ubah nomor loket yang tampil saat nasabah dipanggil.</div><div class="ep-grid"><div><div class="ep-lbl">Request Body</div><pre class="code-block">{ <span class="k">"no_loket"</span>: <span class="s">"T02"</span> }</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"success"</span>: <span class="b">true</span>, <span class="k">"message"</span>: <span class="s">"Loket diperbarui"</span> }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/antrian/cabang</span><span class="ep-auth auth-staff">Staff</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Tidak ada parameter</div><pre class="code-block">GET /api/antrian/cabang</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">[{ <span class="k">"id"</span>: <span class="n">1</span>, <span class="k">"nama"</span>: <span class="s">"Cabang Sudirman"</span>, <span class="k">"kode"</span>: <span class="s">"CBG1"</span> }]</pre></div></div></div></div>
+      </div>
+
+      <!-- ========== NOTIF ========== -->
+      <div class="card" id="notif" style="scroll-margin-top:20px;">
+        <div class="card-header">
+          <div class="docs-section-header">
+            <div class="docs-section-icon" style="background:#FEFCE8">🔔</div>
+            <div class="docs-section-title">Notifikasi</div>
           </div>
         </div>
-      </div>
-    </div>
+        <div class="docs-section-desc">Manajemen push notification (OneSignal) dan WhatsApp (Baileys).</div>
 
-    <!-- GET /api/antrian/list -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/antrian/list</span>
-        <span class="auth-chip auth-staff">Staff</span>
-        <span class="endpoint-summary">Daftar antrian aktif</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Daftar antrian hari ini untuk layanan sesuai role: Teller hanya lihat antrian Teller, CS hanya lihat antrian CS.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Query params (opsional)</div>
-            <table class="param-table">
-              <tr><th>Param</th><th>Tipe</th><th>Keterangan</th></tr>
-              <tr><td>status</td><td class="param-type">string</td><td>Filter: menunggu / dilayani / selesai / batal</td></tr>
-            </table>
-          </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: [{
-    <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-    <span class="key">"nomor"</span>: <span class="num">5</span>,
-    <span class="key">"layanan"</span>: <span class="str">"Teller"</span>,
-    <span class="key">"keperluan"</span>: <span class="str">"Transfer"</span>,
-    <span class="key">"status"</span>: <span class="str">"menunggu"</span>,
-    <span class="key">"nama_nasabah"</span>: <span class="str">"Budi"</span>,
-    <span class="key">"no_hp"</span>: <span class="str">"08123..."</span>,
-    <span class="key">"created_at"</span>: <span class="str">"2025-04-04T08:00:00Z"</span>
-  }]
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- PUT /api/antrian/panggil -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-PUT">PUT</span>
-        <span class="endpoint-path">/api/antrian/panggil</span>
-        <span class="auth-chip auth-staff">Staff</span>
-        <span class="endpoint-summary">Panggil antrian berikutnya</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Memanggil antrian berikutnya yang berstatus <em>menunggu</em>. Otomatis mengirim push notifikasi OneSignal dan pesan WhatsApp ke nasabah.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Tidak ada body</div><pre class="code-block">PUT /api/antrian/panggil</pre></div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Antrian #5 dipanggil"</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-    <span class="key">"nomor"</span>: <span class="num">5</span>,
-    <span class="key">"status"</span>: <span class="str">"dilayani"</span>
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/notif/status</span><span class="ep-auth auth-staff">Staff</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Tidak ada parameter</div><pre class="code-block">GET /api/notif/status</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{
+  <span class="k">"data"</span>: {
+    <span class="k">"onesignal"</span>: <span class="b">true</span>,
+    <span class="k">"whatsapp"</span>: <span class="s">"connected"</span>,
+    <span class="k">"wa_number"</span>: <span class="s">"6281234..."</span>
   }
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
+}</pre></div></div></div></div>
 
-    <!-- PUT /api/antrian/selesai/:id -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-PUT">PUT</span>
-        <span class="endpoint-path">/api/antrian/selesai/:id</span>
-        <span class="auth-chip auth-staff">Staff</span>
-        <span class="endpoint-summary">Tandai antrian selesai</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Menandai antrian yang sedang dilayani sebagai <strong>selesai</strong>. Status berubah dari <em>dilayani</em> → <em>selesai</em>.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">URL Param</div>
-            <table class="param-table"><tr><th>Param</th><th>Tipe</th><th>Keterangan</th></tr>
-              <tr><td>id</td><td class="param-type">uuid</td><td>ID antrian <span class="required">wajib</span></td></tr>
-            </table>
-          </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Antrian selesai dilayani"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- PUT /api/antrian/batal/:id -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-PUT">PUT</span>
-        <span class="endpoint-path">/api/antrian/batal/:id</span>
-        <span class="auth-chip auth-staff">Staff</span>
-        <span class="endpoint-summary">Batalkan antrian</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Membatalkan antrian yang sedang menunggu atau dilayani. Status → <em>batal</em>.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">URL Param</div>
-            <table class="param-table"><tr><th>Param</th><th>Tipe</th><th>Keterangan</th></tr>
-              <tr><td>id</td><td class="param-type">uuid</td><td>ID antrian <span class="required">wajib</span></td></tr>
-            </table>
-          </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Antrian dibatalkan"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- PUT /api/antrian/restore/:id -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-PUT">PUT</span>
-        <span class="endpoint-path">/api/antrian/restore/:id</span>
-        <span class="auth-chip auth-staff">Staff</span>
-        <span class="endpoint-summary">Pulihkan antrian batal</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Mengembalikan antrian yang sudah batal ke status <em>menunggu</em> (dimasukkan ke belakang antrian).</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">URL Param</div>
-            <table class="param-table"><tr><th>Param</th><th>Tipe</th><th>Keterangan</th></tr>
-              <tr><td>id</td><td class="param-type">uuid</td><td>ID antrian <span class="required">wajib</span></td></tr>
-            </table>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Antrian dipulihkan"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- POST /api/antrian/ambil -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/antrian/ambil</span>
-        <span class="auth-chip auth-staff">Staff</span>
-        <span class="endpoint-summary">Buat antrian manual (staff)</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Staff membuat antrian baru untuk nasabah yang datang langsung tanpa menggunakan mobile app.</div>
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"keperluan"</span>: <span class="str">"Transfer"</span>,
-  <span class="key">"nama_nasabah"</span>: <span class="str">"Budi Santoso"</span>,
-  <span class="key">"no_hp"</span>: <span class="str">"081234567890"</span>
-}</pre>
-          </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 201</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Antrian berhasil dibuat"</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"nomor"</span>: <span class="num">7</span>,
-    <span class="key">"layanan"</span>: <span class="str">"Teller"</span>
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/notif/wa/qr</span><span class="ep-auth auth-teller">Teller</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">QR code base64 untuk scan WhatsApp Web di dashboard Teller.</div><div class="ep-grid"><div><div class="ep-lbl">Tidak ada parameter</div><pre class="code-block">GET /api/notif/wa/qr</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{
+  <span class="k">"data"</span>: {
+    <span class="k">"qr"</span>: <span class="s">"data:image/png;base64,..."</span>,
+    <span class="k">"status"</span>: <span class="s">"waiting_scan"</span>
   }
-}</pre>
+}</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-POST">POST</span><span class="ep-path">/api/notif/wa/pairing-code</span><span class="ep-auth auth-teller">Teller</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Connect WA dengan kode pairing (tanpa scan QR).</div><div class="ep-grid"><div><div class="ep-lbl">Request Body</div><pre class="code-block">{ <span class="k">"phone"</span>: <span class="s">"6281234567890"</span> }</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"data"</span>: { <span class="k">"code"</span>: <span class="s">"AB12-CD34"</span> } }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-POST">POST</span><span class="ep-path">/api/notif/wa/disconnect</span><span class="ep-auth auth-teller">Teller</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Tidak ada body</div><pre class="code-block">POST /api/notif/wa/disconnect</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"message"</span>: <span class="s">"WhatsApp terputus"</span> }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-POST">POST</span><span class="ep-path">/api/notif/test-push</span><span class="ep-auth auth-staff">Staff</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Kirim push notif test ke semua perangkat OneSignal.</div><div class="ep-grid"><div><div class="ep-lbl">Tidak ada body</div><pre class="code-block">POST /api/notif/test-push</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"message"</span>: <span class="s">"Push notification terkirim"</span> }</pre></div></div></div></div>
+      </div>
+
+      <!-- ========== MOBILE ========== -->
+      <div class="card" id="mobile" style="scroll-margin-top:20px;">
+        <div class="card-header">
+          <div class="docs-section-header">
+            <div class="docs-section-icon" style="background:#EFF6FF">📱</div>
+            <div class="docs-section-title">Mobile Nasabah</div>
           </div>
         </div>
-      </div>
-    </div>
+        <div class="docs-section-desc">Endpoint untuk aplikasi Android. Base prefix: <code>/api/mobile</code>.</div>
 
-    <!-- PUT /api/antrian/loket -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-PUT">PUT</span>
-        <span class="endpoint-path">/api/antrian/loket</span>
-        <span class="auth-chip auth-staff">Staff</span>
-        <span class="endpoint-summary">Set nomor loket</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Mengubah nomor loket yang tampil di display antrian saat nasabah dipanggil.</div>
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"no_loket"</span>: <span class="str">"T02"</span>
-}</pre>
-          </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Loket diperbarui"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-POST">POST</span><span class="ep-path">/api/mobile/daftar</span><span class="ep-auth auth-pub">Publik</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Request Body</div><pre class="code-block">{
+  <span class="k">"nama"</span>: <span class="s">"Budi Santoso"</span>,
+  <span class="k">"no_hp"</span>: <span class="s">"081234567890"</span>,
+  <span class="k">"password"</span>: <span class="s">"password123"</span>,
+  <span class="k">"cabang_id"</span>: <span class="n">1</span>
+}</pre></div><div><div class="ep-lbl">Response 201</div><pre class="code-block">{ <span class="k">"data"</span>: { <span class="k">"token"</span>: <span class="s">"eyJ..."</span>, <span class="k">"user"</span>: {...} } }</pre></div></div></div></div>
 
-    <!-- GET /api/antrian/cabang -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/antrian/cabang</span>
-        <span class="auth-chip auth-staff">Staff</span>
-        <span class="endpoint-summary">Daftar semua cabang</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Mengembalikan daftar semua cabang bank yang aktif.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Tidak ada parameter</div><pre class="code-block">GET /api/antrian/cabang</pre></div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: [{
-    <span class="key">"id"</span>: <span class="num">1</span>,
-    <span class="key">"nama"</span>: <span class="str">"Cabang Sudirman"</span>,
-    <span class="key">"kode"</span>: <span class="str">"CBG1"</span>,
-    <span class="key">"alamat"</span>: <span class="str">"Jl. Sudirman..."</span>
-  }]
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-POST">POST</span><span class="ep-path">/api/mobile/masuk</span><span class="ep-auth auth-pub">Publik</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Login nasabah dengan no HP (dikonversi ke email internal <code>08xxx@nasabah.fund</code>).</div><div class="ep-grid"><div><div class="ep-lbl">Request Body</div><pre class="code-block">{
+  <span class="k">"no_hp"</span>: <span class="s">"081234567890"</span>,
+  <span class="k">"password"</span>: <span class="s">"password123"</span>
+}</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"data"</span>: { <span class="k">"token"</span>: <span class="s">"eyJ..."</span> } }</pre></div></div></div></div>
 
-  <!-- ===== NOTIF ===== -->
-  <section class="doc-section" id="notif">
-    <div class="section-header">
-      <div class="section-icon" style="background:#FEFCE8">🔔</div>
-      <div class="section-title">Notifikasi</div>
-    </div>
-    <div class="section-desc">Manajemen push notification (OneSignal) dan WhatsApp (Baileys). Hanya staff yang login bisa mengakses.</div>
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/mobile/cabang</span><span class="ep-auth auth-pub">Publik</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Tidak ada parameter</div><pre class="code-block">GET /api/mobile/cabang</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">[{ <span class="k">"id"</span>: <span class="n">1</span>, <span class="k">"nama"</span>: <span class="s">"Cabang Sudirman"</span> }]</pre></div></div></div></div>
 
-    <!-- GET /api/notif/status -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/notif/status</span>
-        <span class="auth-chip auth-staff">Staff</span>
-        <span class="endpoint-summary">Status koneksi notif & WA</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Mengecek status koneksi OneSignal dan WhatsApp Baileys.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Tidak ada parameter</div><pre class="code-block">GET /api/notif/status</pre></div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"onesignal"</span>: <span class="bool">true</span>,
-    <span class="key">"whatsapp"</span>: <span class="str">"connected"</span>,
-    <span class="key">"wa_number"</span>: <span class="str">"6281234567890"</span>
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/mobile/saya</span><span class="ep-auth auth-mobile">Nasabah</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Tidak ada parameter</div><pre class="code-block">GET /api/mobile/saya</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"data"</span>: { <span class="k">"nama"</span>: <span class="s">"Budi"</span>, <span class="k">"no_hp"</span>: <span class="s">"081..."</span> } }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-POST">POST</span><span class="ep-path">/api/mobile/antrian/ambil</span><span class="ep-auth auth-mobile">Nasabah</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Ambil nomor antrian. Hanya 1 antrian aktif per nasabah.</div><div class="ep-grid"><div><div class="ep-lbl">Request Body</div><pre class="code-block">{
+  <span class="k">"layanan"</span>: <span class="s">"Teller"</span>,
+  <span class="k">"keperluan"</span>: <span class="s">"Transfer"</span>
+}</pre></div><div><div class="ep-lbl">Response 201</div><pre class="code-block">{ <span class="k">"data"</span>: { <span class="k">"nomor"</span>: <span class="n">12</span>, <span class="k">"posisi"</span>: <span class="n">3</span> } }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/mobile/antrian/status</span><span class="ep-auth auth-mobile">Nasabah</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Tidak ada parameter</div><pre class="code-block">GET /api/mobile/antrian/status</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{
+  <span class="k">"data"</span>: {
+    <span class="k">"ada_antrian"</span>: <span class="b">true</span>,
+    <span class="k">"antrian"</span>: { <span class="k">"nomor"</span>: <span class="n">12</span>, <span class="k">"posisi"</span>: <span class="n">3</span> }
   }
-}</pre>
+}</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/mobile/antrian/riwayat</span><span class="ep-auth auth-mobile">Nasabah</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Query Params</div><table class="param-tbl"><tr><th>Param</th><th>Keterangan</th></tr><tr><td>limit</td><td>Jumlah data (default 20)</td></tr><tr><td>offset</td><td>Untuk paginasi</td></tr></table></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">[{
+  <span class="k">"nomor"</span>: <span class="n">5</span>,
+  <span class="k">"layanan"</span>: <span class="s">"Teller"</span>,
+  <span class="k">"status"</span>: <span class="s">"selesai"</span>
+}]</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-DELETE">DELETE</span><span class="ep-path">/api/mobile/antrian/:id</span><span class="ep-auth auth-mobile">Nasabah</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Batalkan antrian berstatus menunggu. Tidak bisa batalkan yang sudah dilayani.</div><div class="ep-grid"><div><div class="ep-lbl">URL Param</div><table class="param-tbl"><tr><th>Param</th><th>Keterangan</th></tr><tr><td>id</td><td>UUID antrian <span class="p-req">wajib</span></td></tr></table></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"message"</span>: <span class="s">"Antrian dibatalkan"</span> }</pre></div></div></div></div>
+      </div>
+
+      <!-- ========== ADMIN ========== -->
+      <div class="card" id="admin-section" style="scroll-margin-top:20px;">
+        <div class="card-header">
+          <div class="docs-section-header">
+            <div class="docs-section-icon" style="background:#FAF5FF">⚙️</div>
+            <div class="docs-section-title">Admin</div>
           </div>
         </div>
-      </div>
-    </div>
+        <div class="docs-section-desc">Semua endpoint Admin membutuhkan token akun Admin.</div>
 
-    <!-- GET /api/notif/wa/qr -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/notif/wa/qr</span>
-        <span class="auth-chip auth-teller">Teller</span>
-        <span class="endpoint-summary">QR Code WhatsApp</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Mengembalikan QR code (base64) untuk scan WhatsApp Web di dashboard Teller. Digunakan untuk menghubungkan akun WA bot.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Tidak ada parameter</div><pre class="code-block">GET /api/notif/wa/qr</pre></div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"qr"</span>: <span class="str">"data:image/png;base64,..."</span>,
-    <span class="key">"status"</span>: <span class="str">"waiting_scan"</span>
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/admin/statistik</span><span class="ep-auth auth-admin">Admin</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Tidak ada parameter</div><pre class="code-block">GET /api/admin/statistik</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{
+  <span class="k">"data"</span>: {
+    <span class="k">"total_antrian_hari_ini"</span>: <span class="n">142</span>,
+    <span class="k">"total_staff"</span>: <span class="n">8</span>,
+    <span class="k">"total_nasabah"</span>: <span class="n">320</span>,
+    <span class="k">"total_cabang"</span>: <span class="n">2</span>
   }
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
+}</pre></div></div></div></div>
 
-    <!-- POST /api/notif/wa/pairing-code -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/notif/wa/pairing-code</span>
-        <span class="auth-chip auth-teller">Teller</span>
-        <span class="endpoint-summary">Pairing code WA (tanpa scan)</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Alternatif connect WA dengan pairing code — ketik kode di WhatsApp tanpa perlu scan QR.</div>
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"phone"</span>: <span class="str">"6281234567890"</span>
-}</pre>
-          </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"code"</span>: <span class="str">"AB12-CD34"</span>
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/admin/cabang</span><span class="ep-auth auth-admin">Admin</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Tidak ada parameter</div><pre class="code-block">GET /api/admin/cabang</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">[{
+  <span class="k">"id"</span>: <span class="n">1</span>, <span class="k">"nama"</span>: <span class="s">"Cabang Sudirman"</span>,
+  <span class="k">"kode"</span>: <span class="s">"CBG1"</span>, <span class="k">"total_staff"</span>: <span class="n">4</span>
+}]</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-POST">POST</span><span class="ep-path">/api/admin/cabang</span><span class="ep-auth auth-admin">Admin</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Request Body</div><pre class="code-block">{
+  <span class="k">"nama"</span>: <span class="s">"Cabang Merdeka"</span>,
+  <span class="k">"kode"</span>: <span class="s">"CBG3"</span>,
+  <span class="k">"alamat"</span>: <span class="s">"Jl. Merdeka No. 5"</span>
+}</pre></div><div><div class="ep-lbl">Response 201</div><pre class="code-block">{ <span class="k">"data"</span>: { <span class="k">"id"</span>: <span class="n">3</span> } }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-PUT">PUT</span><span class="ep-path">/api/admin/cabang/:id</span><span class="ep-auth auth-admin">Admin</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Request Body</div><pre class="code-block">{ <span class="k">"nama"</span>: <span class="s">"Nama Baru"</span>, <span class="k">"alamat"</span>: <span class="s">"..."</span> }</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"success"</span>: <span class="b">true</span>, <span class="k">"message"</span>: <span class="s">"Cabang diperbarui"</span> }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/admin/staff</span><span class="ep-auth auth-admin">Admin</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Query Params</div><table class="param-tbl"><tr><th>Param</th><th>Keterangan</th></tr><tr><td>cabang_id</td><td>Filter per cabang</td></tr><tr><td>role</td><td>teller / cs</td></tr></table></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">[{
+  <span class="k">"nama"</span>: <span class="s">"John"</span>, <span class="k">"role"</span>: <span class="s">"teller"</span>,
+  <span class="k">"no_loket"</span>: <span class="s">"T01"</span>
+}]</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-POST">POST</span><span class="ep-path">/api/admin/staff</span><span class="ep-auth auth-admin">Admin</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Request Body</div><pre class="code-block">{
+  <span class="k">"nama"</span>: <span class="s">"Jane"</span>, <span class="k">"email"</span>: <span class="s">"jane@cs.com"</span>,
+  <span class="k">"password"</span>: <span class="s">"pass123"</span>,
+  <span class="k">"no_loket"</span>: <span class="s">"CS01"</span>, <span class="k">"cabang_id"</span>: <span class="n">1</span>
+}</pre></div><div><div class="ep-lbl">Response 201</div><pre class="code-block">{ <span class="k">"data"</span>: { <span class="k">"id"</span>: <span class="s">"uuid"</span> } }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/admin/staff/:id/monitor</span><span class="ep-auth auth-admin">Admin</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Aktivitas staff real-time: antrian hari ini, nomor dilayani, statistik.</div><div class="ep-grid"><div><div class="ep-lbl">URL Param</div><table class="param-tbl"><tr><th>Param</th><th>Keterangan</th></tr><tr><td>id</td><td>UUID staff <span class="p-req">wajib</span></td></tr></table></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{
+  <span class="k">"data"</span>: {
+    <span class="k">"staff"</span>: { <span class="k">"nama"</span>: <span class="s">"John"</span> },
+    <span class="k">"now_serving"</span>: { <span class="k">"nomor"</span>: <span class="n">8</span> },
+    <span class="k">"stats"</span>: { <span class="k">"selesai"</span>: <span class="n">12</span> }
   }
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
+}</pre></div></div></div></div>
 
-    <!-- POST /api/notif/wa/disconnect -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/notif/wa/disconnect</span>
-        <span class="auth-chip auth-teller">Teller</span>
-        <span class="endpoint-summary">Putuskan koneksi WA</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Tidak ada body</div><pre class="code-block">POST /api/notif/wa/disconnect</pre></div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"WhatsApp terputus"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- POST /api/notif/test-push -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/notif/test-push</span>
-        <span class="auth-chip auth-staff">Staff</span>
-        <span class="endpoint-summary">Test push notification</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Mengirim push notif test ke semua perangkat yang terdaftar di OneSignal App ID.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Tidak ada body</div><pre class="code-block">POST /api/notif/test-push</pre></div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Push notification terkirim"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== MOBILE ===== -->
-  <section class="doc-section" id="mobile">
-    <div class="section-header">
-      <div class="section-icon" style="background:#EFF6FF">📱</div>
-      <div class="section-title">Mobile Nasabah</div>
-    </div>
-    <div class="section-desc">Endpoint khusus untuk aplikasi Android nasabah. Base prefix: <code>/api/mobile</code>. Auth menggunakan token dari endpoint <code>masuk</code>.</div>
-
-    <!-- POST /api/mobile/daftar -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/mobile/daftar</span>
-        <span class="auth-chip auth-none">Publik</span>
-        <span class="endpoint-summary">Registrasi nasabah baru</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"nama"</span>: <span class="str">"Budi Santoso"</span>,
-  <span class="key">"no_hp"</span>: <span class="str">"081234567890"</span>,
-  <span class="key">"password"</span>: <span class="str">"password123"</span>,
-  <span class="key">"cabang_id"</span>: <span class="num">1</span>
-}</pre>
-          </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 201</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Akun berhasil dibuat"</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"token"</span>: <span class="str">"eyJhbGci..."</span>,
-    <span class="key">"user"</span>: {
-      <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-      <span class="key">"nama"</span>: <span class="str">"Budi Santoso"</span>,
-      <span class="key">"no_hp"</span>: <span class="str">"081234567890"</span>
-    }
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/admin/nasabah</span><span class="ep-auth auth-admin">Admin</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Query Params</div><table class="param-tbl"><tr><th>Param</th><th>Keterangan</th></tr><tr><td>cabang_id</td><td>Filter cabang</td></tr><tr><td>q</td><td>Cari nama</td></tr></table></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{
+  <span class="k">"data"</span>: {
+    <span class="k">"stats"</span>: { <span class="k">"total"</span>: <span class="n">320</span> },
+    <span class="k">"nasabah"</span>: [{ <span class="k">"nama"</span>: <span class="s">"Budi"</span>, <span class="k">"total_antrian"</span>: <span class="n">17</span> }]
   }
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
+}</pre></div></div></div></div>
 
-    <!-- POST /api/mobile/masuk -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/mobile/masuk</span>
-        <span class="auth-chip auth-none">Publik</span>
-        <span class="endpoint-summary">Login nasabah</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Login nasabah menggunakan nomor HP (dikonversi ke email internal <code>08xxx@nasabah.fund</code>) dan password.</div>
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"no_hp"</span>: <span class="str">"081234567890"</span>,
-  <span class="key">"password"</span>: <span class="str">"password123"</span>
-}</pre>
-          </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"token"</span>: <span class="str">"eyJhbGci..."</span>,
-    <span class="key">"user"</span>: {
-      <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-      <span class="key">"nama"</span>: <span class="str">"Budi Santoso"</span>,
-      <span class="key">"cabang"</span>: { <span class="key">"nama"</span>: <span class="str">"Cabang Sudirman"</span> }
-    }
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/admin/nasabah/:id/riwayat</span><span class="ep-auth auth-admin">Admin</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">100 riwayat antrian terakhir nasabah + statistik.</div><div class="ep-grid"><div><div class="ep-lbl">URL Param</div><table class="param-tbl"><tr><th>Param</th><th>Keterangan</th></tr><tr><td>id</td><td>UUID nasabah <span class="p-req">wajib</span></td></tr></table></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{
+  <span class="k">"data"</span>: {
+    <span class="k">"profile"</span>: { <span class="k">"nama"</span>: <span class="s">"Budi"</span> },
+    <span class="k">"stats"</span>: { <span class="k">"total"</span>: <span class="n">17</span>, <span class="k">"selesai"</span>: <span class="n">10</span> },
+    <span class="k">"antrian"</span>: [...]
   }
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
+}</pre></div></div></div></div>
 
-    <!-- GET /api/mobile/cabang -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/mobile/cabang</span>
-        <span class="auth-chip auth-none">Publik</span>
-        <span class="endpoint-summary">Daftar cabang (untuk pilih saat daftar)</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Tidak ada parameter</div><pre class="code-block">GET /api/mobile/cabang</pre></div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: [
-    { <span class="key">"id"</span>: <span class="num">1</span>, <span class="key">"nama"</span>: <span class="str">"Cabang Sudirman"</span>, <span class="key">"kode"</span>: <span class="str">"CBG1"</span> },
-    { <span class="key">"id"</span>: <span class="num">2</span>, <span class="key">"nama"</span>: <span class="str">"Cabang Gunung Ibul"</span>, <span class="key">"kode"</span>: <span class="str">"CBG2"</span> }
-  ]
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-PUT">PUT</span><span class="ep-path">/api/admin/nasabah/:id/toggle</span><span class="ep-auth auth-admin">Admin</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Blokir/aktifkan akun nasabah via Supabase Auth ban. Nasabah terblokir tidak bisa login ke mobile.</div><div class="ep-grid"><div><div class="ep-lbl">Request Body</div><pre class="code-block">{ <span class="k">"is_active"</span>: <span class="b">false</span> } <span class="c">// false = blokir</span></pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"message"</span>: <span class="s">"Nasabah dinonaktifkan"</span> }</pre></div></div></div></div>
 
-    <!-- GET /api/mobile/saya -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/mobile/saya</span>
-        <span class="auth-chip auth-mobile">Nasabah</span>
-        <span class="endpoint-summary">Profil nasabah aktif</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Tidak ada parameter</div><pre class="code-block">GET /api/mobile/saya</pre></div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-    <span class="key">"nama"</span>: <span class="str">"Budi Santoso"</span>,
-    <span class="key">"no_hp"</span>: <span class="str">"081234567890"</span>,
-    <span class="key">"cabang"</span>: { <span class="key">"nama"</span>: <span class="str">"Cabang Sudirman"</span> }
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-POST">POST</span><span class="ep-path">/api/admin/nasabah/:id/reset-password</span><span class="ep-auth auth-admin">Admin</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Request Body</div><pre class="code-block">{ <span class="k">"password"</span>: <span class="s">"passwordbaru"</span> }</pre></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{ <span class="k">"message"</span>: <span class="s">"Password berhasil direset"</span> }</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-GET">GET</span><span class="ep-path">/api/admin/laporan</span><span class="ep-auth auth-admin">Admin</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-grid"><div><div class="ep-lbl">Query Params</div><table class="param-tbl"><tr><th>Param</th><th>Keterangan</th></tr><tr><td>dari</td><td>Format YYYY-MM-DD</td></tr><tr><td>sampai</td><td>Format YYYY-MM-DD</td></tr><tr><td>cabang_id</td><td>Filter cabang</td></tr></table></div><div><div class="ep-lbl">Response 200</div><pre class="code-block">{
+  <span class="k">"data"</span>: {
+    <span class="k">"total"</span>: <span class="n">450</span>,
+    <span class="k">"selesai"</span>: <span class="n">400</span>,
+    <span class="k">"per_hari"</span>: [...],
+    <span class="k">"per_cabang"</span>: [...]
   }
-}</pre>
+}</pre></div></div></div></div>
+
+        <div class="ep-card" onclick="toggle(this)"><div class="ep-card-header"><span class="method-badge m-POST">POST</span><span class="ep-path">/api/admin/bootstrap</span><span class="ep-auth auth-pub">Publik (sekali pakai)</span><span class="ep-chevron">▼</span></div><div class="ep-card-body"><div class="ep-desc">Buat akun admin pertama saat setup awal. Setelah ada admin, endpoint ini ditolak.</div><div class="ep-grid"><div><div class="ep-lbl">Request Body</div><pre class="code-block">{
+  <span class="k">"email"</span>: <span class="s">"admin@admin.com"</span>,
+  <span class="k">"password"</span>: <span class="s">"password"</span>,
+  <span class="k">"nama"</span>: <span class="s">"Administrator"</span>
+}</pre></div><div><div class="ep-lbl">Response 201</div><pre class="code-block">{ <span class="k">"message"</span>: <span class="s">"Admin berhasil dibuat"</span> }</pre></div></div></div></div>
+      </div>
+
+      <!-- ========== FORMAT RESPONSE ========== -->
+      <div class="card" id="response" style="scroll-margin-top:20px;">
+        <div class="card-header">
+          <div class="docs-section-header">
+            <div class="docs-section-icon" style="background:#F0FDF4">📦</div>
+            <div class="docs-section-title">Format Response</div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- POST /api/mobile/antrian/ambil -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/mobile/antrian/ambil</span>
-        <span class="auth-chip auth-mobile">Nasabah</span>
-        <span class="endpoint-summary">Ambil nomor antrian</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Nasabah mengambil nomor antrian dari mobile app. Hanya boleh punya 1 antrian aktif sekaligus.</div>
         <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"layanan"</span>: <span class="str">"Teller"</span>,
-  <span class="key">"keperluan"</span>: <span class="str">"Transfer"</span>
-}</pre>
-          </div>
-          <div class="ep-block">
-            <div class="ep-label">Response 201</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-    <span class="key">"nomor"</span>: <span class="num">12</span>,
-    <span class="key">"layanan"</span>: <span class="str">"Teller"</span>,
-    <span class="key">"keperluan"</span>: <span class="str">"Transfer"</span>,
-    <span class="key">"status"</span>: <span class="str">"menunggu"</span>,
-    <span class="key">"posisi"</span>: <span class="num">3</span>
-  }
-}</pre>
-          </div>
+          <div><div class="ep-lbl">Sukses</div><pre class="code-block">{
+  <span class="k">"success"</span>: <span class="b">true</span>,
+  <span class="k">"message"</span>: <span class="s">"Pesan opsional"</span>,
+  <span class="k">"data"</span>: { ... }
+}</pre></div>
+          <div><div class="ep-lbl">Error</div><pre class="code-block">{
+  <span class="k">"success"</span>: <span class="b">false</span>,
+  <span class="k">"message"</span>: <span class="s">"Detail pesan error"</span>,
+  <span class="k">"data"</span>: {}
+}</pre></div>
         </div>
       </div>
-    </div>
 
-    <!-- GET /api/mobile/antrian/status -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/mobile/antrian/status</span>
-        <span class="auth-chip auth-mobile">Nasabah</span>
-        <span class="endpoint-summary">Status antrian aktif saya</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Cek antrian yang sedang aktif (menunggu/dilayani) beserta posisi dalam antrian saat ini.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Tidak ada parameter</div><pre class="code-block">GET /api/mobile/antrian/status</pre></div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"ada_antrian"</span>: <span class="bool">true</span>,
-    <span class="key">"antrian"</span>: {
-      <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-      <span class="key">"nomor"</span>: <span class="num">12</span>,
-      <span class="key">"status"</span>: <span class="str">"menunggu"</span>,
-      <span class="key">"posisi"</span>: <span class="num">3</span>,
-      <span class="key">"loket"</span>: <span class="bool">null</span>
-    }
-  }
-}</pre>
+      <!-- ========== ERROR CODES ========== -->
+      <div class="card" id="error" style="scroll-margin-top:20px;">
+        <div class="card-header">
+          <div class="docs-section-header">
+            <div class="docs-section-icon" style="background:#FEF2F2">⚠️</div>
+            <div class="docs-section-title">Kode Error HTTP</div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- GET /api/mobile/antrian/riwayat -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/mobile/antrian/riwayat</span>
-        <span class="auth-chip auth-mobile">Nasabah</span>
-        <span class="endpoint-summary">Riwayat antrian nasabah</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Query params (opsional)</div>
-            <table class="param-table"><tr><th>Param</th><th>Tipe</th><th>Keterangan</th></tr>
-              <tr><td>limit</td><td class="param-type">number</td><td>Jumlah data (default: 20)</td></tr>
-              <tr><td>offset</td><td class="param-type">number</td><td>Untuk paginasi</td></tr>
-            </table>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: [{
-    <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-    <span class="key">"nomor"</span>: <span class="num">5</span>,
-    <span class="key">"layanan"</span>: <span class="str">"Teller"</span>,
-    <span class="key">"keperluan"</span>: <span class="str">"Transfer"</span>,
-    <span class="key">"status"</span>: <span class="str">"selesai"</span>,
-    <span class="key">"created_at"</span>: <span class="str">"2025-04-03T09:00:00Z"</span>
-  }]
-}</pre>
-          </div>
+        <table class="err-tbl">
+          <tr><th>Kode</th><th>Nama</th><th>Arti</th></tr>
+          <tr><td><strong style="color:#16A34A">200</strong></td><td>OK</td><td>Request berhasil</td></tr>
+          <tr><td><strong style="color:#16A34A">201</strong></td><td>Created</td><td>Data berhasil dibuat (POST)</td></tr>
+          <tr><td><strong style="color:#DC2626">400</strong></td><td>Bad Request</td><td>Data tidak lengkap atau tidak valid</td></tr>
+          <tr><td><strong style="color:#DC2626">401</strong></td><td>Unauthorized</td><td>Token tidak ada, expired, atau tidak valid</td></tr>
+          <tr><td><strong style="color:#DC2626">403</strong></td><td>Forbidden</td><td>Role tidak punya izin akses endpoint ini</td></tr>
+          <tr><td><strong style="color:#DC2626">404</strong></td><td>Not Found</td><td>Data yang diminta tidak ditemukan</td></tr>
+          <tr><td><strong style="color:#DC2626">409</strong></td><td>Conflict</td><td>Data sudah ada (misal: email terdaftar)</td></tr>
+          <tr><td><strong style="color:#DC2626">500</strong></td><td>Server Error</td><td>Error di sisi server</td></tr>
+        </table>
+        <div style="margin-top:24px; padding-top:16px; border-top:1px solid var(--gray-100); text-align:center; font-size:11.5px; color:var(--gray-400);">
+          Dashboard Teller — FUND BANK &nbsp;·&nbsp; API v1 &nbsp;·&nbsp; Node.js + Supabase
         </div>
       </div>
-    </div>
 
-    <!-- DELETE /api/mobile/antrian/:id -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-DELETE">DELETE</span>
-        <span class="endpoint-path">/api/mobile/antrian/:id</span>
-        <span class="auth-chip auth-mobile">Nasabah</span>
-        <span class="endpoint-summary">Batalkan antrian</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Nasabah membatalkan antrian yang masih berstatus <em>menunggu</em>. Tidak bisa batalkan antrian yang sudah <em>dilayani</em>.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">URL Param</div>
-            <table class="param-table"><tr><th>Param</th><th>Tipe</th><th>Keterangan</th></tr>
-              <tr><td>id</td><td class="param-type">uuid</td><td>ID antrian <span class="required">wajib</span></td></tr>
-            </table>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Antrian dibatalkan"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== ADMIN ===== -->
-  <section class="doc-section" id="admin">
-    <div class="section-header">
-      <div class="section-icon" style="background:#FAF5FF">⚙️</div>
-      <div class="section-title">Admin</div>
-    </div>
-    <div class="section-desc">Endpoint manajemen penuh hanya untuk akun Admin. Semua endpoint di bawah membutuhkan token Admin.</div>
-
-    <!-- GET /api/admin/statistik -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/admin/statistik</span>
-        <span class="auth-chip auth-admin">Admin</span>
-        <span class="endpoint-summary">Statistik global semua cabang</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Tidak ada parameter</div><pre class="code-block">GET /api/admin/statistik</pre></div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"total_antrian_hari_ini"</span>: <span class="num">142</span>,
-    <span class="key">"total_staff"</span>: <span class="num">8</span>,
-    <span class="key">"total_nasabah"</span>: <span class="num">320</span>,
-    <span class="key">"total_cabang"</span>: <span class="num">2</span>,
-    <span class="key">"per_cabang"</span>: [...]
-  }
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Cabang CRUD -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/admin/cabang</span>
-        <span class="auth-chip auth-admin">Admin</span>
-        <span class="endpoint-summary">Daftar semua cabang</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Tidak ada parameter</div><pre class="code-block">GET /api/admin/cabang</pre></div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: [{
-    <span class="key">"id"</span>: <span class="num">1</span>,
-    <span class="key">"nama"</span>: <span class="str">"Cabang Sudirman"</span>,
-    <span class="key">"kode"</span>: <span class="str">"CBG1"</span>,
-    <span class="key">"alamat"</span>: <span class="str">"Jl. Sudirman No. 1"</span>,
-    <span class="key">"total_staff"</span>: <span class="num">4</span>
-  }]
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/admin/cabang</span>
-        <span class="auth-chip auth-admin">Admin</span>
-        <span class="endpoint-summary">Buat cabang baru</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"nama"</span>: <span class="str">"Cabang Merdeka"</span>,
-  <span class="key">"kode"</span>: <span class="str">"CBG3"</span>,
-  <span class="key">"alamat"</span>: <span class="str">"Jl. Merdeka No. 5"</span>
-}</pre>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 201</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Cabang berhasil dibuat"</span>,
-  <span class="key">"data"</span>: { <span class="key">"id"</span>: <span class="num">3</span> }
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-PUT">PUT</span>
-        <span class="endpoint-path">/api/admin/cabang/:id</span>
-        <span class="auth-chip auth-admin">Admin</span>
-        <span class="endpoint-summary">Update data cabang</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Request Body (field yang ingin diubah)</div>
-            <pre class="code-block">{
-  <span class="key">"nama"</span>: <span class="str">"Cabang Merdeka Baru"</span>,
-  <span class="key">"alamat"</span>: <span class="str">"Jl. Merdeka No. 10"</span>
-}</pre>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Cabang diperbarui"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Staff CRUD -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/admin/staff</span>
-        <span class="auth-chip auth-admin">Admin</span>
-        <span class="endpoint-summary">Daftar semua staff</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Query params (opsional)</div>
-            <table class="param-table"><tr><th>Param</th><th>Tipe</th><th>Keterangan</th></tr>
-              <tr><td>cabang_id</td><td class="param-type">number</td><td>Filter per cabang</td></tr>
-              <tr><td>role</td><td class="param-type">string</td><td>teller / cs</td></tr>
-            </table>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: [{
-    <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-    <span class="key">"nama"</span>: <span class="str">"John Doe"</span>,
-    <span class="key">"email"</span>: <span class="str">"john@teller.com"</span>,
-    <span class="key">"role"</span>: <span class="str">"teller"</span>,
-    <span class="key">"no_loket"</span>: <span class="str">"T01"</span>,
-    <span class="key">"cabang"</span>: { <span class="key">"nama"</span>: <span class="str">"Cabang Sudirman"</span> }
-  }]
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/admin/staff</span>
-        <span class="auth-chip auth-admin">Admin</span>
-        <span class="endpoint-summary">Tambah staff baru</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"nama"</span>: <span class="str">"Jane Smith"</span>,
-  <span class="key">"email"</span>: <span class="str">"jane@cs.com"</span>,
-  <span class="key">"password"</span>: <span class="str">"password123"</span>,
-  <span class="key">"no_loket"</span>: <span class="str">"CS01"</span>,
-  <span class="key">"cabang_id"</span>: <span class="num">1</span>
-}</pre>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 201</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Staff berhasil dibuat"</span>,
-  <span class="key">"data"</span>: { <span class="key">"id"</span>: <span class="str">"uuid"</span> }
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/admin/staff/:id/monitor</span>
-        <span class="auth-chip auth-admin">Admin</span>
-        <span class="endpoint-summary">Monitor aktivitas staff real-time</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Mengembalikan info lengkap staff: antrian hari ini, nomor yang sedang dilayani, dan statistik performa.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">URL Param</div>
-            <table class="param-table"><tr><th>Param</th><th>Tipe</th><th>Keterangan</th></tr>
-              <tr><td>id</td><td class="param-type">uuid</td><td>ID staff <span class="required">wajib</span></td></tr>
-            </table>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"staff"</span>: { <span class="key">"nama"</span>: <span class="str">"John"</span>, <span class="key">"loket"</span>: <span class="str">"T01"</span> },
-    <span class="key">"now_serving"</span>: { <span class="key">"nomor"</span>: <span class="num">8</span> },
-    <span class="key">"stats"</span>: {
-      <span class="key">"selesai"</span>: <span class="num">12</span>,
-      <span class="key">"batal"</span>: <span class="num">1</span>
-    },
-    <span class="key">"antrian"</span>: [...]
-  }
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Nasabah admin -->
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/admin/nasabah</span>
-        <span class="auth-chip auth-admin">Admin</span>
-        <span class="endpoint-summary">Daftar semua nasabah</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Query params (opsional)</div>
-            <table class="param-table"><tr><th>Param</th><th>Tipe</th><th>Keterangan</th></tr>
-              <tr><td>cabang_id</td><td class="param-type">number</td><td>Filter per cabang</td></tr>
-              <tr><td>q</td><td class="param-type">string</td><td>Cari berdasarkan nama</td></tr>
-            </table>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"stats"</span>: {
-      <span class="key">"total"</span>: <span class="num">320</span>,
-      <span class="key">"aktif_hari_ini"</span>: <span class="num">45</span>,
-      <span class="key">"baru_minggu_ini"</span>: <span class="num">12</span>
-    },
-    <span class="key">"nasabah"</span>: [{
-      <span class="key">"id"</span>: <span class="str">"uuid"</span>,
-      <span class="key">"nama"</span>: <span class="str">"Budi"</span>,
-      <span class="key">"no_hp"</span>: <span class="str">"08123..."</span>,
-      <span class="key">"total_antrian"</span>: <span class="num">17</span>,
-      <span class="key">"is_active"</span>: <span class="bool">true</span>
-    }]
-  }
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/admin/nasabah/:id/riwayat</span>
-        <span class="auth-chip auth-admin">Admin</span>
-        <span class="endpoint-summary">Riwayat antrian nasabah</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">100 riwayat antrian terakhir nasabah + statistik total/selesai/aktif/batal.</div>
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">URL Param</div>
-            <table class="param-table"><tr><th>Param</th><th>Tipe</th><th>Keterangan</th></tr>
-              <tr><td>id</td><td class="param-type">uuid</td><td>ID nasabah <span class="required">wajib</span></td></tr>
-            </table>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"data"</span>: {
-    <span class="key">"profile"</span>: { <span class="key">"nama"</span>: <span class="str">"Budi"</span>, <span class="key">"no_hp"</span>: <span class="str">"..."</span> },
-    <span class="key">"stats"</span>: { <span class="key">"total"</span>: <span class="num">17</span>, <span class="key">"selesai"</span>: <span class="num">10</span> },
-    <span class="key">"antrian"</span>: [...]
-  }
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-PUT">PUT</span>
-        <span class="endpoint-path">/api/admin/nasabah/:id/toggle</span>
-        <span class="auth-chip auth-admin">Admin</span>
-        <span class="endpoint-summary">Aktifkan / nonaktifkan nasabah</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Memblokir atau mengaktifkan kembali akun nasabah via Supabase Auth ban. Nasabah yang diblokir tidak bisa login ke mobile app.</div>
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="comment">// true = aktifkan, false = nonaktifkan (blokir)</span>
-  <span class="key">"is_active"</span>: <span class="bool">false</span>
-}</pre>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Nasabah berhasil dinonaktifkan"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/admin/nasabah/:id/reset-password</span>
-        <span class="auth-chip auth-admin">Admin</span>
-        <span class="endpoint-summary">Reset password nasabah</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"password"</span>: <span class="str">"passwordbaru123"</span>
-}</pre>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Password berhasil direset"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-GET">GET</span>
-        <span class="endpoint-path">/api/admin/laporan</span>
-        <span class="auth-chip auth-admin">Admin</span>
-        <span class="endpoint-summary">Laporan antrian (filter tanggal)</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-grid">
-          <div class="ep-block"><div class="ep-label">Query params</div>
-            <table class="param-table"><tr><th>Param</th><th>Tipe</th><th>Keterangan</th></tr>
-              <tr><td>dari</td><td class="param-type">date</td><td>Format: YYYY-MM-DD</td></tr>
-              <tr><td>sampai</td><td class="param-type">date</td><td>Format: YYYY-MM-DD</td></tr>
-              <tr><td>cabang_id</td><td class="param-type">number</td><td>Filter cabang (opsional)</td></tr>
-            </table>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 200</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"data"</span>: {
-    <span class="key">"total"</span>: <span class="num">450</span>,
-    <span class="key">"selesai"</span>: <span class="num">400</span>,
-    <span class="key">"batal"</span>: <span class="num">50</span>,
-    <span class="key">"per_hari"</span>: [...],
-    <span class="key">"per_cabang"</span>: [...]
-  }
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="endpoint-card" onclick="toggleCard(this)">
-      <div class="endpoint-header">
-        <span class="method-badge method-POST">POST</span>
-        <span class="endpoint-path">/api/admin/bootstrap</span>
-        <span class="auth-chip auth-none">Publik (sekali pakai)</span>
-        <span class="endpoint-summary">Buat akun admin pertama</span>
-        <span class="chevron">▼</span>
-      </div>
-      <div class="endpoint-body">
-        <div class="ep-desc">Hanya bisa dijalankan sekali saat setup awal jika belum ada admin. Setelah ada admin, endpoint ini ditolak.</div>
-        <div class="ep-grid">
-          <div class="ep-block">
-            <div class="ep-label">Request Body</div>
-            <pre class="code-block">{
-  <span class="key">"email"</span>: <span class="str">"admin@admin.com"</span>,
-  <span class="key">"password"</span>: <span class="str">"password123"</span>,
-  <span class="key">"nama"</span>: <span class="str">"Administrator"</span>
-}</pre>
-          </div>
-          <div class="ep-block"><div class="ep-label">Response 201</div>
-            <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Admin berhasil dibuat"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== FORMAT RESPONSE ===== -->
-  <section class="doc-section" id="response">
-    <div class="section-header">
-      <div class="section-icon" style="background:#F0FDF4">📦</div>
-      <div class="section-title">Format Response</div>
-    </div>
-    <div class="section-desc">Semua response dari API menggunakan format JSON yang konsisten.</div>
-
-    <div class="ep-grid">
-      <div class="ep-block">
-        <div class="ep-label">Response Sukses</div>
-        <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">true</span>,
-  <span class="key">"message"</span>: <span class="str">"Pesan opsional"</span>,
-  <span class="key">"data"</span>: { ... }
-  <span class="comment">// data bisa object, array, atau {}</span>
-}</pre>
-      </div>
-      <div class="ep-block">
-        <div class="ep-label">Response Error</div>
-        <pre class="code-block">{
-  <span class="key">"success"</span>: <span class="bool">false</span>,
-  <span class="key">"message"</span>: <span class="str">"Pesan error detail"</span>,
-  <span class="key">"data"</span>: {}
-}</pre>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== ERROR CODES ===== -->
-  <section class="doc-section" id="error">
-    <div class="section-header">
-      <div class="section-icon" style="background:#FEF2F2">⚠️</div>
-      <div class="section-title">Kode Error HTTP</div>
-    </div>
-    <div class="section-desc">HTTP status code yang digunakan oleh API ini.</div>
-
-    <table class="param-table" style="background:white; border-radius:12px; overflow:hidden; border:1px solid var(--gray-200);">
-      <tr><th>Kode</th><th>Nama</th><th>Arti</th></tr>
-      <tr><td><span style="color:#22C55E;font-weight:700;">200</span></td><td>OK</td><td>Request berhasil</td></tr>
-      <tr><td><span style="color:#22C55E;font-weight:700;">201</span></td><td>Created</td><td>Data berhasil dibuat (POST)</td></tr>
-      <tr><td><span style="color:#EF4444;font-weight:700;">400</span></td><td>Bad Request</td><td>Data request tidak lengkap atau tidak valid</td></tr>
-      <tr><td><span style="color:#EF4444;font-weight:700;">401</span></td><td>Unauthorized</td><td>Token tidak ada, expired, atau tidak valid</td></tr>
-      <tr><td><span style="color:#EF4444;font-weight:700;">403</span></td><td>Forbidden</td><td>Role tidak punya izin (misal: nasabah akses endpoint admin)</td></tr>
-      <tr><td><span style="color:#EF4444;font-weight:700;">404</span></td><td>Not Found</td><td>Data yang diminta tidak ditemukan</td></tr>
-      <tr><td><span style="color:#EF4444;font-weight:700;">409</span></td><td>Conflict</td><td>Data sudah ada (misal: email sudah terdaftar)</td></tr>
-      <tr><td><span style="color:#EF4444;font-weight:700;">500</span></td><td>Internal Server Error</td><td>Error di sisi server, hubungi developer</td></tr>
-    </table>
-
-    <div style="margin-top: 32px; padding-bottom: 16px; text-align:center; color: var(--gray-400); font-size: 12px;">
-      Dashboard Teller — FUND BANK &nbsp;·&nbsp; API v1 &nbsp;·&nbsp; Built with Node.js + Supabase
-    </div>
-  </section>
-
-</main>
+    </main>
+  </div><!-- end .main-wrapper -->
+</div><!-- end .app-layout -->
 
 <script>
-  // Sidebar terbuka by default saat akses langsung
-  document.body.classList.add('sidebar-open');
+  // Tanggal di topbar
+  document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
 
-  function toggleSidebar() {
-    document.body.classList.toggle('sidebar-open');
-  }
+  // Toggle endpoint card
+  function toggle(card) { card.classList.toggle('open'); }
 
-  function toggleCard(card) {
-    card.classList.toggle('open');
-  }
-
-  function scrollTo(id) {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-    // Tutup sidebar di layar kecil setelah klik link
-    if (window.innerWidth < 900) {
-      document.body.classList.remove('sidebar-open');
+  // Scroll ke section + highlight nav
+  function goTo(id, btn) {
+    const targetId = id === 'admin' ? 'admin-section' : id;
+    document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (btn) {
+      document.querySelectorAll('.docs-nav-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
     }
   }
 
   // Scroll spy
-  const sections = document.querySelectorAll('.doc-section');
-  const links = document.querySelectorAll('.sidebar-link');
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const id = entry.target.id;
-        links.forEach(l => l.classList.remove('active'));
-        const active = [...links].find(l => l.getAttribute('onclick')?.includes(`'${id}'`));
-        if (active) active.classList.add('active');
+  const sections = ['overview','konsep','autentikasi','auth','antrian','notif','mobile','admin-section','response','error'];
+  const navIds   = ['overview','konsep','autentikasi','auth','antrian','notif','mobile','admin','response','error'];
+  const navBtns  = document.querySelectorAll('.docs-nav-item');
+
+  const spy = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const idx = sections.indexOf(e.target.id);
+        if (idx >= 0) {
+          navBtns.forEach(b => b.classList.remove('active'));
+          navBtns[idx]?.classList.add('active');
+        }
       }
     });
-  }, { threshold: 0.3, rootMargin: '-80px 0px -60% 0px' });
-  sections.forEach(s => observer.observe(s));
+  }, { threshold: 0.2, rootMargin: '-80px 0px -60% 0px' });
+
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) spy.observe(el);
+  });
 </script>
 </body>
 </html>
