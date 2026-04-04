@@ -312,7 +312,7 @@ body {
   transition: margin-left .22s cubic-bezier(.4,0,.2,1);
 }
 
-.sidebar.collapsed + .main-wrapper { margin-left: 60px; }
+.sidebar.collapsed ~ .main-wrapper { margin-left: 60px; }
 
 /* ============================================================
    TOPBAR
