@@ -9,6 +9,25 @@ let cabangList     = [];   // Cache daftar cabang
 let laporanOffset  = 0;
 const LAPORAN_LIMIT = 50;
 let laporanTotal   = 0;
+let _toastTimer    = null;
+
+// ===========================
+// TOAST NOTIFIKASI
+// ===========================
+function showToast(msg, type = 'success') {
+  const el   = document.getElementById('admin-toast');
+  const icon = document.getElementById('admin-toast-icon');
+  const txt  = document.getElementById('admin-toast-msg');
+  if (!el) return;
+
+  icon.textContent = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+  el.style.background = type === 'success' ? '#15803d' : type === 'error' ? '#dc2626' : '#1c1917';
+  txt.textContent = msg;
+  el.style.display = 'flex';
+
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.style.display = 'none'; }, 3500);
+}
 
 // ===========================
 // NAVIGASI HALAMAN
@@ -161,6 +180,7 @@ async function submitCabang() {
     : await api('POST', '/admin/cabang', body);
 
   if (result.success) {
+    showToast(result.message || (id ? 'Cabang berhasil diperbarui' : 'Cabang berhasil ditambahkan'));
     closeModalCabang();
     loadCabang();
   } else {
@@ -172,8 +192,8 @@ async function toggleCabang(id, newStatus) {
   const label = newStatus ? 'mengaktifkan' : 'menonaktifkan';
   if (!confirm(`Yakin ingin ${label} cabang ini?`)) return;
   const result = await api('PUT', `/admin/cabang/${id}`, { is_active: newStatus });
-  if (result.success) loadCabang();
-  else alert('Gagal: ' + result.message);
+  if (result.success) { showToast(result.message || 'Status cabang diperbarui'); loadCabang(); }
+  else showToast('Gagal: ' + result.message, 'error');
 }
 
 // ===========================
@@ -275,6 +295,7 @@ async function submitStaff() {
   }
 
   if (result.success) {
+    showToast(result.message || (id ? 'Staff berhasil diperbarui' : 'Staff berhasil ditambahkan'));
     closeModalStaff();
     loadStaff();
   } else {
@@ -306,8 +327,8 @@ async function submitResetPw() {
 
   const result = await api('POST', `/admin/staff/${id}/reset-password`, { password_baru: pw });
   if (result.success) {
+    showToast(result.message || 'Password berhasil direset');
     closeModalResetPw();
-    alert(result.message);
   } else {
     setModalAlert('modal-reset-pw-alert', 'error', result.message);
   }
@@ -317,10 +338,10 @@ async function deleteStaff(id, nama) {
   if (!confirm(`Hapus akun "${nama}"? Tindakan ini tidak bisa dibatalkan.`)) return;
   const result = await api('DELETE', `/admin/staff/${id}`);
   if (result.success) {
-    alert(result.message);
+    showToast(result.message || `Akun "${nama}" berhasil dihapus`);
     loadStaff();
   } else {
-    alert('Gagal: ' + result.message);
+    showToast('Gagal: ' + result.message, 'error');
   }
 }
 
