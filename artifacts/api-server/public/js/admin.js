@@ -46,14 +46,15 @@ function navigateTo(page) {
   if (pageEl) pageEl.classList.add('active');
 
   // Update topbar title
-  const titles = { dashboard: 'Dashboard', cabang: 'Kelola Cabang', staff: 'Kelola Staff', laporan: 'Laporan' };
+  const titles = { dashboard: 'Dashboard', cabang: 'Kelola Cabang', staff: 'Kelola Staff', nasabah: 'Kelola Nasabah', laporan: 'Laporan' };
   const titleEl = document.getElementById('topbar-page-title');
   if (titleEl) titleEl.textContent = titles[page] ?? 'Admin';
 
   // Load data sesuai halaman
   if (page === 'dashboard') loadDashboard();
-  else if (page === 'cabang') loadCabang();
-  else if (page === 'staff')  loadStaff();
+  else if (page === 'cabang')  loadCabang();
+  else if (page === 'staff')   loadStaff();
+  else if (page === 'nasabah') loadNasabah();
   else if (page === 'laporan') initLaporan();
 }
 
@@ -483,6 +484,224 @@ async function loadMonitorData() {
 }
 
 // ===========================
+// KELOLA NASABAH
+// ===========================
+let _nasabahSearchTimer = null;
+
+function debounceNasabahSearch() {
+  if (_nasabahSearchTimer) clearTimeout(_nasabahSearchTimer);
+  _nasabahSearchTimer = setTimeout(loadNasabah, 400);
+}
+
+async function loadNasabah() {
+  document.getElementById('nasabah-table-body').innerHTML =
+    `<tr class="empty-row"><td colspan="6">Memuat...</td></tr>`;
+
+  const search  = document.getElementById('nasabah-search')?.value.trim() ?? '';
+  const cabang  = document.getElementById('nasabah-filter-cabang')?.value ?? '';
+
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (cabang) params.set('cabang_id', cabang);
+
+  try {
+    const result = await api('GET', '/admin/nasabah?' + params.toString());
+    if (!result.success) {
+      document.getElementById('nasabah-table-body').innerHTML =
+        `<tr class="empty-row"><td colspan="6" style="color:var(--danger)">${escHtml(result.message)}</td></tr>`;
+      return;
+    }
+
+    const { nasabah, stats } = result.data;
+
+    // Update stat chips
+    const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setEl('ns-total', stats.total);
+    setEl('ns-aktif', stats.aktif_hari_ini);
+    setEl('ns-baru',  stats.baru_minggu_ini);
+
+    renderNasabahTable(nasabah);
+  } catch {
+    document.getElementById('nasabah-table-body').innerHTML =
+      `<tr class="empty-row"><td colspan="6" style="color:var(--danger)">Terjadi kesalahan koneksi</td></tr>`;
+  }
+}
+
+function renderNasabahTable(list) {
+  if (!list.length) {
+    document.getElementById('nasabah-table-body').innerHTML =
+      `<tr class="empty-row"><td colspan="6">Belum ada nasabah terdaftar.</td></tr>`;
+    return;
+  }
+
+  document.getElementById('nasabah-table-body').innerHTML = list.map(n => {
+    const aktifBadge = n.aktif_hari_ini
+      ? `<span class="status-badge-table status-selesai">Aktif Hari Ini</span>`
+      : `<span class="status-badge-table status-batal" style="background:var(--gray-100);color:var(--gray-400);border-color:var(--gray-200)">—</span>`;
+
+    const statusBadge = n.is_active === false
+      ? `<span class="status-badge-table status-batal">Nonaktif</span>`
+      : `<span class="status-badge-table status-selesai">Aktif</span>`;
+
+    const terakhir = n.terakhir_aktif
+      ? new Date(n.terakhir_aktif).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })
+      : '—';
+
+    return `<tr>
+      <td>
+        <div style="font-weight:600;color:var(--gray-800)">${escHtml(n.nama)}</div>
+        ${n.cabang?.nama ? `<div style="font-size:11px;color:var(--gray-400)">${escHtml(n.cabang.nama)}</div>` : ''}
+      </td>
+      <td class="text-muted" style="font-size:12px">${escHtml(n.no_hp ?? '—')}</td>
+      <td style="font-weight:700;color:var(--orange);font-size:14px">${n.total_antrian}</td>
+      <td class="text-muted" style="font-size:12px">${terakhir}</td>
+      <td>${statusBadge}</td>
+      <td>
+        <div class="tbl-actions">
+          <button class="btn btn-primary btn-sm" onclick="openRiwayatPanel('${n.id}')">Riwayat</button>
+          <button class="btn btn-sm ${n.is_active === false ? 'btn-done' : 'btn-danger'}"
+            onclick="doToggleNasabah('${n.id}', ${n.is_active !== false})">
+            ${n.is_active === false ? 'Aktifkan' : 'Nonaktifkan'}
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// --- Riwayat Panel ---
+let _riwayatNasabahId   = null;
+let _riwayatNasabahNama = null;
+
+function openRiwayatPanel(nasabahId) {
+  _riwayatNasabahId = nasabahId;
+  document.getElementById('riw-nasabah-name').textContent = 'Memuat...';
+  document.getElementById('riw-nasabah-hp').textContent   = '';
+  document.getElementById('riw-nasabah-daftar').textContent = '';
+  document.getElementById('riwayat-body').innerHTML =
+    '<div style="text-align:center;padding:40px;color:var(--gray-400);font-size:13px">Memuat riwayat...</div>';
+  document.getElementById('riwayat-overlay').classList.add('open');
+  document.getElementById('riwayat-panel').classList.add('open');
+  loadRiwayatData();
+}
+
+function closeRiwayatPanel() {
+  document.getElementById('riwayat-overlay').classList.remove('open');
+  document.getElementById('riwayat-panel').classList.remove('open');
+  _riwayatNasabahId   = null;
+  _riwayatNasabahNama = null;
+}
+
+async function loadRiwayatData() {
+  if (!_riwayatNasabahId) return;
+  try {
+    const result = await api('GET', `/admin/nasabah/${_riwayatNasabahId}/riwayat`);
+    if (!result.success) {
+      document.getElementById('riwayat-body').innerHTML =
+        `<div style="text-align:center;padding:40px;color:var(--danger)">Gagal memuat: ${escHtml(result.message)}</div>`;
+      return;
+    }
+
+    const { profile, antrian, stats } = result.data;
+    _riwayatNasabahNama = profile.nama;
+
+    // Update header
+    document.getElementById('riw-nasabah-name').textContent = profile.nama;
+    document.getElementById('riw-nasabah-hp').textContent   = profile.no_hp ?? '—';
+    document.getElementById('reset-pw-nasabah-id').value    = _riwayatNasabahId;
+    document.getElementById('reset-pw-nasabah-nama').textContent = `Reset password untuk: ${profile.nama}`;
+
+    const daftar = profile.created_at
+      ? 'Daftar: ' + new Date(profile.created_at).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })
+      : '';
+    document.getElementById('riw-nasabah-daftar').textContent = daftar;
+
+    // Stat chips
+    const statusMap = {
+      menunggu:  ['status-menunggu',  'Menunggu'],
+      dipanggil: ['status-dipanggil', 'Dipanggil'],
+      selesai:   ['status-selesai',   'Selesai'],
+      batal:     ['status-batal',     'Batal'],
+    };
+
+    const statsHtml = `
+      <div class="monitor-stats">
+        <div class="monitor-stat orange"><div class="ms-val">${stats.total}</div><div class="ms-lbl">Total</div></div>
+        <div class="monitor-stat green"><div class="ms-val">${stats.selesai}</div><div class="ms-lbl">Selesai</div></div>
+        <div class="monitor-stat blue"><div class="ms-val">${stats.menunggu}</div><div class="ms-lbl">Aktif</div></div>
+        <div class="monitor-stat red"><div class="ms-val">${stats.batal}</div><div class="ms-lbl">Batal</div></div>
+      </div>`;
+
+    const rows = antrian.length
+      ? antrian.map(a => {
+          const [cls, lbl] = statusMap[a.status] ?? ['', a.status];
+          const tgl = a.created_at
+            ? new Date(a.created_at).toLocaleDateString('id-ID', { day:'numeric', month:'short' })
+            : '—';
+          const lClass = a.layanan === 'CS' ? 'layanan-cs' : 'layanan-teller';
+          return `<tr>
+            <td class="text-muted" style="font-size:11px;white-space:nowrap">${tgl}</td>
+            <td class="antrian-number" style="font-size:13px">${escHtml(a.nomor_antrian)}</td>
+            <td><span class="layanan-badge ${lClass}">${a.layanan}</span></td>
+            <td style="font-size:11px;color:var(--gray-500)">${escHtml(a.keperluan ?? '—')}</td>
+            <td><span class="status-badge-table ${cls}">${lbl}</span></td>
+            <td class="text-muted" style="font-size:11px">${escHtml(a.cabang?.nama ?? '—')}</td>
+          </tr>`;
+        }).join('')
+      : `<tr class="empty-row"><td colspan="6">Belum ada riwayat antrian</td></tr>`;
+
+    const tableHtml = `
+      <div class="monitor-table-wrap">
+        <div class="monitor-table-title">Riwayat Antrian</div>
+        <table class="monitor-table">
+          <thead><tr><th>Tgl</th><th>Nomor</th><th>Layanan</th><th>Keperluan</th><th>Status</th><th>Cabang</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+
+    document.getElementById('riwayat-body').innerHTML = statsHtml + tableHtml;
+
+  } catch {
+    document.getElementById('riwayat-body').innerHTML =
+      `<div style="text-align:center;padding:40px;color:var(--danger)">Terjadi kesalahan koneksi</div>`;
+  }
+}
+
+// --- Toggle aktif/nonaktif nasabah ---
+async function doToggleNasabah(id, currentlyActive) {
+  const label = currentlyActive ? 'menonaktifkan' : 'mengaktifkan';
+  if (!confirm(`Yakin ingin ${label} nasabah ini?`)) return;
+  const result = await api('PUT', `/admin/nasabah/${id}/toggle`, { is_active: !currentlyActive });
+  if (result.success) { showToast(result.message); loadNasabah(); }
+  else showToast('Gagal: ' + result.message, 'error');
+}
+
+// --- Reset password nasabah ---
+function openResetPwNasabah() {
+  document.getElementById('reset-pw-nasabah-value').value = '';
+  document.getElementById('modal-reset-pw-nasabah-alert').innerHTML = '';
+  document.getElementById('modal-reset-pw-nasabah').classList.remove('hidden');
+}
+function closeResetPwNasabah() {
+  document.getElementById('modal-reset-pw-nasabah').classList.add('hidden');
+}
+async function submitResetPwNasabah() {
+  const id = document.getElementById('reset-pw-nasabah-id').value;
+  const pw = document.getElementById('reset-pw-nasabah-value').value;
+  if (!pw || pw.length < 8) {
+    setModalAlert('modal-reset-pw-nasabah-alert', 'error', 'Password minimal 8 karakter');
+    return;
+  }
+  const result = await api('POST', `/admin/nasabah/${id}/reset-password`, { password_baru: pw });
+  if (result.success) {
+    showToast(result.message || 'Password nasabah berhasil direset');
+    closeResetPwNasabah();
+  } else {
+    setModalAlert('modal-reset-pw-nasabah-alert', 'error', result.message);
+  }
+}
+
+// ===========================
 // LAPORAN
 // ===========================
 function initLaporan() {
@@ -623,7 +842,7 @@ async function exportCSV() {
 // HELPER: Refresh dropdown cabang di semua form
 // ===========================
 function refreshCabangDropdowns() {
-  const selectors = ['#staff-cabang', '#lap-cabang', '#staff-filter-cabang'];
+  const selectors = ['#staff-cabang', '#lap-cabang', '#staff-filter-cabang', '#nasabah-filter-cabang'];
   selectors.forEach(sel => {
     const el = document.querySelector(sel);
     if (!el) return;

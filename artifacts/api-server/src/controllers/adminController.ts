@@ -396,6 +396,182 @@ export async function getLaporan(req: Request, res: Response): Promise<void> {
 }
 
 // ===========================================================
+// GET /api/admin/nasabah — daftar semua nasabah
+// ===========================================================
+export async function listAdminNasabah(req: Request, res: Response): Promise<void> {
+  const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+  const weekStart  = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { search = "", cabang_id = "" } = req.query as Record<string, string>;
+
+  try {
+    // Ambil semua nasabah dari profiles
+    let query = supabaseAdmin
+      .from("profiles")
+      .select(`
+        id, nama, no_hp,
+        cabang:cabang_id(id, nama, kode),
+        created_at
+      `)
+      .eq("role", "nasabah")
+      .order("created_at", { ascending: false });
+
+    if (search) query = query.ilike("nama", `%${search}%`);
+
+    const [profilesRes, authUsersRes] = await Promise.all([
+      query,
+      supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
+    ]);
+
+    if (profilesRes.error) throw profilesRes.error;
+
+    const allProfiles = profilesRes.data ?? [];
+    const ids = allProfiles.map(p => p.id);
+
+    if (ids.length === 0) {
+      return void res.json({ success: true, message: "Daftar nasabah", data: { nasabah: [], stats: { total: 0, aktif_hari_ini: 0, baru_minggu_ini: 0 } } });
+    }
+
+    // Banlist dari Supabase Auth
+    const authMap = new Map<string, { banned: boolean }>();
+    for (const u of authUsersRes.data?.users ?? []) {
+      const isBanned = u.banned_until ? new Date(u.banned_until) > new Date() : false;
+      authMap.set(u.id, { banned: isBanned });
+    }
+
+    // Antrian hari ini + total antrian per user
+    const [todayAntrianRes, allAntrianRes] = await Promise.all([
+      supabaseAdmin.from("antrian").select("user_id").in("user_id", ids).gte("created_at", todayStart),
+      supabaseAdmin.from("antrian").select("user_id, created_at").in("user_id", ids),
+    ]);
+
+    const todaySet = new Set((todayAntrianRes.data ?? []).map((a: any) => a.user_id));
+    const allMap   = new Map<string, { total: number; lastDate: string }>();
+    for (const a of allAntrianRes.data ?? []) {
+      if (!a.user_id) continue;
+      if (!allMap.has(a.user_id)) allMap.set(a.user_id, { total: 0, lastDate: a.created_at });
+      const entry = allMap.get(a.user_id)!;
+      entry.total++;
+      if (a.created_at > entry.lastDate) entry.lastDate = a.created_at;
+    }
+
+    const nasabah = allProfiles
+      .filter(p => !cabang_id || (p.cabang as any)?.id === Number(cabang_id))
+      .map(p => {
+        const aStats  = allMap.get(p.id);
+        const auth    = authMap.get(p.id);
+        return {
+          ...p,
+          is_active:        !auth?.banned,
+          total_antrian:    aStats?.total ?? 0,
+          aktif_hari_ini:   todaySet.has(p.id),
+          terakhir_aktif:   aStats?.lastDate ?? null,
+        };
+      });
+
+    const baru = allProfiles.filter(p => p.created_at >= weekStart).length;
+    const stats = {
+      total:           nasabah.length,
+      aktif_hari_ini:  nasabah.filter(n => n.aktif_hari_ini).length,
+      baru_minggu_ini: baru,
+    };
+
+    res.json({ success: true, message: "Daftar nasabah", data: { nasabah, stats } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err?.message ?? "Gagal memuat nasabah", data: {} });
+  }
+}
+
+// ===========================================================
+// GET /api/admin/nasabah/:id/riwayat — riwayat antrian nasabah
+// ===========================================================
+export async function getNasabahRiwayat(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+
+  // Verifikasi nasabah ada
+  const { data: profile, error: profErr } = await supabaseAdmin
+    .from("profiles")
+    .select("id, nama, no_hp, created_at, cabang:cabang_id(nama, kode)")
+    .eq("id", id)
+    .eq("role", "nasabah")
+    .single();
+
+  if (profErr || !profile) {
+    res.status(404).json({ success: false, message: "Nasabah tidak ditemukan", data: {} });
+    return;
+  }
+
+  const { data: antrian, error: antrErr } = await supabaseAdmin
+    .from("antrian")
+    .select("id, nomor_antrian, layanan, keperluan, status, loket_number, created_at, called_at, finished_at, cabang:cabang_id(nama, kode)")
+    .eq("user_id", id)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (antrErr) {
+    res.status(500).json({ success: false, message: antrErr.message, data: {} });
+    return;
+  }
+
+  const list = antrian ?? [];
+  const stats = {
+    total:    list.length,
+    selesai:  list.filter(a => a.status === "selesai").length,
+    batal:    list.filter(a => a.status === "batal").length,
+    menunggu: list.filter(a => ["menunggu", "dipanggil"].includes(a.status)).length,
+  };
+
+  res.json({ success: true, message: "Riwayat nasabah", data: { profile, antrian: list, stats } });
+}
+
+// ===========================================================
+// PUT /api/admin/nasabah/:id/toggle — aktifkan/nonaktifkan nasabah
+// ===========================================================
+export async function toggleNasabah(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const { is_active } = req.body;
+
+  // Gunakan Supabase Auth ban — tidak butuh kolom is_active di profiles
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(id, {
+    ban_duration: is_active ? "none" : "876000h", // "none" = unbanned, besar = permanently banned
+  });
+
+  if (error) {
+    res.status(500).json({ success: false, message: error.message, data: {} });
+    return;
+  }
+
+  const label = is_active ? "diaktifkan" : "dinonaktifkan";
+  actLog(req, "toggle_nasabah", { id, is_active });
+  res.json({ success: true, message: `Nasabah berhasil ${label}`, data: {} });
+}
+
+// ===========================================================
+// POST /api/admin/nasabah/:id/reset-password
+// ===========================================================
+export async function resetPasswordNasabah(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const { password_baru } = req.body;
+
+  if (!password_baru || (password_baru as string).length < 8) {
+    res.status(400).json({ success: false, message: "Password baru minimal 8 karakter", data: {} });
+    return;
+  }
+
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(id, {
+    password: password_baru as string,
+  });
+
+  if (error) {
+    res.status(500).json({ success: false, message: error.message, data: {} });
+    return;
+  }
+
+  actLog(req, "reset_password_nasabah", { id });
+  res.json({ success: true, message: "Password nasabah berhasil direset", data: {} });
+}
+
+// ===========================================================
 // GET /api/admin/staff/:id/monitor — data dashboard live staff
 // ===========================================================
 export async function getStaffMonitor(req: Request, res: Response): Promise<void> {

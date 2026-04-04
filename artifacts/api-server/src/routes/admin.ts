@@ -11,6 +11,10 @@ import {
   deleteAdminStaff,
   getLaporan,
   getStaffMonitor,
+  listAdminNasabah,
+  getNasabahRiwayat,
+  toggleNasabah,
+  resetPasswordNasabah,
   bootstrapAdmin,
 } from "../controllers/adminController";
 import { adminMiddleware } from "../middleware/authMiddleware";
@@ -31,6 +35,10 @@ router.put("/staff/:id",                     adminMiddleware, updateAdminStaff);
 router.post("/staff/:id/reset-password",     adminMiddleware, resetPasswordAdminStaff);
 router.delete("/staff/:id",                  adminMiddleware, deleteAdminStaff);
 router.get("/staff/:id/monitor",             adminMiddleware, getStaffMonitor);
+router.get("/nasabah",                       adminMiddleware, listAdminNasabah);
+router.get("/nasabah/:id/riwayat",           adminMiddleware, getNasabahRiwayat);
+router.put("/nasabah/:id/toggle",            adminMiddleware, toggleNasabah);
+router.post("/nasabah/:id/reset-password",   adminMiddleware, resetPasswordNasabah);
 router.get("/laporan",                       adminMiddleware, getLaporan);
 
 export default router;

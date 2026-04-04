@@ -191,6 +191,14 @@
         <span class="nav-label">Kelola Staff</span>
       </button>
 
+      <button class="nav-item" data-page="nasabah">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span class="nav-label">Kelola Nasabah</span>
+      </button>
+
       <button class="nav-item" data-page="laporan">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -340,6 +348,59 @@
 
       </div>
 
+      <!-- ===================== PAGE: NASABAH ===================== -->
+      <div id="page-nasabah" class="sub-page">
+
+        <!-- Stat chips nasabah -->
+        <div class="stat-chips" id="nasabah-stat-chips">
+          <div class="stat-chip">
+            <div class="stat-chip-icon" style="background:var(--orange-soft)">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div><div class="stat-chip-val" id="ns-total">—</div><div class="stat-chip-lbl">Total Nasabah</div></div>
+          </div>
+          <div class="stat-chip">
+            <div class="stat-chip-icon" style="background:var(--success-light)">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div><div class="stat-chip-val" id="ns-aktif" style="color:var(--success)">—</div><div class="stat-chip-lbl">Aktif Hari Ini</div></div>
+          </div>
+          <div class="stat-chip">
+            <div class="stat-chip-icon" style="background:var(--blue-light)">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div><div class="stat-chip-val" id="ns-baru" style="color:var(--blue)">—</div><div class="stat-chip-lbl">Baru Minggu Ini</div></div>
+          </div>
+        </div>
+
+        <!-- Tabel nasabah -->
+        <div class="panel-table">
+          <div class="table-header">
+            <h2>Daftar Nasabah</h2>
+            <div class="table-actions">
+              <input type="text" id="nasabah-search" class="form-input" style="width:180px;padding:6px 11px;font-size:12px" placeholder="Cari nama / HP..." oninput="debounceNasabahSearch()" />
+              <select id="nasabah-filter-cabang" class="select-input" style="width:auto;padding:6px 10px;font-size:12px" onchange="loadNasabah()">
+                <option value="">Semua Cabang</option>
+              </select>
+              <button class="btn btn-outline btn-sm" onclick="loadNasabah()">↺ Refresh</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table class="queue-table">
+              <thead>
+                <tr>
+                  <th>Nama</th><th>No. HP</th><th>Total Antrian</th><th>Terakhir Aktif</th><th>Status</th><th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="nasabah-table-body">
+                <tr class="empty-row"><td colspan="6">Memuat...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
       <!-- ===================== PAGE: LAPORAN ===================== -->
       <div id="page-laporan" class="sub-page">
 
@@ -400,6 +461,35 @@
     </main>
   </div><!-- end .main-wrapper -->
 </div><!-- end .app-layout -->
+
+<!-- ===== RIWAYAT NASABAH PANEL ===== -->
+<div class="monitor-overlay" id="riwayat-overlay" onclick="closeRiwayatPanel()"></div>
+<div class="monitor-panel" id="riwayat-panel">
+
+  <div class="monitor-header">
+    <div class="monitor-header-info">
+      <div class="monitor-staff-name" id="riw-nasabah-name">—</div>
+      <div class="monitor-staff-meta">
+        <span id="riw-nasabah-hp"></span>
+        <span id="riw-nasabah-daftar"></span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-outline btn-sm" onclick="openResetPwNasabah()" id="riw-reset-pw-btn">Reset PW</button>
+      <button class="monitor-close-btn" onclick="closeRiwayatPanel()">✕</button>
+    </div>
+  </div>
+
+  <div class="monitor-body" id="riwayat-body">
+    <div style="text-align:center;padding:40px;color:var(--gray-400);font-size:13px">Memuat data...</div>
+  </div>
+
+  <div class="monitor-footer">
+    <span style="font-size:11px;color:var(--gray-400)">Riwayat 100 antrian terakhir</span>
+    <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="loadRiwayatData()">↺ Refresh</button>
+  </div>
+
+</div>
 
 <!-- ===== MONITOR OVERLAY + PANEL ===== -->
 <div class="monitor-overlay" id="monitor-overlay" onclick="closeMonitorPanel()"></div>
@@ -513,6 +603,24 @@
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModalStaff()">Batal</button>
       <button class="btn btn-primary" onclick="submitStaff()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: RESET PASSWORD NASABAH ===================== -->
+<div class="modal-backdrop hidden" id="modal-reset-pw-nasabah">
+  <div class="modal-box">
+    <div class="modal-title">Reset Password Nasabah</div>
+    <p id="reset-pw-nasabah-nama" style="font-size:13px;color:var(--gray-500);margin-bottom:16px;margin-top:-8px"></p>
+    <div id="modal-reset-pw-nasabah-alert"></div>
+    <input type="hidden" id="reset-pw-nasabah-id" />
+    <div class="form-group">
+      <label>Password Baru (min 8 karakter)</label>
+      <input type="password" id="reset-pw-nasabah-value" placeholder="Password baru..." />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeResetPwNasabah()">Batal</button>
+      <button class="btn btn-primary" onclick="submitResetPwNasabah()">Reset Password</button>
     </div>
   </div>
 </div>
