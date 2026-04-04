@@ -97,11 +97,14 @@ registerForm.addEventListener('submit', async (e) => {
 
   try {
     const email = document.getElementById('reg-email').value.trim().toLowerCase();
-    const role  = document.getElementById('reg-role').value;
-    const domainMap = { cs: '@cs.com', teller: '@teller.com' };
-    const required  = domainMap[role] || '';
-    if (!email.endsWith(required)) {
-      registerError.textContent = `Jabatan ${role.toUpperCase()} hanya boleh menggunakan email berakhiran ${required}`;
+
+    // Role ditentukan otomatis dari domain email
+    let role = null;
+    if (email.endsWith('@teller.com')) role = 'teller';
+    else if (email.endsWith('@cs.com'))  role = 'cs';
+
+    if (!role) {
+      registerError.textContent = 'Email harus menggunakan domain @teller.com atau @cs.com';
       registerError.classList.remove('hidden');
       registerBtn.disabled = false;
       registerBtn.textContent = 'Buat Akun';
