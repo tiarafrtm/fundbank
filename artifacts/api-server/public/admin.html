@@ -7,122 +7,59 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/dashboard.css" />
   <style>
-    /* ===========================
-       NAVIGASI HALAMAN (show/hide)
-    =========================== */
-    .page          { display: none; }
-    .page.active   { display: block; }
+    /* Halaman: sembunyikan semua kecuali .active */
+    .sub-page          { display: none; }
+    .sub-page.active   { display: flex; flex-direction: column; gap: 24px; }
 
-    /* ===========================
-       ADMIN-SPECIFIC OVERRIDES
-    =========================== */
-    :root { --admin-accent: #7C3AED; }
+    /* Per-cabang cards grid di dashboard */
+    .cabang-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .cabang-stat-card {
+      background: var(--white); border: 1px solid var(--gray-200);
+      border-radius: var(--radius); padding: 20px 22px;
+      box-shadow: var(--shadow-sm); border-left: 4px solid var(--orange);
+    }
+    .cabang-stat-card .cs-title { font-size: 13px; font-weight: 700; color: var(--gray-800); margin-bottom: 2px; }
+    .cabang-stat-card .cs-kode  { font-size: 10px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+    .cabang-stat-card .cs-row   { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--gray-500); padding: 3px 0; }
+    .cabang-stat-card .cs-row strong { font-weight: 700; color: var(--gray-800); }
 
-    /* Stat cards grid */
-    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .stat-card  { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
-    .stat-card .stat-val { font-size: 32px; font-weight: 800; color: #F97316; line-height: 1; margin-bottom: 4px; }
-    .stat-card .stat-lbl { font-size: 11px; color: #78716c; font-weight: 500; }
-    .stat-card.green  .stat-val { color: #16A34A; }
-    .stat-card.blue   .stat-val { color: #2563EB; }
-    .stat-card.red    .stat-val { color: #DC2626; }
-    .stat-card.purple .stat-val { color: #7C3AED; }
+    /* Section label */
+    .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--gray-400); margin-bottom: 12px; margin-top: 4px; }
 
-    /* Per-cabang cards */
-    .cabang-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-    .cabang-stat-card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.06); border-left: 4px solid #F97316; }
-    .cabang-stat-card .cs-title { font-size: 14px; font-weight: 700; color: #292524; margin-bottom: 4px; }
-    .cabang-stat-card .cs-kode  { font-size: 10px; font-weight: 600; color: #a8a29e; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
-    .cabang-stat-card .cs-row   { display: flex; justify-content: space-between; font-size: 12px; color: #78716c; margin-bottom: 4px; }
-    .cabang-stat-card .cs-row strong { font-weight: 700; color: #292524; }
-
-    /* Data table wrapper */
-    .table-wrapper { background: #fff; border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow: hidden; }
-    .table-toolbar { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid #f5f5f4; flex-wrap: wrap; }
-    .table-toolbar h3 { font-size: 14px; font-weight: 700; color: #292524; flex: 1; }
-    .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .admin-table th { background: #fafaf9; color: #78716c; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 10px 14px; text-align: left; border-bottom: 1px solid #f0efed; white-space: nowrap; }
-    .admin-table td { padding: 11px 14px; border-bottom: 1px solid #f5f5f4; color: #44403c; vertical-align: middle; }
-    .admin-table tr:last-child td { border-bottom: none; }
-    .admin-table tr:hover td { background: #fafaf9; }
-    .admin-table .actions { display: flex; gap: 6px; }
-
-    /* Badges */
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 700; }
-    .badge-teller  { background: #FFF7ED; color: #EA580C; }
-    .badge-cs      { background: #EFF6FF; color: #2563EB; }
-    .badge-admin   { background: #F5F3FF; color: #7C3AED; }
-    .badge-active  { background: #F0FDF4; color: #16A34A; }
-    .badge-inactive{ background: #FEF2F2; color: #DC2626; }
-    .badge-menunggu  { background: #FFF7ED; color: #EA580C; }
-    .badge-dipanggil { background: #EFF6FF; color: #2563EB; }
-    .badge-selesai   { background: #F0FDF4; color: #16A34A; }
-    .badge-batal     { background: #FEF2F2; color: #DC2626; }
-
-    /* Filter row */
-    .filter-row { display: flex; gap: 10px; flex-wrap: wrap; padding: 14px 18px; border-bottom: 1px solid #f5f5f4; background: #fafaf9; }
-    .filter-row input, .filter-row select { padding: 7px 11px; border: 1px solid #e7e5e4; border-radius: 8px; font-size: 12px; font-family: 'Poppins', sans-serif; background: #fff; color: #292524; }
-    .filter-row input:focus, .filter-row select:focus { outline: none; border-color: #F97316; }
-
-    /* Modal */
+    /* Modal backdrop */
     .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
     .modal-backdrop.hidden { display: none; }
-    .modal-box { background: #fff; border-radius: 18px; padding: 28px; width: 100%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
-    .modal-title { font-size: 16px; font-weight: 700; color: #292524; margin-bottom: 18px; }
-    .modal-footer { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
-    .form-group { margin-bottom: 14px; }
-    .form-group label { display: block; font-size: 11px; font-weight: 700; color: #78716c; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
-    .form-group input, .form-group select, .form-group textarea {
-      width: 100%; padding: 9px 13px; border: 1px solid #e7e5e4; border-radius: 9px;
-      font-family: 'Poppins', sans-serif; font-size: 13px; color: #292524;
-      background: #fff; box-sizing: border-box;
-    }
-    .form-group input:focus, .form-group select:focus { outline: none; border-color: #F97316; box-shadow: 0 0 0 3px rgba(249,115,22,.1); }
+    .modal-box { background: var(--white); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,.18); }
+    .modal-title { font-size: 15px; font-weight: 700; color: var(--gray-800); margin-bottom: 18px; }
+    .modal-footer { display: flex; gap: 10px; margin-top: 22px; justify-content: flex-end; }
 
-    /* Buttons */
-    .btn-primary { background: #F97316; color: #fff; border: none; border-radius: 9px; padding: 9px 18px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s; }
-    .btn-primary:hover { background: #EA580C; }
-    .btn-secondary { background: #f5f5f4; color: #57534e; border: none; border-radius: 9px; padding: 9px 14px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .btn-secondary:hover { background: #e7e5e4; }
-    .btn-danger { background: #FEF2F2; color: #DC2626; border: none; border-radius: 9px; padding: 7px 12px; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .btn-danger:hover { background: #fee2e2; }
-    .btn-edit { background: #EFF6FF; color: #2563EB; border: none; border-radius: 9px; padding: 7px 12px; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .btn-edit:hover { background: #dbeafe; }
-    .btn-purple { background: #F5F3FF; color: #7C3AED; border: none; border-radius: 9px; padding: 7px 12px; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .btn-purple:hover { background: #ede9fe; }
-    .btn-green { background: #F0FDF4; color: #16A34A; border: none; border-radius: 9px; padding: 9px 18px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .btn-green:hover { background: #dcfce7; }
-    .btn-sm { padding: 5px 10px; font-size: 11px; }
+    /* Filter row laporan */
+    .filter-row { display: flex; gap: 10px; flex-wrap: wrap; padding: 14px 24px; border-bottom: 1px solid var(--gray-100); background: var(--gray-50); align-items: center; }
+    .filter-row input[type="date"],
+    .filter-row select { padding: 7px 11px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 12px; font-family: var(--font); background: var(--white); color: var(--gray-800); cursor: pointer; }
+    .filter-row input:focus, .filter-row select:focus { outline: none; border-color: var(--orange); }
 
     /* Pagination */
-    .pagination { display: flex; align-items: center; gap: 8px; padding: 12px 18px; border-top: 1px solid #f5f5f4; font-size: 12px; color: #78716c; }
-    .pagination button { background: #f5f5f4; border: none; border-radius: 7px; padding: 6px 12px; cursor: pointer; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; }
-    .pagination button:hover { background: #e7e5e4; }
-    .pagination button:disabled { opacity: .4; cursor: default; }
+    .pager { display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-top: 1px solid var(--gray-100); font-size: 12px; color: var(--gray-400); }
+    .pager span { flex: 1; }
 
-    /* Empty state */
-    .empty-state { text-align: center; padding: 40px; color: #a8a29e; font-size: 13px; }
-    .empty-state svg { margin-bottom: 10px; opacity: .4; }
+    /* Action buttons in table */
+    .tbl-actions { display: flex; gap: 5px; flex-wrap: nowrap; }
 
-    /* Loading skeleton */
-    .skeleton { background: linear-gradient(90deg, #f5f5f4 25%, #ebe9e7 50%, #f5f5f4 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 6px; height: 16px; }
-    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    /* Inline alert di modal */
+    .modal-alert { padding: 9px 13px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; margin-bottom: 12px; }
+    .modal-alert.error   { background: var(--danger-light);  color: var(--danger);  border: 1px solid #FECACA; }
+    .modal-alert.success { background: var(--success-light); color: var(--success); border: 1px solid #BBF7D0; }
 
-    /* Alert inline */
-    .alert-inline { padding: 9px 14px; border-radius: 9px; font-size: 12px; font-weight: 500; margin-bottom: 12px; }
-    .alert-inline.success { background: #F0FDF4; color: #16A34A; }
-    .alert-inline.error   { background: #FEF2F2; color: #DC2626; }
-
-    /* Responsive table */
-    @media (max-width: 768px) {
-      .admin-table th:nth-child(3), .admin-table td:nth-child(3),
-      .admin-table th:nth-child(4), .admin-table td:nth-child(4) { display: none; }
-    }
+    /* Role badge */
+    .role-teller { background: var(--orange-soft);  color: var(--orange-dark); }
+    .role-cs     { background: var(--blue-light);   color: var(--blue); }
   </style>
 </head>
 <body>
 
 <div class="app-layout">
+
   <!-- ===== SIDEBAR ===== -->
   <aside id="sidebar" class="sidebar">
     <div class="sidebar-top">
@@ -137,13 +74,6 @@
           <div class="sb-title">Antrian Bank</div>
           <div class="sb-subtitle">Panel Administrator</div>
         </div>
-        <button id="topbar-toggle" class="sb-toggle" title="Buka/Tutup Sidebar">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="3" y1="6" x2="21" y2="6"/>
-            <line x1="3" y1="12" x2="21" y2="12"/>
-            <line x1="3" y1="18" x2="21" y2="18"/>
-          </svg>
-        </button>
       </div>
     </div>
 
@@ -179,7 +109,7 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
           <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
-          <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
         </svg>
         <span class="nav-label">Laporan</span>
       </button>
@@ -187,12 +117,12 @@
 
     <div class="sidebar-footer">
       <div class="sb-user">
-        <div class="sb-avatar">A</div>
+        <div class="sb-avatar" id="sb-avatar">A</div>
         <div class="sb-user-info">
           <span class="sb-user-name" id="sb-user-name">Admin</span>
           <span class="sb-user-role">Administrator</span>
         </div>
-        <button class="sb-logout" id="logout-btn" title="Keluar">
+        <button class="btn-logout" id="logout-btn" title="Keluar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
             <polyline points="16 17 21 12 16 7"/>
@@ -228,159 +158,163 @@
 
     <main class="main-content">
 
-    <!-- ===================== PAGE: DASHBOARD ===================== -->
-    <div id="page-dashboard" class="page active">
-      <div class="page-header">
+      <!-- ===================== PAGE: DASHBOARD ===================== -->
+      <div id="page-dashboard" class="sub-page active">
+
+        <!-- 4 Stat Chips -->
+        <div class="stat-row" id="global-stats">
+          <div class="stat-chip">
+            <div class="stat-chip-icon" style="background:var(--orange-soft)">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+            <div><div class="stat-chip-val" id="s-total">—</div><div class="stat-chip-lbl">Total Antrian</div></div>
+          </div>
+          <div class="stat-chip">
+            <div class="stat-chip-icon" style="background:var(--success-light)">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div><div class="stat-chip-val" id="s-selesai" style="color:var(--success)">—</div><div class="stat-chip-lbl">Selesai</div></div>
+          </div>
+          <div class="stat-chip">
+            <div class="stat-chip-icon" style="background:var(--blue-light)">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div><div class="stat-chip-val" id="s-aktif" style="color:var(--blue)">—</div><div class="stat-chip-lbl">Masih Aktif</div></div>
+          </div>
+          <div class="stat-chip">
+            <div class="stat-chip-icon" style="background:var(--gray-100)">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            </div>
+            <div><div class="stat-chip-val" id="s-batal" style="color:var(--gray-400)">—</div><div class="stat-chip-lbl">Dibatalkan</div></div>
+          </div>
+        </div>
+
+        <!-- Per-cabang -->
         <div>
-          <h1 class="page-title">Dashboard Admin</h1>
-          <p class="page-subtitle" id="dash-date">Hari ini</p>
-        </div>
-        <button class="btn-secondary" onclick="loadDashboard()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px">
-            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.01-6.27"/>
-          </svg>
-          Refresh
-        </button>
-      </div>
-
-      <!-- Global stats -->
-      <div class="stat-grid" id="global-stats">
-        <div class="stat-card"><div class="stat-val skeleton" style="width:60px">&nbsp;</div><div class="stat-lbl">Total Antrian</div></div>
-        <div class="stat-card green"><div class="stat-val skeleton" style="width:40px">&nbsp;</div><div class="stat-lbl">Selesai</div></div>
-        <div class="stat-card blue"><div class="stat-val skeleton" style="width:40px">&nbsp;</div><div class="stat-lbl">Menunggu</div></div>
-        <div class="stat-card red"><div class="stat-val skeleton" style="width:40px">&nbsp;</div><div class="stat-lbl">Dibatalkan</div></div>
-      </div>
-
-      <!-- Per-cabang -->
-      <h2 style="font-size:14px;font-weight:700;color:#292524;margin-bottom:14px;">Statistik Per Cabang</h2>
-      <div class="cabang-grid" id="cabang-stats">
-        <div style="color:#a8a29e;font-size:13px;">Memuat data...</div>
-      </div>
-    </div>
-
-    <!-- ===================== PAGE: CABANG ===================== -->
-    <div id="page-cabang" class="page">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">Kelola Cabang</h1>
-          <p class="page-subtitle">Tambah, ubah, atau nonaktifkan cabang</p>
-        </div>
-        <button class="btn-primary" onclick="openModalCabang()">+ Tambah Cabang</button>
-      </div>
-
-      <div class="table-wrapper">
-        <div class="table-toolbar">
-          <h3>Daftar Cabang</h3>
-        </div>
-        <div style="overflow-x:auto">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>ID</th><th>Nama Cabang</th><th>Kode</th><th>Alamat</th><th>Status</th><th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="cabang-table-body">
-              <tr><td colspan="6" class="empty-state">Memuat...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===================== PAGE: STAFF ===================== -->
-    <div id="page-staff" class="page">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">Kelola Staff</h1>
-          <p class="page-subtitle">Teller dan Customer Service per cabang</p>
-        </div>
-        <button class="btn-primary" onclick="openModalStaff()">+ Tambah Staff</button>
-      </div>
-
-      <div class="table-wrapper">
-        <div class="table-toolbar">
-          <h3>Daftar Staff</h3>
-          <select id="staff-filter-cabang" onchange="loadStaff()" style="font-size:12px;padding:6px 10px;border:1px solid #e7e5e4;border-radius:8px;font-family:'Poppins',sans-serif">
-            <option value="">Semua Cabang</option>
-          </select>
-        </div>
-        <div style="overflow-x:auto">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Nama</th><th>Email</th><th>Jabatan</th><th>Cabang</th><th>Loket</th><th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="staff-table-body">
-              <tr><td colspan="6" class="empty-state">Memuat...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===================== PAGE: LAPORAN ===================== -->
-    <div id="page-laporan" class="page">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">Laporan Antrian</h1>
-          <p class="page-subtitle">Filter dan unduh data antrian</p>
-        </div>
-        <button class="btn-green" onclick="exportCSV()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Export CSV
-        </button>
-      </div>
-
-      <div class="table-wrapper">
-        <div class="filter-row">
-          <input type="date" id="lap-dari" />
-          <input type="date" id="lap-sampai" />
-          <select id="lap-cabang">
-            <option value="">Semua Cabang</option>
-          </select>
-          <select id="lap-layanan">
-            <option value="">Semua Layanan</option>
-            <option value="Teller">Teller</option>
-            <option value="CS">Customer Service</option>
-          </select>
-          <select id="lap-status">
-            <option value="">Semua Status</option>
-            <option value="menunggu">Menunggu</option>
-            <option value="dipanggil">Dipanggil</option>
-            <option value="selesai">Selesai</option>
-            <option value="batal">Batal</option>
-          </select>
-          <button class="btn-primary btn-sm" onclick="loadLaporan()">Tampilkan</button>
+          <p class="section-label">Statistik Per Cabang — Hari Ini</p>
+          <div class="cabang-grid" id="cabang-stats">
+            <div style="color:var(--gray-400);font-size:13px">Memuat data...</div>
+          </div>
         </div>
 
-        <div style="overflow-x:auto">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>No</th><th>Nama</th><th>Layanan</th><th>Status</th><th>Cabang</th><th>Loket</th><th>Waktu Ambil</th><th>Waktu Selesai</th>
-              </tr>
-            </thead>
-            <tbody id="laporan-table-body">
-              <tr><td colspan="8" class="empty-state">Pilih filter dan klik Tampilkan</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="pagination">
-          <span id="lap-info" style="flex:1">—</span>
-          <button id="lap-prev" onclick="laporanPrev()" disabled>← Sebelumnya</button>
-          <button id="lap-next" onclick="laporanNext()">Selanjutnya →</button>
-        </div>
       </div>
-    </div>
+
+      <!-- ===================== PAGE: CABANG ===================== -->
+      <div id="page-cabang" class="sub-page">
+
+        <div class="panel-table">
+          <div class="table-header">
+            <h2>Daftar Cabang</h2>
+            <div class="table-actions">
+              <button class="btn btn-primary" onclick="openModalCabang()">+ Tambah Cabang</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table class="queue-table">
+              <thead>
+                <tr>
+                  <th>ID</th><th>Nama Cabang</th><th>Kode</th><th>Alamat</th><th>Status</th><th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="cabang-table-body">
+                <tr class="empty-row"><td colspan="6">Memuat...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ===================== PAGE: STAFF ===================== -->
+      <div id="page-staff" class="sub-page">
+
+        <div class="panel-table">
+          <div class="table-header">
+            <h2>Daftar Staff</h2>
+            <div class="table-actions">
+              <select id="staff-filter-cabang" class="select-input" style="width:auto;padding:6px 10px;font-size:12px" onchange="loadStaff()">
+                <option value="">Semua Cabang</option>
+              </select>
+              <button class="btn btn-primary" onclick="openModalStaff()">+ Tambah Staff</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table class="queue-table">
+              <thead>
+                <tr>
+                  <th>Nama</th><th>Email</th><th>Jabatan</th><th>Cabang</th><th>Loket</th><th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="staff-table-body">
+                <tr class="empty-row"><td colspan="6">Memuat...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ===================== PAGE: LAPORAN ===================== -->
+      <div id="page-laporan" class="sub-page">
+
+        <div class="panel-table">
+          <div class="table-header">
+            <h2>Laporan Antrian</h2>
+            <div class="table-actions">
+              <button class="btn btn-outline" onclick="exportCSV()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="filter-row">
+            <input type="date" id="lap-dari" />
+            <input type="date" id="lap-sampai" />
+            <select id="lap-cabang" class="select-input" style="width:auto">
+              <option value="">Semua Cabang</option>
+            </select>
+            <select id="lap-layanan" class="select-input" style="width:auto">
+              <option value="">Semua Layanan</option>
+              <option value="Teller">Teller</option>
+              <option value="CS">Customer Service</option>
+            </select>
+            <select id="lap-status" class="select-input" style="width:auto">
+              <option value="">Semua Status</option>
+              <option value="menunggu">Menunggu</option>
+              <option value="dipanggil">Dipanggil</option>
+              <option value="selesai">Selesai</option>
+              <option value="batal">Batal</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="loadLaporan()">Tampilkan</button>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="queue-table">
+              <thead>
+                <tr>
+                  <th>No</th><th>Nama</th><th>Layanan</th><th>Status</th><th>Cabang</th><th>Loket</th><th>Waktu Ambil</th><th>Waktu Selesai</th>
+                </tr>
+              </thead>
+              <tbody id="laporan-table-body">
+                <tr class="empty-row"><td colspan="8">Pilih filter lalu klik Tampilkan</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pager">
+            <span id="lap-info">—</span>
+            <button class="btn btn-outline btn-sm" id="lap-prev" onclick="laporanPrev()" disabled>← Sebelumnya</button>
+            <button class="btn btn-outline btn-sm" id="lap-next" onclick="laporanNext()">Selanjutnya →</button>
+          </div>
+        </div>
+
+      </div>
 
     </main>
   </div><!-- end .main-wrapper -->
 </div><!-- end .app-layout -->
+
 
 <!-- ===================== MODAL: CABANG ===================== -->
 <div class="modal-backdrop hidden" id="modal-cabang">
@@ -402,14 +336,14 @@
     </div>
     <div class="form-group" id="cabang-aktif-group" style="display:none">
       <label>Status</label>
-      <select id="cabang-aktif">
+      <select id="cabang-aktif" class="select-input">
         <option value="true">Aktif</option>
         <option value="false">Nonaktif</option>
       </select>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="closeModalCabang()">Batal</button>
-      <button class="btn-primary" onclick="submitCabang()">Simpan</button>
+      <button class="btn btn-outline" onclick="closeModalCabang()">Batal</button>
+      <button class="btn btn-primary" onclick="submitCabang()">Simpan</button>
     </div>
   </div>
 </div>
@@ -426,9 +360,9 @@
     </div>
     <div class="form-group" id="staff-email-group">
       <label>Email</label>
-      <input type="email" id="staff-email" placeholder="budi@bank.com" />
+      <input type="email" id="staff-email" placeholder="budi@teller.com" />
     </div>
-    <div class="form-group" id="staff-hp-group">
+    <div class="form-group">
       <label>No HP</label>
       <input type="text" id="staff-hp" placeholder="08123456789" />
     </div>
@@ -438,20 +372,20 @@
     </div>
     <div class="form-group">
       <label>Jabatan</label>
-      <select id="staff-role">
+      <select id="staff-role" class="select-input">
         <option value="teller">Teller</option>
         <option value="cs">Customer Service (CS)</option>
       </select>
     </div>
     <div class="form-group">
       <label>Cabang</label>
-      <select id="staff-cabang">
+      <select id="staff-cabang" class="select-input">
         <option value="">— Belum dipilih —</option>
       </select>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="closeModalStaff()">Batal</button>
-      <button class="btn-primary" onclick="submitStaff()">Simpan</button>
+      <button class="btn btn-outline" onclick="closeModalStaff()">Batal</button>
+      <button class="btn btn-primary" onclick="submitStaff()">Simpan</button>
     </div>
   </div>
 </div>
@@ -460,7 +394,7 @@
 <div class="modal-backdrop hidden" id="modal-reset-pw">
   <div class="modal-box">
     <div class="modal-title">Reset Password Staff</div>
-    <p id="reset-pw-nama" style="font-size:13px;color:#78716c;margin-bottom:16px"></p>
+    <p id="reset-pw-nama" style="font-size:13px;color:var(--gray-500);margin-bottom:16px;margin-top:-8px"></p>
     <div id="modal-reset-pw-alert"></div>
     <input type="hidden" id="reset-pw-id" />
     <div class="form-group">
@@ -468,8 +402,8 @@
       <input type="password" id="reset-pw-value" placeholder="Password baru..." />
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="closeModalResetPw()">Batal</button>
-      <button class="btn-primary" onclick="submitResetPw()">Reset Password</button>
+      <button class="btn btn-outline" onclick="closeModalResetPw()">Batal</button>
+      <button class="btn btn-primary" onclick="submitResetPw()">Reset Password</button>
     </div>
   </div>
 </div>

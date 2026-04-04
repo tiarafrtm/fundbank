@@ -22,7 +22,7 @@ function navigateTo(page) {
   });
 
   // Tampilkan halaman yang dipilih
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active'));
   const pageEl = document.getElementById('page-' + page);
   if (pageEl) pageEl.classList.add('active');
 
@@ -53,25 +53,12 @@ async function loadDashboard() {
 
     const { total, menunggu, dipanggil, selesai, batal, per_cabang } = result.data;
 
-    // Global stats
-    document.getElementById('global-stats').innerHTML = `
-      <div class="stat-card">
-        <div class="stat-val">${total}</div>
-        <div class="stat-lbl">Total Antrian Hari Ini</div>
-      </div>
-      <div class="stat-card green">
-        <div class="stat-val">${selesai}</div>
-        <div class="stat-lbl">Selesai Dilayani</div>
-      </div>
-      <div class="stat-card blue">
-        <div class="stat-val">${menunggu + dipanggil}</div>
-        <div class="stat-lbl">Masih Aktif</div>
-      </div>
-      <div class="stat-card red">
-        <div class="stat-val">${batal}</div>
-        <div class="stat-lbl">Dibatalkan</div>
-      </div>
-    `;
+    // Global stats — update elemen individual
+    const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setEl('s-total',  total);
+    setEl('s-selesai', selesai);
+    setEl('s-aktif',  menunggu + dipanggil);
+    setEl('s-batal',  batal);
 
     // Per-cabang cards
     if (!per_cabang || per_cabang.length === 0) {
@@ -84,9 +71,9 @@ async function loadDashboard() {
         <div class="cs-title">${escHtml(cb.cabang_nama)}</div>
         <div class="cs-kode">${escHtml(cb.cabang_kode)}</div>
         <div class="cs-row"><span>Total antrian</span><strong>${cb.total}</strong></div>
-        <div class="cs-row"><span>Selesai</span><strong style="color:#16A34A">${cb.selesai}</strong></div>
-        <div class="cs-row"><span>Menunggu</span><strong style="color:#EA580C">${cb.menunggu}</strong></div>
-        <div class="cs-row"><span>Dibatalkan</span><strong style="color:#DC2626">${cb.batal}</strong></div>
+        <div class="cs-row"><span>Selesai</span><strong style="color:var(--success)">${cb.selesai}</strong></div>
+        <div class="cs-row"><span>Menunggu</span><strong style="color:var(--orange)">${cb.menunggu}</strong></div>
+        <div class="cs-row"><span>Dibatalkan</span><strong style="color:var(--danger)">${cb.batal}</strong></div>
         <div class="cs-row"><span>Rata-rata layanan</span><strong>${cb.avg_layanan_menit != null ? cb.avg_layanan_menit + ' menit' : '—'}</strong></div>
         <div class="cs-row"><span>Staff terdaftar</span><strong>${cb.total_staff}</strong></div>
       </div>
@@ -114,20 +101,20 @@ async function loadCabang() {
 
 function renderCabangTable(list) {
   if (!list.length) {
-    document.getElementById('cabang-table-body').innerHTML = `<tr><td colspan="6"><div class="empty-state">Belum ada cabang. Klik "+ Tambah Cabang" untuk menambahkan.</div></td></tr>`;
+    document.getElementById('cabang-table-body').innerHTML = `<tr class="empty-row"><td colspan="6">Belum ada cabang. Klik "+ Tambah Cabang" untuk menambahkan.</td></tr>`;
     return;
   }
   document.getElementById('cabang-table-body').innerHTML = list.map(cb => `
     <tr>
-      <td>${cb.id}</td>
-      <td><strong>${escHtml(cb.nama)}</strong></td>
-      <td><code style="background:#f5f5f4;padding:2px 6px;border-radius:5px;font-size:11px">${escHtml(cb.kode)}</code></td>
-      <td style="color:#78716c">${escHtml(cb.alamat ?? '—')}</td>
-      <td><span class="badge ${cb.is_active ? 'badge-active' : 'badge-inactive'}">${cb.is_active ? 'Aktif' : 'Nonaktif'}</span></td>
+      <td class="text-muted">${cb.id}</td>
+      <td style="font-weight:600">${escHtml(cb.nama)}</td>
+      <td><span class="badge-loket-small">${escHtml(cb.kode)}</span></td>
+      <td class="text-muted">${escHtml(cb.alamat ?? '—')}</td>
+      <td><span class="status-badge-table ${cb.is_active ? 'status-selesai' : 'status-batal'}">${cb.is_active ? 'Aktif' : 'Nonaktif'}</span></td>
       <td>
-        <div class="actions">
-          <button class="btn-edit btn-sm" onclick="openModalCabang(${JSON.stringify(cb).replace(/"/g,'&quot;')})">Edit</button>
-          <button class="btn-${cb.is_active ? 'danger' : 'green'} btn-sm" onclick="toggleCabang(${cb.id}, ${!cb.is_active})">${cb.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>
+        <div class="tbl-actions">
+          <button class="btn btn-outline btn-sm" onclick="openModalCabang(${JSON.stringify(cb).replace(/"/g,'&quot;')})">Edit</button>
+          <button class="btn btn-sm ${cb.is_active ? 'btn-danger' : 'btn-done'}" onclick="toggleCabang(${cb.id}, ${!cb.is_active})">${cb.is_active ? 'Nonaktifkan' : 'Aktifkan'}</button>
         </div>
       </td>
     </tr>
@@ -209,21 +196,24 @@ async function loadStaff() {
 
 function renderStaffTable(list) {
   if (!list.length) {
-    document.getElementById('staff-table-body').innerHTML = `<tr><td colspan="6"><div class="empty-state">Belum ada data staff.</div></td></tr>`;
+    document.getElementById('staff-table-body').innerHTML = `<tr class="empty-row"><td colspan="6">Belum ada data staff.</td></tr>`;
     return;
   }
   document.getElementById('staff-table-body').innerHTML = list.map(s => `
     <tr>
-      <td><strong>${escHtml(s.nama)}</strong><div style="font-size:11px;color:#a8a29e">${escHtml(s.no_hp ?? '—')}</div></td>
-      <td style="color:#78716c;font-size:12px">${escHtml(s.email ?? '—')}</td>
-      <td><span class="badge badge-${s.role}">${s.role === 'cs' ? 'CS' : 'Teller'}</span></td>
-      <td style="font-size:12px">${escHtml(s.cabang?.nama ?? '—')}</td>
-      <td style="font-size:12px">${s.loket_number ? 'Loket ' + s.loket_number : '—'}</td>
       <td>
-        <div class="actions">
-          <button class="btn-edit btn-sm" onclick='openModalStaff(${JSON.stringify(s)})'>Edit</button>
-          <button class="btn-purple btn-sm" onclick="openModalResetPw('${s.id}', '${escHtml(s.nama)}')">Reset PW</button>
-          <button class="btn-danger btn-sm" onclick="deleteStaff('${s.id}', '${escHtml(s.nama)}')">Hapus</button>
+        <div style="font-weight:600;color:var(--gray-800)">${escHtml(s.nama)}</div>
+        <div style="font-size:11px;color:var(--gray-400)">${escHtml(s.no_hp ?? '—')}</div>
+      </td>
+      <td class="text-muted" style="font-size:12px">${escHtml(s.email ?? '—')}</td>
+      <td><span class="layanan-badge ${s.role === 'cs' ? 'layanan-cs' : 'layanan-teller'}">${s.role === 'cs' ? 'CS' : 'Teller'}</span></td>
+      <td style="font-size:12px">${escHtml(s.cabang?.nama ?? '—')}</td>
+      <td>${s.loket_number ? `<span class="badge-loket-small">Loket ${s.loket_number}</span>` : '<span class="text-muted">—</span>'}</td>
+      <td>
+        <div class="tbl-actions">
+          <button class="btn btn-outline btn-sm" onclick='openModalStaff(${JSON.stringify(s)})'>Edit</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--purple)" onclick="openModalResetPw('${s.id}', '${escHtml(s.nama)}')">Reset PW</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteStaff('${s.id}', '${escHtml(s.nama)}')">Hapus</button>
         </div>
       </td>
     </tr>
@@ -231,7 +221,7 @@ function renderStaffTable(list) {
 }
 
 function showStaffError(msg) {
-  document.getElementById('staff-table-body').innerHTML = `<tr><td colspan="6" style="color:red;text-align:center;padding:16px">${escHtml(msg)}</td></tr>`;
+  document.getElementById('staff-table-body').innerHTML = `<tr class="empty-row"><td colspan="6" style="color:var(--danger)">${escHtml(msg)}</td></tr>`;
 }
 
 // Modal Staff
@@ -390,26 +380,27 @@ async function loadLaporan(resetOffset = true) {
     document.getElementById('lap-next').disabled = laporanOffset + LAPORAN_LIMIT >= laporanTotal;
 
     if (!list.length) {
-      document.getElementById('laporan-table-body').innerHTML = `<tr><td colspan="8"><div class="empty-state">Tidak ada data dengan filter yang dipilih.</div></td></tr>`;
+      document.getElementById('laporan-table-body').innerHTML = `<tr class="empty-row"><td colspan="8">Tidak ada data dengan filter yang dipilih.</td></tr>`;
       return;
     }
 
-    document.getElementById('laporan-table-body').innerHTML = list.map((a, idx) => {
+    document.getElementById('laporan-table-body').innerHTML = list.map(a => {
       const nama = a.profiles?.nama ?? a.nama_nasabah ?? '—';
-      const layananLabel = a.layanan === 'CS' ? 'CS' : a.layanan;
+      const lClass = a.layanan === 'CS' ? 'layanan-cs' : 'layanan-teller';
+      const sClass = `status-${a.status}`;
       return `
         <tr>
-          <td style="font-weight:700;color:#F97316">${a.nomor_antrian}</td>
+          <td class="antrian-number">${a.nomor_antrian}</td>
           <td>
-            <div>${escHtml(nama)}</div>
-            ${a.keperluan ? `<div style="font-size:11px;color:#a8a29e">${escHtml(a.keperluan)}</div>` : ''}
+            <div style="font-weight:500">${escHtml(nama)}</div>
+            ${a.keperluan ? `<div style="font-size:11px;color:var(--gray-400)">${escHtml(a.keperluan)}</div>` : ''}
           </td>
-          <td>${layananLabel}</td>
-          <td><span class="badge badge-${a.status}">${a.status}</span></td>
-          <td style="font-size:12px">${escHtml(a.cabang?.nama ?? '—')}</td>
-          <td style="font-size:12px">${a.loket_number ? 'Loket ' + a.loket_number : '—'}</td>
-          <td style="font-size:12px;white-space:nowrap">${a.created_at  ? formatWaktu(a.created_at)  : '—'}</td>
-          <td style="font-size:12px;white-space:nowrap">${a.finished_at ? formatWaktu(a.finished_at) : '—'}</td>
+          <td><span class="layanan-badge ${lClass}">${a.layanan}</span></td>
+          <td><span class="status-badge-table ${sClass}">${a.status}</span></td>
+          <td class="text-muted" style="font-size:12px">${escHtml(a.cabang?.nama ?? '—')}</td>
+          <td>${a.loket_number ? `<span class="badge-loket-small">Loket ${a.loket_number}</span>` : '<span class="text-muted">—</span>'}</td>
+          <td class="text-muted" style="font-size:12px;white-space:nowrap">${a.created_at  ? formatWaktu(a.created_at)  : '—'}</td>
+          <td class="text-muted" style="font-size:12px;white-space:nowrap">${a.finished_at ? formatWaktu(a.finished_at) : '—'}</td>
         </tr>
       `;
     }).join('');
@@ -508,7 +499,7 @@ async function loadCabangDropdowns() {
 function setModalAlert(elId, type, msg) {
   const el = document.getElementById(elId);
   if (!el) return;
-  el.innerHTML = `<div class="alert-inline ${type}">${escHtml(msg)}</div>`;
+  el.innerHTML = `<div class="modal-alert ${type}">${escHtml(msg)}</div>`;
 }
 
 // ===========================
