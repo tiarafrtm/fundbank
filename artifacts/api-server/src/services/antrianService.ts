@@ -3,28 +3,28 @@ import { sendPushNotification } from "./onesignalService";
 import { sendWhatsAppMessage } from "./waService";
 import { logger } from "../lib/logger";
 
-// Mutex sederhana per-layanan untuk mencegah race condition nomor antrian
+// Mutex sederhana per-layanan PER-CABANG untuk mencegah race condition nomor antrian
 const layananLocks: Map<string, Promise<void>> = new Map();
 
-async function withLayananLock<T>(layanan: string, fn: () => Promise<T>): Promise<T> {
-  const prev = layananLocks.get(layanan) ?? Promise.resolve();
+async function withLayananLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const prev = layananLocks.get(key) ?? Promise.resolve();
   let resolveLock!: () => void;
   const lock = new Promise<void>((resolve) => { resolveLock = resolve; });
-  layananLocks.set(layanan, prev.then(() => lock));
+  layananLocks.set(key, prev.then(() => lock));
   await prev;
   try {
     return await fn();
   } finally {
     resolveLock();
-    // Bersihkan map kalau tidak ada yang menunggu lagi
-    if (layananLocks.get(layanan) === lock) layananLocks.delete(layanan);
+    if (layananLocks.get(key) === lock) layananLocks.delete(key);
   }
 }
 
-// Mengambil nomor antrian berikutnya — atomic via lock per layanan
-export async function getNomorAntrian(layanan: string): Promise<number> {
-  return withLayananLock(layanan, async () => {
-    const { data, error } = await supabaseAdmin
+// Mengambil nomor antrian berikutnya — atomic via lock per layanan+cabang
+export async function getNomorAntrian(layanan: string, cabangId?: number | null): Promise<number> {
+  const lockKey = cabangId != null ? `${layanan}:${cabangId}` : layanan;
+  return withLayananLock(lockKey, async () => {
+    let query = supabaseAdmin
       .from("antrian")
       .select("nomor_antrian")
       .eq("layanan", layanan)
@@ -34,6 +34,10 @@ export async function getNomorAntrian(layanan: string): Promise<number> {
       )
       .order("nomor_antrian", { ascending: false })
       .limit(1);
+
+    if (cabangId != null) query = query.eq("cabang_id", cabangId);
+
+    const { data, error } = await query;
 
     if (error || !data || data.length === 0) {
       return 1;
@@ -57,11 +61,27 @@ export async function getAntrianMenunggu() {
 
 // Memanggil nomor antrian berikutnya — dengan atomic update untuk mencegah race condition
 // loketNumber: nomor loket teller/CS yang sedang memanggil (opsional, untuk multi-loket)
-export async function panggilBerikutnya(layanan?: string, loketNumber?: number | null): Promise<{
+// cabangId: ID cabang yang dilayani (filter agar tidak lintas cabang)
+export async function panggilBerikutnya(
+  layanan?: string,
+  loketNumber?: number | null,
+  cabangId?: number | null,
+): Promise<{
   antrian: any;
   notifDikirim: boolean;
 }> {
   const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+
+  // Ambil nama cabang untuk pesan WA yang dinamis
+  let cabangNama = "FUND BANK";
+  if (cabangId != null) {
+    const { data: cabangData } = await supabaseAdmin
+      .from("cabang")
+      .select("nama")
+      .eq("id", cabangId)
+      .maybeSingle();
+    if (cabangData?.nama) cabangNama = `FUND BANK, ${cabangData.nama}`;
+  }
 
   // STEP 1: Ambil antrian pertama yang masih menunggu
   let query = supabaseAdmin
@@ -72,7 +92,8 @@ export async function panggilBerikutnya(layanan?: string, loketNumber?: number |
     .order("nomor_antrian", { ascending: true })
     .limit(1);
 
-  if (layanan) query = query.eq("layanan", layanan);
+  if (layanan)   query = query.eq("layanan", layanan);
+  if (cabangId != null) query = query.eq("cabang_id", cabangId);
 
   const { data: antrianList, error } = await query;
   if (error) throw error;
@@ -83,9 +104,6 @@ export async function panggilBerikutnya(layanan?: string, loketNumber?: number |
   const currentAntrian = antrianList[0];
 
   // STEP 1B: Auto-selesaikan antrian "dipanggil" sebelumnya untuk LOKET INI saja
-  // Skenario: teller langsung tekan "Panggil Berikutnya" tanpa klik "Selesai"
-  // → Dengan multi-loket: hanya selesai-kan antrian yang dipanggil loket ini
-  // → Tanpa loket (loketNumber null): selesai-kan semua dipanggil untuk layanan ini
   let autoSelesaiQuery = supabaseAdmin
     .from("antrian")
     .update({ status: "selesai", finished_at: new Date().toISOString() })
@@ -93,9 +111,7 @@ export async function panggilBerikutnya(layanan?: string, loketNumber?: number |
     .gte("created_at", todayStart);
 
   if (layanan) autoSelesaiQuery = autoSelesaiQuery.eq("layanan", layanan);
-
-  // Jika loket diketahui → hanya auto-selesai antrian yang dipanggil loket ini
-  // Ini penting supaya Loket 2 tidak mengganggu antrian yang sedang dilayani Loket 1
+  if (cabangId != null) autoSelesaiQuery = autoSelesaiQuery.eq("cabang_id", cabangId);
   if (loketNumber != null) {
     autoSelesaiQuery = autoSelesaiQuery.eq("loket_number", loketNumber);
   }
@@ -111,7 +127,6 @@ export async function panggilBerikutnya(layanan?: string, loketNumber?: number |
   }
 
   // STEP 2: Atomic update — hanya update kalau status MASIH 'menunggu'
-  // Set loket_number supaya dashboard loket lain bisa filter "sedang dilayani"
   const updatePayload: Record<string, any> = {
     status: "dipanggil",
     called_at: new Date().toISOString(),
@@ -122,18 +137,17 @@ export async function panggilBerikutnya(layanan?: string, loketNumber?: number |
     .from("antrian")
     .update(updatePayload)
     .eq("id", currentAntrian.id)
-    .eq("status", "menunggu") // ← Kunci: hanya sukses kalau masih menunggu
+    .eq("status", "menunggu")
     .select();
 
   if (updateError) throw updateError;
 
-  // Kalau tidak ada baris yang terupdate → antrian sudah diambil loket lain
   if (!updateResult || updateResult.length === 0) {
     throw new Error("Antrian sudah dipanggil oleh loket lain. Silakan coba lagi.");
   }
 
   logger.info(
-    { nomor: currentAntrian.nomor_antrian, layanan, id: currentAntrian.id },
+    { nomor: currentAntrian.nomor_antrian, layanan, cabangId, id: currentAntrian.id },
     "Antrian berhasil dipanggil (atomic update OK)",
   );
 
@@ -160,20 +174,19 @@ export async function panggilBerikutnya(layanan?: string, loketNumber?: number |
     .eq("status", "menunggu")
     .eq("notif_sent", false)
     .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
-    .gt("nomor_antrian", currentAntrian.nomor_antrian)                          // hanya yang di belakang
-    .lte("nomor_antrian", currentAntrian.nomor_antrian + 3)                     // max 3 posisi ke depan
+    .gt("nomor_antrian", currentAntrian.nomor_antrian)
+    .lte("nomor_antrian", currentAntrian.nomor_antrian + 3)
     .order("nomor_antrian", { ascending: true });
 
   if (layanan) notifQuery = notifQuery.eq("layanan", layanan);
+  if (cabangId != null) notifQuery = notifQuery.eq("cabang_id", cabangId);
 
   const { data: antrianNotif } = await notifQuery;
 
   let notifDikirim = false;
 
-  // Kirim notif ke SEMUA nasabah dalam jarak 3 posisi
   if (antrianNotif && antrianNotif.length > 0) {
     for (const targetNotif of antrianNotif) {
-      // Verifikasi ulang status masih 'menunggu' sebelum kirim notif
       const { data: freshCheck } = await supabaseAdmin
         .from("antrian")
         .select("status, notif_sent")
@@ -184,9 +197,8 @@ export async function panggilBerikutnya(layanan?: string, loketNumber?: number |
 
       const profile      = targetNotif.profiles as any;
       const nomorAntrian = targetNotif.nomor_antrian;
-      const posisiDiDepan = nomorAntrian - currentAntrian.nomor_antrian; // 1, 2, atau 3
+      const posisiDiDepan = nomorAntrian - currentAntrian.nomor_antrian;
 
-      // Kirim push notification via OneSignal
       if (profile?.onesignal_player_id) {
         try {
           await sendPushNotification(profile.onesignal_player_id, nomorAntrian);
@@ -195,13 +207,11 @@ export async function panggilBerikutnya(layanan?: string, loketNumber?: number |
         }
       }
 
-      // Kirim pesan WhatsApp via Baileys
       const noHp          = profile?.no_hp ?? targetNotif.no_hp_nasabah;
       const namaNasabah   = profile?.nama  ?? targetNotif.nama_nasabah ?? "Nasabah";
       const layananDisplay = targetNotif.layanan === "CS" ? "Customer Service" : targetNotif.layanan;
 
       if (noHp) {
-        // Pesan berbeda berdasarkan jarak antrian
         const keteranganPosisi = posisiDiDepan === 1
           ? `Anda adalah antrian *berikutnya*! Harap segera menuju loket.`
           : `Anda berada di posisi ke-*${posisiDiDepan}* dari depan. Harap bersiap-siap.`;
@@ -212,7 +222,7 @@ export async function panggilBerikutnya(layanan?: string, loketNumber?: number |
           `${keteranganPosisi}\n\n` +
           `Klik untuk lihat status antrian:\n` +
           `https://antrianbank.site/tiket?ticket=${nomorAntrian}\n\n` +
-          `— FUND BANK, Cabang Sudirman`;
+          `— ${cabangNama}`;
 
         try {
           await sendWhatsAppMessage(noHp, pesanWA);
@@ -222,7 +232,6 @@ export async function panggilBerikutnya(layanan?: string, loketNumber?: number |
         }
       }
 
-      // Tandai notif sudah dikirim — cegah kirim ulang
       await supabaseAdmin
         .from("antrian")
         .update({ notif_sent: true })

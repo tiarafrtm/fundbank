@@ -215,8 +215,10 @@ async function loadQueueData() {
 
     const {
       sedang_dilayani, antrian_menunggu,
-      total_menunggu, semua_loket_aktif, my_loket_number, loket_terpakai
+      total_menunggu, semua_loket_aktif, my_loket_number, loket_terpakai, my_cabang
     } = result.data;
+
+    updateCabangBadge(my_cabang);
 
     // Sync loket number dari server
     if (my_loket_number && !myLoketNumber) {

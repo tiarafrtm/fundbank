@@ -118,6 +118,18 @@ function getNamaNasabah(item) {
   return item.profiles?.nama ?? item.nama_nasabah ?? 'Tidak diketahui';
 }
 
+// Update badge nama cabang di sidebar
+function updateCabangBadge(cabangInfo) {
+  const badge = document.getElementById('sb-cabang-badge');
+  if (!badge) return;
+  if (!cabangInfo || !cabangInfo.nama) {
+    badge.style.display = 'none';
+    return;
+  }
+  badge.textContent = cabangInfo.nama;
+  badge.style.display = 'inline-block';
+}
+
 // ===========================
 // MOBILE SIDEBAR
 // ===========================

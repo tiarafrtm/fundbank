@@ -133,6 +133,23 @@ body {
   white-space: nowrap;
 }
 
+/* Badge nama cabang di sidebar */
+.sb-cabang-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  background: rgba(249, 115, 22, 0.18);
+  color: #EA580C;
+  border-radius: 20px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
 /* Tombol hamburger di dalam sidebar */
 .sb-toggle {
   flex-shrink: 0;

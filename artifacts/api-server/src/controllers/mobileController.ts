@@ -173,11 +173,11 @@ export async function getSaya(req: Request, res: Response): Promise<void> {
 
 // ============================================================
 // POST /api/mobile/antrian/ambil — Nasabah ambil nomor antrian
-// Field: layanan ("Teller" | "CS"), onesignal_player_id (opsional)
+// Field: layanan ("Teller" | "CS"), cabang_id (wajib), onesignal_player_id (opsional)
 // ============================================================
 export async function ambilAntrianMobile(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
-  const { layanan: layananRaw, keperluan: keperluanRaw, onesignal_player_id } = req.body;
+  const { layanan: layananRaw, keperluan: keperluanRaw, onesignal_player_id, cabang_id: cabangIdRaw } = req.body;
 
   // === GUARD: cegah double-tap / request bersamaan dari user yang sama ===
   if (processingUsers.has(user.id)) {
@@ -221,6 +221,33 @@ export async function ambilAntrianMobile(req: Request, res: Response): Promise<v
       return;
     }
 
+    // Validasi cabang_id — wajib ada dan aktif
+    const cabangId = cabangIdRaw != null ? Number(cabangIdRaw) : null;
+    if (!cabangId || isNaN(cabangId)) {
+      res.status(400).json({
+        success: false,
+        message: "Cabang wajib dipilih. Gunakan endpoint GET /api/mobile/cabang untuk daftar cabang.",
+        data: {},
+      });
+      return;
+    }
+
+    const { data: cabangData, error: cabangErr } = await supabaseAdmin
+      .from("cabang")
+      .select("id, nama")
+      .eq("id", cabangId)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (cabangErr || !cabangData) {
+      res.status(400).json({
+        success: false,
+        message: "Cabang tidak ditemukan atau tidak aktif",
+        data: {},
+      });
+      return;
+    }
+
     const today = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
     // Cek antrian aktif hari ini (menunggu ATAU dipanggil)
@@ -249,8 +276,8 @@ export async function ambilAntrianMobile(req: Request, res: Response): Promise<v
         .eq("id", user.id);
     }
 
-    // Dapatkan nomor antrian berikutnya (atomic via lock per layanan)
-    const nomorAntrian = await getNomorAntrian(layanan);
+    // Dapatkan nomor antrian berikutnya (atomic via lock per layanan+cabang)
+    const nomorAntrian = await getNomorAntrian(layanan, cabangId);
 
     const { data: antrian, error } = await supabaseAdmin
       .from("antrian")
@@ -258,6 +285,7 @@ export async function ambilAntrianMobile(req: Request, res: Response): Promise<v
         user_id: user.id,
         nomor_antrian: nomorAntrian,
         layanan,
+        cabang_id: cabangId,
         ...(keperluan ? { keperluan } : {}),
         status: "menunggu",
         notif_sent: false,
@@ -276,8 +304,8 @@ export async function ambilAntrianMobile(req: Request, res: Response): Promise<v
 
     res.status(201).json({
       success: true,
-      message: `Antrian ${layanan} nomor ${nomorAntrian} berhasil dibuat`,
-      data: { antrian, nomor_antrian: nomorAntrian },
+      message: `Antrian ${layanan} nomor ${nomorAntrian} berhasil dibuat di ${cabangData.nama}`,
+      data: { antrian, nomor_antrian: nomorAntrian, cabang: cabangData },
     });
   } finally {
     // Selalu lepas lock, baik sukses maupun error
@@ -382,43 +410,60 @@ export async function statusAntrianMobile(req: Request, res: Response): Promise<
     return;
   }
 
+  // Ambil cabang_id dari antrian aktif (untuk filter estimasi per cabang)
+  const antrianCabangId: number | null = antrian.cabang_id ?? null;
+
   // Jalankan 4 query paralel sekaligus untuk hemat waktu
   const [posisiResult, loketDipanggilResult, selesaiResult, loketProfileResult] = await Promise.all([
-    // 1. Hitung berapa orang di depan (status menunggu, nomor lebih kecil)
-    supabaseAdmin
-      .from("antrian")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "menunggu")
-      .eq("layanan", antrian.layanan)
-      .lt("nomor_antrian", antrian.nomor_antrian),
+    // 1. Hitung berapa orang di depan (status menunggu, nomor lebih kecil, cabang sama)
+    (() => {
+      let q = supabaseAdmin
+        .from("antrian")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "menunggu")
+        .eq("layanan", antrian.layanan)
+        .lt("nomor_antrian", antrian.nomor_antrian);
+      if (antrianCabangId != null) q = q.eq("cabang_id", antrianCabangId);
+      return q;
+    })(),
 
-    // 2. Hitung loket yang SEDANG melayani saat ini (status dipanggil)
-    //    Akurat saat ada antrian aktif, tapi bisa 0 saat jeda antar nasabah
-    supabaseAdmin
-      .from("antrian")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "dipanggil")
-      .eq("layanan", antrian.layanan)
-      .gte("created_at", today),
+    // 2. Hitung loket yang SEDANG melayani saat ini (status dipanggil, cabang sama)
+    (() => {
+      let q = supabaseAdmin
+        .from("antrian")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "dipanggil")
+        .eq("layanan", antrian.layanan)
+        .gte("created_at", today);
+      if (antrianCabangId != null) q = q.eq("cabang_id", antrianCabangId);
+      return q;
+    })(),
 
-    // 3. Rata-rata durasi layanan dari histori hari ini
-    supabaseAdmin
-      .from("antrian")
-      .select("called_at, finished_at")
-      .eq("status", "selesai")
-      .eq("layanan", antrian.layanan)
-      .gte("created_at", today)
-      .not("called_at", "is", null)
-      .not("finished_at", "is", null)
-      .limit(20),
+    // 3. Rata-rata durasi layanan dari histori hari ini (cabang sama)
+    (() => {
+      let q = supabaseAdmin
+        .from("antrian")
+        .select("called_at, finished_at")
+        .eq("status", "selesai")
+        .eq("layanan", antrian.layanan)
+        .gte("created_at", today)
+        .not("called_at", "is", null)
+        .not("finished_at", "is", null)
+        .limit(20);
+      if (antrianCabangId != null) q = q.eq("cabang_id", antrianCabangId);
+      return q;
+    })(),
 
-    // 4. Hitung staff yang sudah set loket untuk layanan ini (profiles.layanan)
-    //    Lebih stabil dari query dipanggil — tetap terhitung saat jeda antar nasabah
-    supabaseAdmin
-      .from("profiles")
-      .select("*", { count: "exact", head: true })
-      .eq("layanan", antrian.layanan)
-      .not("loket_number", "is", null),
+    // 4. Hitung staff yang sudah set loket untuk layanan ini di cabang yang sama
+    (() => {
+      let q = supabaseAdmin
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("layanan", antrian.layanan)
+        .not("loket_number", "is", null);
+      if (antrianCabangId != null) q = q.eq("cabang_id", antrianCabangId);
+      return q;
+    })(),
   ]);
 
   const antriDiDepan     = posisiResult.count ?? 0;
@@ -767,4 +812,31 @@ function generateTiketHTML({ nomor, layanan, keperluan, nama, email, waktu, stat
 
 function escHtml(s: string): string {
   return (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// ============================================================
+// GET /api/mobile/cabang — Daftar cabang aktif (tanpa auth — publik)
+// ============================================================
+export async function listCabangMobile(_req: Request, res: Response): Promise<void> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("cabang")
+      .select("id, nama, kode, alamat")
+      .eq("is_active", true)
+      .order("id", { ascending: true });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      message: "Daftar cabang berhasil diambil",
+      data: { cabang: data ?? [] },
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengambil daftar cabang: " + (err?.message ?? ""),
+      data: {},
+    });
+  }
 }

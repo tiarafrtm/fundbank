@@ -22,16 +22,33 @@ function actLog(req: Request, action: string, detail: Record<string, any> = {}) 
   logger.info({ actor: nama, role, userId: user?.id, action, ...detail }, `[AKTIVITAS] ${action}`);
 }
 
-// Statistik antrian hari ini
+// Helper: ambil profil staff berikut info cabang sekaligus
+async function getStaffProfile(userId: string) {
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("loket_number, layanan, cabang_id, cabang:cabang_id(id, nama, kode)")
+    .eq("id", userId)
+    .maybeSingle();
+  return data as (Record<string, any> | null);
+}
+
+// Statistik antrian hari ini — difilter per cabang staff
 export async function getStatistik(req: Request, res: Response): Promise<void> {
   const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+  const user = (req as any).user;
 
   try {
-    const { data, error } = await supabaseAdmin
+    const staffProfile = await getStaffProfile(user.id);
+    const cabangId: number | null = staffProfile?.cabang_id ?? null;
+
+    let query = supabaseAdmin
       .from("antrian")
       .select("status, layanan")
       .gte("created_at", todayStart);
 
+    if (cabangId != null) query = query.eq("cabang_id", cabangId);
+
+    const { data, error } = await query;
     if (error) throw error;
 
     const items = data ?? [];
@@ -49,8 +66,8 @@ export async function getStatistik(req: Request, res: Response): Promise<void> {
     ];
     const perLayanan = layananTerurut.map(l => ({
       layanan: l,
-      total: items.filter(i => i.layanan === l).length,
-      selesai: items.filter(i => i.layanan === l && i.status === "selesai").length,
+      total:    items.filter(i => i.layanan === l).length,
+      selesai:  items.filter(i => i.layanan === l && i.status === "selesai").length,
       menunggu: items.filter(i => i.layanan === l && i.status === "menunggu").length,
     }));
 
@@ -75,8 +92,9 @@ export async function ambilAntrian(req: Request, res: Response): Promise<void> {
   }
 
   const { data: profile } = await supabaseAdmin
-    .from("profiles").select("role").eq("id", user.id).single();
-  const isStaff = ["cs", "teller"].includes(profile?.role ?? "");
+    .from("profiles").select("role, cabang_id").eq("id", user.id).single();
+  const isStaff  = ["cs", "teller"].includes(profile?.role ?? "");
+  const cabangId: number | null = profile?.cabang_id ?? null;
 
   if (!isStaff) {
     const { data: existingAntrian } = await supabaseAdmin
@@ -96,7 +114,7 @@ export async function ambilAntrian(req: Request, res: Response): Promise<void> {
     await supabaseAdmin.from("profiles").update({ onesignal_player_id }).eq("id", user.id);
   }
 
-  const nomorAntrian = await getNomorAntrian(layanan);
+  const nomorAntrian = await getNomorAntrian(layanan, cabangId);
 
   const insertData: Record<string, any> = {
     user_id: isStaff ? null : user.id,
@@ -105,6 +123,7 @@ export async function ambilAntrian(req: Request, res: Response): Promise<void> {
     status: "menunggu",
     notif_sent: false,
   };
+  if (cabangId != null) insertData.cabang_id = cabangId;
   if (isStaff && nama) insertData.nama_nasabah = nama;
   if (isStaff && no_hp) insertData.no_hp_nasabah = no_hp;
 
@@ -116,7 +135,7 @@ export async function ambilAntrian(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  actLog(req, "ambil_antrian", { layanan, nomor: nomorAntrian });
+  actLog(req, "ambil_antrian", { layanan, nomor: nomorAntrian, cabang: cabangId });
   res.status(201).json({ success: true, message: `Nomor antrian ${nomorAntrian} berhasil dibuat`, data: { antrian, nomor_antrian: nomorAntrian } });
 }
 
@@ -153,23 +172,23 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
   const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
   try {
-    // Ambil loket_number user yang login (untuk filter "sedang dilayani" loket ini)
-    const { data: userProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("loket_number, nama")
-      .eq("id", user.id)
-      .maybeSingle();
+    // Ambil profil staff: loket_number, layanan, cabang_id + nama cabang (join)
+    const staffProfile = await getStaffProfile(user.id);
+    const myLoketNumber: number | null = staffProfile?.loket_number ?? null;
+    const cabangId: number | null      = staffProfile?.cabang_id ?? null;
+    const cabangInfo: any              = staffProfile?.cabang ?? null;
 
-    const myLoketNumber: number | null = userProfile?.loket_number ?? null;
-
-    // Ambil semua loket yang sudah dipilih staff lain (dari profiles)
-    const { data: allProfiles } = await supabaseAdmin
+    // Ambil loket_terpakai — hanya dari staff di cabang yang sama
+    let profilesQuery = supabaseAdmin
       .from("profiles")
       .select("id, loket_number")
       .in("role", ["teller", "cs"])
       .not("loket_number", "is", null);
 
-    // loket_terpakai = loket yang dipakai staff LAIN (bukan saya)
+    if (cabangId != null) profilesQuery = profilesQuery.eq("cabang_id", cabangId);
+
+    const { data: allProfiles } = await profilesQuery;
+
     const loketTerpakai: number[] = (allProfiles ?? [])
       .filter((p: any) => p.id !== user.id && p.loket_number != null)
       .map((p: any) => p.loket_number as number);
@@ -179,6 +198,8 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
       .select(`*, profiles (nama, no_hp)`)
       .gte("created_at", todayStart)
       .order("nomor_antrian", { ascending: true });
+
+    if (cabangId != null) query = query.eq("cabang_id", cabangId);
 
     if (showAll) {
       if (status) query = query.eq("status", status as string);
@@ -197,7 +218,6 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
     }
 
     // "Sedang dilayani" = antrian dipanggil di loket SAYA (kalau loket sudah diset)
-    // Kalau belum ada loket → tampilkan yang pertama dipanggil (backward compat)
     let dipanggilQuery = supabaseAdmin
       .from("antrian").select(`*, profiles (nama, no_hp)`)
       .eq("status", "dipanggil")
@@ -205,10 +225,10 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
       .order("called_at", { ascending: false });
 
     if (layanan) dipanggilQuery = dipanggilQuery.eq("layanan", layanan as string);
+    if (cabangId != null) dipanggilQuery = dipanggilQuery.eq("cabang_id", cabangId);
 
     const { data: semuaDipanggil } = await dipanggilQuery;
 
-    // Filter: antrian di loket saya (kalau loket sudah diset)
     let sedangDilayaniLoketIni = null;
     if (myLoketNumber != null && semuaDipanggil) {
       sedangDilayaniLoketIni = semuaDipanggil.find((a: any) => a.loket_number === myLoketNumber) ?? null;
@@ -216,7 +236,6 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
       sedangDilayaniLoketIni = semuaDipanggil?.[0] ?? null;
     }
 
-    // Semua loket yang sedang aktif melayani (untuk display dashboard)
     const loketAktifMap: Record<number, any> = {};
     if (semuaDipanggil) {
       for (const a of semuaDipanggil) {
@@ -230,13 +249,14 @@ export async function listAntrian(req: Request, res: Response): Promise<void> {
       success: true,
       message: "Daftar antrian berhasil diambil",
       data: {
-        my_loket_number: myLoketNumber,
-        loket_terpakai: loketTerpakai,
-        sedang_dilayani: sedangDilayaniLoketIni,
+        my_loket_number:  myLoketNumber,
+        my_cabang:        cabangInfo,
+        loket_terpakai:   loketTerpakai,
+        sedang_dilayani:  sedangDilayaniLoketIni,
         semua_loket_aktif: loketAktifMap,
         antrian_dipanggil: semuaDipanggil ?? [],
-        antrian_menunggu: data,
-        total_menunggu: data?.length ?? 0,
+        antrian_menunggu:  data,
+        total_menunggu:    data?.length ?? 0,
       },
     });
   } catch (error: any) {
@@ -259,14 +279,13 @@ export async function setLoket(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // Simpan layanan bersama loket_number agar estimasi tunggu bisa query per layanan
   const layanan = ROLE_LAYANAN[role] ?? null;
 
   const { data, error } = await supabaseAdmin
     .from("profiles")
     .update({ loket_number, layanan })
     .eq("id", user.id)
-    .select("id, nama, loket_number, layanan")
+    .select("id, nama, loket_number, layanan, cabang_id")
     .single();
 
   if (error || !data) {
@@ -292,7 +311,6 @@ export async function panggilAntrian(req: Request, res: Response): Promise<void>
   const user = (req as any).user;
   const role = (req as any).userRole as string;
 
-  // Validasi: staff hanya boleh panggil layanannya sendiri
   const allowedLayanan = ROLE_LAYANAN[role];
   if (allowedLayanan && layanan && layanan !== allowedLayanan) {
     res.status(403).json({
@@ -303,24 +321,18 @@ export async function panggilAntrian(req: Request, res: Response): Promise<void>
     return;
   }
 
-  // Gunakan layanan sesuai role kalau tidak dikirim dari body
   const targetLayanan = allowedLayanan ?? layanan;
 
-  // Ambil loket_number dari profile (untuk multi-loket)
-  const { data: profile } = await supabaseAdmin
-    .from("profiles")
-    .select("loket_number")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const loketNumber: number | null = profile?.loket_number ?? null;
+  // Ambil loket_number dan cabang_id dari profil staff
+  const staffProfile = await getStaffProfile(user.id);
+  const loketNumber: number | null = staffProfile?.loket_number ?? null;
+  const cabangId: number | null    = staffProfile?.cabang_id ?? null;
 
   try {
-    const { antrian, notifDikirim } = await panggilBerikutnya(targetLayanan, loketNumber);
+    const { antrian, notifDikirim } = await panggilBerikutnya(targetLayanan, loketNumber, cabangId);
 
-    actLog(req, "panggil_antrian", { layanan: targetLayanan, nomor: antrian.nomor_antrian, loket: loketNumber, id: antrian.id });
+    actLog(req, "panggil_antrian", { layanan: targetLayanan, nomor: antrian.nomor_antrian, loket: loketNumber, cabang: cabangId, id: antrian.id });
 
-    const loketInfo = loketNumber ? ` (Loket ${loketNumber})` : "";
     res.json({
       success: true,
       message: `Nomor ${antrian.nomor_antrian} dipanggil ke Loket ${loketNumber ?? "?"}${notifDikirim ? ". Notifikasi dikirim ke antrian berikutnya" : ""}`,
@@ -338,16 +350,14 @@ export async function selesaiAntrian(req: Request, res: Response): Promise<void>
   const user = (req as any).user;
   const role = (req as any).userRole as string;
 
-  // Cek status antrian sebelum update (termasuk loket_number)
   const { data: existing, error: checkErr } = await supabaseAdmin
-    .from("antrian").select("status, nomor_antrian, layanan, loket_number").eq("id", id).single();
+    .from("antrian").select("status, nomor_antrian, layanan, loket_number, cabang_id").eq("id", id).single();
 
   if (checkErr || !existing) {
     res.status(404).json({ success: false, message: "Antrian tidak ditemukan", data: {} });
     return;
   }
 
-  // Jangan bisa selesai kalau sudah selesai atau batal
   if (existing.status === "selesai") {
     res.status(400).json({ success: false, message: "Antrian sudah ditandai selesai sebelumnya", data: {} });
     return;
@@ -357,7 +367,6 @@ export async function selesaiAntrian(req: Request, res: Response): Promise<void>
     return;
   }
 
-  // Validasi: staff hanya boleh selesaikan layanannya sendiri
   const allowedLayanan = ROLE_LAYANAN[role];
   if (allowedLayanan && existing.layanan !== allowedLayanan) {
     res.status(403).json({
@@ -368,15 +377,24 @@ export async function selesaiAntrian(req: Request, res: Response): Promise<void>
     return;
   }
 
-  // Validasi loket: hanya boleh selesaikan antrian di loket sendiri
-  // (berlaku jika kedua pihak — antrian & user — sudah punya loket_number)
-  const { data: userProfile } = await supabaseAdmin
-    .from("profiles").select("loket_number").eq("id", user.id).maybeSingle();
-  const myLoket = userProfile?.loket_number ?? null;
+  // Validasi loket DAN cabang
+  const staffProfile = await getStaffProfile(user.id);
+  const myLoket   = staffProfile?.loket_number ?? null;
+  const myCabangId = staffProfile?.cabang_id ?? null;
+
   if (myLoket && existing.loket_number && myLoket !== existing.loket_number) {
     res.status(403).json({
       success: false,
       message: `Antrian ini sedang dilayani Loket ${existing.loket_number}, bukan Loket ${myLoket} Anda`,
+      data: {},
+    });
+    return;
+  }
+
+  if (myCabangId && existing.cabang_id && myCabangId !== existing.cabang_id) {
+    res.status(403).json({
+      success: false,
+      message: `Antrian ini bukan milik cabang Anda`,
       data: {},
     });
     return;
@@ -404,16 +422,14 @@ export async function batalAntrian(req: Request, res: Response): Promise<void> {
   const role = (req as any).userRole as string;
   const isStaff = ["teller", "cs"].includes(role);
 
-  // Cek antrian dulu (termasuk loket_number)
   const { data: existing } = await supabaseAdmin
-    .from("antrian").select("status, nomor_antrian, layanan, user_id, loket_number").eq("id", id).single();
+    .from("antrian").select("status, nomor_antrian, layanan, user_id, loket_number, cabang_id").eq("id", id).single();
 
   if (!existing) {
     res.status(404).json({ success: false, message: "Antrian tidak ditemukan", data: {} });
     return;
   }
 
-  // Staff hanya boleh batal layanannya sendiri
   const allowedLayanan = ROLE_LAYANAN[role];
   if (isStaff && allowedLayanan && existing.layanan !== allowedLayanan) {
     res.status(403).json({
@@ -424,16 +440,26 @@ export async function batalAntrian(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // Validasi loket: staff hanya boleh skip/batal antrian di loket sendiri (jika antrian sudah dipanggil)
-  // Antrian yang masih "menunggu" boleh diskip oleh siapapun di layanan yang sama
-  if (isStaff && existing.status === "dipanggil" && existing.loket_number) {
-    const { data: userProf } = await supabaseAdmin
-      .from("profiles").select("loket_number").eq("id", user.id).maybeSingle();
-    const myLoket = userProf?.loket_number ?? null;
-    if (myLoket && myLoket !== existing.loket_number) {
+  if (isStaff) {
+    const staffProfile = await getStaffProfile(user.id);
+    const myLoket    = staffProfile?.loket_number ?? null;
+    const myCabangId = staffProfile?.cabang_id ?? null;
+
+    // Validasi loket (hanya untuk antrian yang sudah dipanggil)
+    if (existing.status === "dipanggil" && existing.loket_number && myLoket && myLoket !== existing.loket_number) {
       res.status(403).json({
         success: false,
         message: `Antrian ini sedang dilayani Loket ${existing.loket_number}, bukan Loket ${myLoket} Anda`,
+        data: {},
+      });
+      return;
+    }
+
+    // Validasi cabang
+    if (myCabangId && existing.cabang_id && myCabangId !== existing.cabang_id) {
+      res.status(403).json({
+        success: false,
+        message: `Antrian ini bukan milik cabang Anda`,
         data: {},
       });
       return;
@@ -457,35 +483,35 @@ export async function batalAntrian(req: Request, res: Response): Promise<void> {
 
   actLog(req, "batal_antrian", { layanan: antrian.layanan, nomor: antrian.nomor_antrian, id });
 
-  // Kirim notifikasi ke nasabah yang diskip (WA + OneSignal push)
-  // Jalankan async — jangan block response dashboard
+  // Kirim notifikasi ke nasabah yang diskip — jalankan async
   (async () => {
     try {
+      // Ambil nama cabang untuk pesan WA
+      let cabangNama = "FUND BANK";
+      if (antrian.cabang_id) {
+        const { data: cb } = await supabaseAdmin.from("cabang").select("nama").eq("id", antrian.cabang_id).maybeSingle();
+        if (cb?.nama) cabangNama = `FUND BANK, ${cb.nama}`;
+      }
+
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("nama, no_hp, onesignal_player_id")
         .eq("id", antrian.user_id)
         .maybeSingle();
 
-      const namaNasabah   = profile?.nama ?? antrian.nama_nasabah ?? "Nasabah";
-      const noHp          = profile?.no_hp ?? antrian.no_hp_nasabah;
+      const namaNasabah    = profile?.nama ?? antrian.nama_nasabah ?? "Nasabah";
+      const noHp           = profile?.no_hp ?? antrian.no_hp_nasabah;
       const layananDisplay = antrian.layanan === "CS" ? "Customer Service" : antrian.layanan;
 
-      // Push notification (OneSignal) — ditangkap Android sbg modal
       if (profile?.onesignal_player_id) {
         try {
-          await sendPushNotification(
-            profile.onesignal_player_id,
-            antrian.nomor_antrian,
-            "skip", // tipe notifikasi khusus skip
-          );
+          await sendPushNotification(profile.onesignal_player_id, antrian.nomor_antrian, "skip");
           logger.info({ nomor: antrian.nomor_antrian }, "Push skip terkirim");
         } catch (e: any) {
           logger.warn({ error: e?.message }, "Push skip gagal");
         }
       }
 
-      // WhatsApp
       if (noHp) {
         const pesanWA =
           `Halo, ${namaNasabah}!\n\n` +
@@ -493,7 +519,7 @@ export async function batalAntrian(req: Request, res: Response): Promise<void> {
           `Mohon diperhatikan: Jika ada notifikasi WhatsApp dari kami, *segera datang ke loket* agar tidak dilewati kembali.\n\n` +
           `Lihat status atau ambil antrian baru:\n` +
           `https://antrianbank.site/tiket?ticket=${antrian.nomor_antrian}\n\n` +
-          `— FUND BANK, Cabang Sudirman`;
+          `— ${cabangNama}`;
 
         try {
           await sendWhatsAppMessage(noHp, pesanWA);
@@ -513,6 +539,7 @@ export async function batalAntrian(req: Request, res: Response): Promise<void> {
 // Restore antrian dari 'batal' ke 'menunggu' (undo skip dalam 60 detik)
 export async function restoreAntrian(req: Request, res: Response): Promise<void> {
   const { id } = req.params;
+  const user = (req as any).user;
   const role = (req as any).userRole as string;
   const isStaff = ["teller", "cs"].includes(role);
 
@@ -522,14 +549,13 @@ export async function restoreAntrian(req: Request, res: Response): Promise<void>
   }
 
   const { data: existing } = await supabaseAdmin
-    .from("antrian").select("status, nomor_antrian, layanan, updated_at").eq("id", id).single();
+    .from("antrian").select("status, nomor_antrian, layanan, updated_at, cabang_id").eq("id", id).single();
 
   if (!existing || existing.status !== "batal") {
     res.status(400).json({ success: false, message: "Antrian tidak dalam status batal", data: {} });
     return;
   }
 
-  // Hanya bisa restore dalam 60 detik setelah dibatalkan
   const cancelledAt = new Date(existing.updated_at).getTime();
   const secondsElapsed = (Date.now() - cancelledAt) / 1000;
   if (secondsElapsed > 60) {
@@ -537,10 +563,17 @@ export async function restoreAntrian(req: Request, res: Response): Promise<void>
     return;
   }
 
-  // Validasi layanan
   const allowedLayanan = ROLE_LAYANAN[role];
   if (allowedLayanan && existing.layanan !== allowedLayanan) {
     res.status(403).json({ success: false, message: `Tidak bisa restore antrian layanan ${existing.layanan}`, data: {} });
+    return;
+  }
+
+  // Validasi cabang
+  const staffProfile = await getStaffProfile(user.id);
+  const myCabangId = staffProfile?.cabang_id ?? null;
+  if (myCabangId && existing.cabang_id && myCabangId !== existing.cabang_id) {
+    res.status(403).json({ success: false, message: `Antrian ini bukan milik cabang Anda`, data: {} });
     return;
   }
 

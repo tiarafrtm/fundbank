@@ -10,6 +10,7 @@ import {
   getStatistik,
   setLoket,
 } from "../controllers/antrianController";
+import { listCabang } from "../controllers/cabangController";
 import {
   authMiddleware,
   anyStaffMiddleware,
@@ -25,6 +26,7 @@ router.put("/panggil",          anyStaffMiddleware, panggilAntrian);
 router.put("/selesai/:id",      anyStaffMiddleware, selesaiAntrian);
 router.put("/batal/:id",        anyStaffMiddleware, batalAntrian);
 router.put("/restore/:id",      anyStaffMiddleware, restoreAntrian);
-router.put("/loket",            anyStaffMiddleware, setLoket);          // Baru: set nomor loket
+router.put("/loket",            anyStaffMiddleware, setLoket);
+router.get("/cabang",           anyStaffMiddleware, listCabang);  // Daftar cabang untuk staff
 
 export default router;
