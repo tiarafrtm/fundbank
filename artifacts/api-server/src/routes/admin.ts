@@ -10,6 +10,7 @@ import {
   resetPasswordAdminStaff,
   deleteAdminStaff,
   getLaporan,
+  getStaffMonitor,
   bootstrapAdmin,
 } from "../controllers/adminController";
 import { adminMiddleware } from "../middleware/authMiddleware";
@@ -29,6 +30,7 @@ router.post("/staff",                        adminMiddleware, createAdminStaff);
 router.put("/staff/:id",                     adminMiddleware, updateAdminStaff);
 router.post("/staff/:id/reset-password",     adminMiddleware, resetPasswordAdminStaff);
 router.delete("/staff/:id",                  adminMiddleware, deleteAdminStaff);
+router.get("/staff/:id/monitor",             adminMiddleware, getStaffMonitor);
 router.get("/laporan",                       adminMiddleware, getLaporan);
 
 export default router;

@@ -396,6 +396,72 @@ export async function getLaporan(req: Request, res: Response): Promise<void> {
 }
 
 // ===========================================================
+// GET /api/admin/staff/:id/monitor — data dashboard live staff
+// ===========================================================
+export async function getStaffMonitor(req: Request, res: Response): Promise<void> {
+  const { id } = req.params;
+  const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+
+  // Ambil profil staff
+  const { data: staff, error: staffErr } = await supabaseAdmin
+    .from("profiles")
+    .select("id, nama, role, loket_number, no_hp, cabang_id, cabang:cabang_id(id, nama, kode)")
+    .eq("id", id)
+    .in("role", ["teller", "cs"])
+    .single();
+
+  if (staffErr || !staff) {
+    res.status(404).json({ success: false, message: "Staff tidak ditemukan", data: {} });
+    return;
+  }
+
+  // Tentukan filter layanan berdasarkan role
+  const layananFilter = (staff.role as string) === "teller" ? "Teller" : "CS";
+
+  // Ambil semua antrian hari ini untuk loket staff ini
+  let antrianQuery = supabaseAdmin
+    .from("antrian")
+    .select(`
+      id, nomor_antrian, layanan, keperluan, status,
+      created_at, called_at, finished_at,
+      loket_number,
+      profiles:user_id(nama, no_hp),
+      nama_nasabah, no_hp_nasabah
+    `)
+    .eq("layanan", layananFilter)
+    .gte("created_at", todayStart)
+    .order("created_at", { ascending: true });
+
+  // Filter cabang (kalau loket_number null maka cukup filter layanan + cabang)
+  if (staff.cabang_id) antrianQuery = antrianQuery.eq("cabang_id", staff.cabang_id);
+  if (staff.loket_number) antrianQuery = antrianQuery.eq("loket_number", staff.loket_number);
+
+  const { data: antrian, error: antrianErr } = await antrianQuery;
+  if (antrianErr) {
+    res.status(500).json({ success: false, message: antrianErr.message, data: {} });
+    return;
+  }
+
+  const list = antrian ?? [];
+  const stats = {
+    total:     list.length,
+    menunggu:  list.filter(a => a.status === "menunggu").length,
+    dipanggil: list.filter(a => a.status === "dipanggil").length,
+    selesai:   list.filter(a => a.status === "selesai").length,
+    batal:     list.filter(a => a.status === "batal").length,
+  };
+
+  // Nomor yang sedang dilayani sekarang
+  const nowServing = list.find(a => a.status === "dipanggil") ?? null;
+
+  res.json({
+    success: true,
+    message: "Data monitor staff",
+    data: { staff, antrian: list, stats, nowServing },
+  });
+}
+
+// ===========================================================
 // Buat akun admin pertama — dilindungi SESSION_SECRET
 // POST /api/admin/bootstrap
 // ===========================================================

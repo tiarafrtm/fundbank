@@ -54,6 +54,92 @@
     /* Role badge */
     .role-teller { background: var(--orange-soft);  color: var(--orange-dark); }
     .role-cs     { background: var(--blue-light);   color: var(--blue); }
+
+    /* ====== MONITOR SLIDE PANEL ====== */
+    .monitor-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.35);
+      z-index: 900; opacity: 0; pointer-events: none;
+      transition: opacity .25s;
+    }
+    .monitor-overlay.open { opacity: 1; pointer-events: all; }
+
+    .monitor-panel {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: min(480px, 100vw);
+      background: #fafaf9;
+      box-shadow: -8px 0 40px rgba(0,0,0,.14);
+      z-index: 901;
+      transform: translateX(100%);
+      transition: transform .28s cubic-bezier(.4,0,.2,1);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .monitor-panel.open { transform: translateX(0); }
+
+    .monitor-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 20px 22px 16px;
+      border-bottom: 1px solid var(--gray-200);
+      background: var(--white);
+      flex-shrink: 0;
+    }
+    .monitor-header-info { flex: 1; min-width: 0; }
+    .monitor-staff-name  { font-size: 15px; font-weight: 700; color: var(--gray-800); }
+    .monitor-staff-meta  { font-size: 11px; color: var(--gray-400); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .monitor-close-btn   {
+      width: 32px; height: 32px; border-radius: 8px; border: none;
+      background: var(--gray-100); color: var(--gray-500);
+      font-size: 17px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-left: 10px; transition: background .15s;
+    }
+    .monitor-close-btn:hover { background: var(--gray-200); }
+
+    .monitor-body { flex: 1; overflow-y: auto; padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* Now serving besar */
+    .monitor-now-serving {
+      background: linear-gradient(135deg, var(--orange) 0%, #ea580c 100%);
+      color: #fff; border-radius: 14px; padding: 18px 22px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .monitor-now-serving .ns-label { font-size: 11px; font-weight: 600; opacity: .85; text-transform: uppercase; letter-spacing: .06em; }
+    .monitor-now-serving .ns-nomor { font-size: 36px; font-weight: 800; line-height: 1; }
+    .monitor-now-serving .ns-detail { font-size: 12px; opacity: .9; margin-top: 3px; }
+    .monitor-now-serving .ns-icon  { font-size: 36px; margin-left: auto; opacity: .4; }
+
+    /* Stat chips */
+    .monitor-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+    .monitor-stat  {
+      background: var(--white); border: 1px solid var(--gray-200);
+      border-radius: 10px; padding: 10px 12px; text-align: center;
+    }
+    .monitor-stat .ms-val { font-size: 20px; font-weight: 800; color: var(--gray-800); }
+    .monitor-stat .ms-lbl { font-size: 10px; color: var(--gray-400); font-weight: 500; margin-top: 2px; }
+    .monitor-stat.orange  { border-top: 3px solid var(--orange); }
+    .monitor-stat.green   { border-top: 3px solid var(--success); }
+    .monitor-stat.blue    { border-top: 3px solid var(--blue); }
+    .monitor-stat.red     { border-top: 3px solid var(--danger); }
+
+    /* Monitor antrian table */
+    .monitor-table-wrap { background: var(--white); border: 1px solid var(--gray-200); border-radius: 12px; overflow: hidden; }
+    .monitor-table-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--gray-400); padding: 12px 16px 10px; border-bottom: 1px solid var(--gray-100); }
+    .monitor-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .monitor-table th { font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--gray-400); padding: 7px 12px; background: var(--gray-50); text-align: left; }
+    .monitor-table td { padding: 9px 12px; border-top: 1px solid var(--gray-100); color: var(--gray-700); }
+    .monitor-table tr:hover td { background: var(--gray-50); }
+
+    .monitor-footer {
+      padding: 12px 22px; border-top: 1px solid var(--gray-200);
+      background: var(--white); display: flex; align-items: center;
+      gap: 10px; flex-shrink: 0; font-size: 11px; color: var(--gray-400);
+    }
+    .monitor-refresh-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; } 50% { opacity: .3; }
+    }
   </style>
 </head>
 <body>
@@ -314,6 +400,35 @@
     </main>
   </div><!-- end .main-wrapper -->
 </div><!-- end .app-layout -->
+
+<!-- ===== MONITOR OVERLAY + PANEL ===== -->
+<div class="monitor-overlay" id="monitor-overlay" onclick="closeMonitorPanel()"></div>
+<div class="monitor-panel" id="monitor-panel">
+
+  <div class="monitor-header">
+    <div class="monitor-header-info">
+      <div class="monitor-staff-name" id="mon-staff-name">—</div>
+      <div class="monitor-staff-meta">
+        <span id="mon-staff-role"></span>
+        <span id="mon-staff-loket"></span>
+        <span id="mon-staff-cabang"></span>
+      </div>
+    </div>
+    <button class="monitor-close-btn" onclick="closeMonitorPanel()">✕</button>
+  </div>
+
+  <div class="monitor-body" id="monitor-body">
+    <div style="text-align:center;padding:40px;color:var(--gray-400);font-size:13px">Memuat data...</div>
+  </div>
+
+  <div class="monitor-footer">
+    <div class="monitor-refresh-dot" id="mon-dot"></div>
+    <span>Auto-refresh setiap 10 detik</span>
+    <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="loadMonitorData()">↺ Refresh</button>
+    <span id="mon-last-update" style="color:var(--gray-300)"></span>
+  </div>
+
+</div>
 
 <!-- Toast notifikasi -->
 <div id="admin-toast" style="

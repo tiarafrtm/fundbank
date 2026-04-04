@@ -231,6 +231,7 @@ function renderStaffTable(list) {
       <td>${s.loket_number ? `<span class="badge-loket-small">Loket ${s.loket_number}</span>` : '<span class="text-muted">—</span>'}</td>
       <td>
         <div class="tbl-actions">
+          <button class="btn btn-primary btn-sm" onclick="openMonitorPanel('${s.id}', ${JSON.stringify(s).replace(/'/g, '&#39;')})">Pantau</button>
           <button class="btn btn-outline btn-sm" onclick='openModalStaff(${JSON.stringify(s)})'>Edit</button>
           <button class="btn btn-outline btn-sm" style="color:var(--purple)" onclick="openModalResetPw('${s.id}', '${escHtml(s.nama)}')">Reset PW</button>
           <button class="btn btn-danger btn-sm" onclick="deleteStaff('${s.id}', '${escHtml(s.nama)}')">Hapus</button>
@@ -342,6 +343,133 @@ async function deleteStaff(id, nama) {
     loadStaff();
   } else {
     showToast('Gagal: ' + result.message, 'error');
+  }
+}
+
+// ===========================
+// MONITOR PANEL
+// ===========================
+let _monitorStaffId   = null;
+let _monitorTimer     = null;
+
+function openMonitorPanel(staffId, staffData) {
+  _monitorStaffId = staffId;
+
+  // Isi header langsung dari data cache
+  const roleLabel = staffData.role === 'cs' ? 'Customer Service' : 'Teller';
+  const loket     = staffData.loket_number ? `Loket ${staffData.loket_number}` : 'Loket belum diset';
+  const cabang    = staffData.cabang?.nama ?? '—';
+
+  document.getElementById('mon-staff-name').textContent   = staffData.nama;
+  document.getElementById('mon-staff-role').textContent   = roleLabel;
+  document.getElementById('mon-staff-loket').textContent  = loket;
+  document.getElementById('mon-staff-cabang').textContent = cabang;
+
+  document.getElementById('monitor-overlay').classList.add('open');
+  document.getElementById('monitor-panel').classList.add('open');
+
+  loadMonitorData();
+  startMonitorRefresh();
+}
+
+function closeMonitorPanel() {
+  document.getElementById('monitor-overlay').classList.remove('open');
+  document.getElementById('monitor-panel').classList.remove('open');
+  stopMonitorRefresh();
+  _monitorStaffId = null;
+}
+
+function startMonitorRefresh() {
+  stopMonitorRefresh();
+  _monitorTimer = setInterval(loadMonitorData, 10000);
+}
+
+function stopMonitorRefresh() {
+  if (_monitorTimer) { clearInterval(_monitorTimer); _monitorTimer = null; }
+}
+
+async function loadMonitorData() {
+  if (!_monitorStaffId) return;
+
+  const dot = document.getElementById('mon-dot');
+  if (dot) { dot.style.background = 'var(--orange)'; }
+
+  try {
+    const result = await api('GET', `/admin/staff/${_monitorStaffId}/monitor`);
+    if (!result.success) {
+      document.getElementById('monitor-body').innerHTML =
+        `<div style="text-align:center;padding:40px;color:var(--danger)">Gagal memuat: ${escHtml(result.message)}</div>`;
+      return;
+    }
+
+    const { stats, nowServing, antrian } = result.data;
+
+    // Bagian "Now Serving"
+    const nsHtml = nowServing
+      ? `<div class="monitor-now-serving">
+          <div>
+            <div class="ns-label">Sedang Dilayani</div>
+            <div class="ns-nomor">${escHtml(nowServing.nomor_antrian)}</div>
+            <div class="ns-detail">${escHtml(nowServing.keperluan ?? nowServing.layanan)}</div>
+          </div>
+          <div class="ns-icon">🏦</div>
+        </div>`
+      : `<div style="background:var(--gray-100);border-radius:14px;padding:16px 20px;color:var(--gray-400);font-size:13px;text-align:center">
+          Tidak ada nasabah yang sedang dilayani
+        </div>`;
+
+    // Stat chips
+    const statsHtml = `
+      <div class="monitor-stats">
+        <div class="monitor-stat orange"><div class="ms-val">${stats.total}</div><div class="ms-lbl">Total</div></div>
+        <div class="monitor-stat blue"><div class="ms-val">${stats.menunggu}</div><div class="ms-lbl">Menunggu</div></div>
+        <div class="monitor-stat green"><div class="ms-val">${stats.selesai}</div><div class="ms-lbl">Selesai</div></div>
+        <div class="monitor-stat red"><div class="ms-val">${stats.batal}</div><div class="ms-lbl">Batal</div></div>
+      </div>`;
+
+    // Tabel antrian
+    const statusMap = {
+      menunggu:  ['status-menunggu',  'Menunggu'],
+      dipanggil: ['status-dipanggil', 'Dipanggil'],
+      selesai:   ['status-selesai',   'Selesai'],
+      batal:     ['status-batal',     'Batal'],
+    };
+
+    const rows = antrian.length
+      ? antrian.map(a => {
+          const nama = a.profiles?.nama ?? a.nama_nasabah ?? 'Nasabah';
+          const [cls, lbl] = statusMap[a.status] ?? ['', a.status];
+          return `<tr>
+            <td class="antrian-number" style="font-size:13px">${escHtml(a.nomor_antrian)}</td>
+            <td>${escHtml(nama)}<div style="font-size:10px;color:var(--gray-400)">${escHtml(a.keperluan ?? '—')}</div></td>
+            <td><span class="status-badge-table ${cls}">${lbl}</span></td>
+            <td style="color:var(--gray-400);font-size:11px">${a.called_at ? formatWaktu(a.called_at) : '—'}</td>
+          </tr>`;
+        }).join('')
+      : `<tr class="empty-row"><td colspan="4">Belum ada antrian hari ini</td></tr>`;
+
+    const tableHtml = `
+      <div class="monitor-table-wrap">
+        <div class="monitor-table-title">Daftar Antrian Hari Ini</div>
+        <table class="monitor-table">
+          <thead><tr><th>Nomor</th><th>Nasabah</th><th>Status</th><th>Dipanggil</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+
+    document.getElementById('monitor-body').innerHTML = nsHtml + statsHtml + tableHtml;
+
+    // Update last update
+    const now = new Date();
+    const hms = now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    const el = document.getElementById('mon-last-update');
+    if (el) el.textContent = `Update: ${hms}`;
+
+  } catch (e) {
+    document.getElementById('monitor-body').innerHTML =
+      `<div style="text-align:center;padding:40px;color:var(--danger)">Terjadi kesalahan koneksi</div>`;
+  } finally {
+    if (dot) { dot.style.background = 'var(--success)'; }
   }
 }
 
