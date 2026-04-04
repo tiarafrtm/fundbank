@@ -231,7 +231,7 @@ function renderStaffTable(list) {
       <td>${s.loket_number ? `<span class="badge-loket-small">Loket ${s.loket_number}</span>` : '<span class="text-muted">—</span>'}</td>
       <td>
         <div class="tbl-actions">
-          <button class="btn btn-primary btn-sm" onclick="openMonitorPanel('${s.id}', ${JSON.stringify(s).replace(/'/g, '&#39;')})">Pantau</button>
+          <button class="btn btn-primary btn-sm" onclick="openMonitorPanel('${s.id}')">Pantau</button>
           <button class="btn btn-outline btn-sm" onclick='openModalStaff(${JSON.stringify(s)})'>Edit</button>
           <button class="btn btn-outline btn-sm" style="color:var(--purple)" onclick="openModalResetPw('${s.id}', '${escHtml(s.nama)}')">Reset PW</button>
           <button class="btn btn-danger btn-sm" onclick="deleteStaff('${s.id}', '${escHtml(s.nama)}')">Hapus</button>
@@ -352,18 +352,16 @@ async function deleteStaff(id, nama) {
 let _monitorStaffId   = null;
 let _monitorTimer     = null;
 
-function openMonitorPanel(staffId, staffData) {
+function openMonitorPanel(staffId) {
   _monitorStaffId = staffId;
 
-  // Isi header langsung dari data cache
-  const roleLabel = staffData.role === 'cs' ? 'Customer Service' : 'Teller';
-  const loket     = staffData.loket_number ? `Loket ${staffData.loket_number}` : 'Loket belum diset';
-  const cabang    = staffData.cabang?.nama ?? '—';
-
-  document.getElementById('mon-staff-name').textContent   = staffData.nama;
-  document.getElementById('mon-staff-role').textContent   = roleLabel;
-  document.getElementById('mon-staff-loket').textContent  = loket;
-  document.getElementById('mon-staff-cabang').textContent = cabang;
+  // Reset header dulu — akan diisi dari API
+  document.getElementById('mon-staff-name').textContent  = 'Memuat...';
+  document.getElementById('mon-staff-role').textContent  = '';
+  document.getElementById('mon-staff-loket').textContent = '';
+  document.getElementById('mon-staff-cabang').textContent = '';
+  document.getElementById('monitor-body').innerHTML =
+    '<div style="text-align:center;padding:40px;color:var(--gray-400);font-size:13px">Memuat data...</div>';
 
   document.getElementById('monitor-overlay').classList.add('open');
   document.getElementById('monitor-panel').classList.add('open');
@@ -402,7 +400,18 @@ async function loadMonitorData() {
       return;
     }
 
-    const { stats, nowServing, antrian } = result.data;
+    const { staff, stats, nowServing, antrian } = result.data;
+
+    // Update header dari data API
+    if (staff) {
+      const roleLabel = staff.role === 'cs' ? 'Customer Service' : 'Teller';
+      const loket     = staff.loket_number ? `Loket ${staff.loket_number}` : 'Loket belum diset';
+      const cabang    = staff.cabang?.nama ?? '—';
+      document.getElementById('mon-staff-name').textContent   = staff.nama;
+      document.getElementById('mon-staff-role').textContent   = roleLabel;
+      document.getElementById('mon-staff-loket').textContent  = loket;
+      document.getElementById('mon-staff-cabang').textContent = cabang;
+    }
 
     // Bagian "Now Serving"
     const nsHtml = nowServing
