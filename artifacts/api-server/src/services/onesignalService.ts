@@ -8,7 +8,7 @@ import { logger } from "../lib/logger";
 export type NotifTipe = "normal" | "dipanggil" | "skip";
 
 export async function sendPushNotification(
-  userId: string,                      // External User ID = Supabase UUID (bukan player_id)
+  playerId: string,
   nomorAntrian: number,
   tipe: NotifTipe = "normal",
   layanan?: string,                    // untuk pesan "dipanggil" yang lebih spesifik
@@ -36,18 +36,16 @@ export async function sendPushNotification(
     const { heading, content } = config[tipe];
 
     const payload = {
-      app_id                   : onesignalConfig.appId,
-      include_external_user_ids: [userId],        // pakai External User ID — bukan player_id
-      headings                 : { en: heading, id: heading },
-      contents                 : { en: content,  id: content  },
+      app_id            : onesignalConfig.appId,
+      include_player_ids: [playerId],
+      headings          : { en: heading, id: heading },
+      contents          : { en: content, id: content },
       // Data tambahan — dibaca Android untuk tampilkan UI yang sesuai
-      // Android WAJIB verifikasi user_id === ID login sebelum tampilkan notif
       data: {
         tipe,
-        user_id      : userId,                   // ← pengaman lapis kedua di Android
-        nomor_antrian: nomorAntrian,
-        layanan      : layanan     ?? null,
-        loket_number : loketNumber ?? null,
+        nomor_antrian : nomorAntrian,
+        layanan       : layanan     ?? null,
+        loket_number  : loketNumber ?? null,
       },
       priority : 10,
       ttl      : tipe === "dipanggil" ? 120 : 60,  // "dipanggil" lebih lama: 2 menit
