@@ -272,10 +272,10 @@ export async function setLoket(req: Request, res: Response): Promise<void> {
   const role    = (req as any).userRole as string;
   const { loket_number } = req.body;
 
-  if (!loket_number || typeof loket_number !== "number" || loket_number < 1 || loket_number > 20) {
+  if (!loket_number || typeof loket_number !== "number" || loket_number < 1 || loket_number > 4) {
     res.status(400).json({
       success: false,
-      message: "Nomor loket tidak valid (harus angka 1–20)",
+      message: "Nomor loket tidak valid (harus angka 1–4)",
       data: {},
     });
     return;
