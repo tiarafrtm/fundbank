@@ -222,7 +222,7 @@ export async function panggilBerikutnya(
           `Nomor antrian Anda: *${nomorAntrian}* (${layananDisplay})\n` +
           `${keteranganPosisi}\n\n` +
           `Klik untuk lihat status antrian:\n` +
-          `https://antrianbank.site/tiket?ticket=${nomorAntrian}\n\n` +
+          `https://fundbank.my.id/tiket?ticket=${nomorAntrian}\n\n` +
           `— ${cabangNama}`;
 
         try {
