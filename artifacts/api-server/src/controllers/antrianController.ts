@@ -331,48 +331,6 @@ export async function setLoket(req: Request, res: Response): Promise<void> {
   });
 }
 
-// Teller/CS memilih cabang tempat mereka bertugas hari ini
-export async function setCabang(req: Request, res: Response): Promise<void> {
-  const user = (req as any).user;
-  const { cabang_id } = req.body;
-
-  if (!cabang_id || typeof cabang_id !== "number" || cabang_id < 1) {
-    res.status(400).json({ success: false, message: "cabang_id tidak valid", data: {} });
-    return;
-  }
-
-  // Verifikasi cabang ada dan aktif
-  const { data: cabang, error: cabangErr } = await supabaseAdmin
-    .from("cabang")
-    .select("id, nama, kode, alamat")
-    .eq("id", cabang_id)
-    .eq("is_active", true)
-    .single();
-
-  if (cabangErr || !cabang) {
-    res.status(404).json({ success: false, message: "Cabang tidak ditemukan atau tidak aktif", data: {} });
-    return;
-  }
-
-  // Simpan cabang_id ke profil, reset loket_number (loket lama tidak valid di cabang baru)
-  const { error } = await supabaseAdmin
-    .from("profiles")
-    .update({ cabang_id, loket_number: null })
-    .eq("id", user.id);
-
-  if (error) {
-    res.status(500).json({ success: false, message: "Gagal menyimpan cabang: " + (error?.message ?? ""), data: {} });
-    return;
-  }
-
-  actLog(req, "set_cabang", { cabang_id, cabang_nama: cabang.nama });
-  res.json({
-    success: true,
-    message: `Cabang ${cabang.nama} berhasil dipilih`,
-    data: { cabang },
-  });
-}
-
 // Teller/CS memanggil nomor antrian berikutnya
 export async function panggilAntrian(req: Request, res: Response): Promise<void> {
   const { layanan } = req.body;
