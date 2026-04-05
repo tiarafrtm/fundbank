@@ -1125,6 +1125,52 @@ body {
 }
 .sidebar.collapsed .loket-select-btn { display: none; }
 
+/* ===== CABANG SELECT BUTTON ===== */
+.cabang-select-btn {
+  display: flex; align-items: center; gap: 7px;
+  width: calc(100% - 24px); margin: 0 12px 6px;
+  padding: 7px 12px;
+  background: rgba(37,99,235,0.1);
+  border: 1.5px solid rgba(37,99,235,0.25);
+  border-radius: var(--radius-sm);
+  color: var(--blue);
+  font-family: var(--font); font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all .15s; text-align: left;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cabang-select-btn:hover { background: rgba(37,99,235,0.18); }
+.cabang-select-btn.cabang-set {
+  background: rgba(37,99,235,0.15);
+  border-color: var(--blue);
+}
+.sidebar.collapsed .cabang-select-btn { display: none; }
+
+/* ===== CABANG GRID ===== */
+.cabang-grid {
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: 360px; overflow-y: auto;
+}
+.cabang-btn {
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 2px; padding: 12px 14px; border-radius: 10px;
+  border: 1.5px solid var(--gray-200);
+  background: var(--gray-50);
+  cursor: pointer; transition: all .15s; text-align: left; width: 100%;
+}
+.cabang-btn:hover { border-color: var(--blue); background: var(--blue-light); }
+.cabang-btn.active { border-color: var(--blue); background: var(--blue-light); }
+.cabang-btn .cabang-kode {
+  font-size: 10px; font-weight: 700; color: var(--blue);
+  background: rgba(37,99,235,0.12); padding: 1px 6px; border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.cabang-btn .cabang-nama {
+  font-size: 13px; font-weight: 600; color: var(--gray-800); margin-top: 4px;
+}
+.cabang-btn .cabang-alamat {
+  font-size: 11px; color: var(--gray-400);
+}
+
 /* ===== MODAL OVERLAY ===== */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 9999;
