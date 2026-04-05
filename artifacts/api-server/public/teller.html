@@ -70,6 +70,10 @@
       </nav>
 
       <div class="sidebar-footer">
+        <button class="cabang-select-btn" id="cabang-select-btn" title="Klik untuk ganti cabang">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span id="cabang-badge-text">Pilih Cabang</span>
+        </button>
         <button class="loket-select-btn" id="loket-select-btn" title="Klik untuk ganti loket">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           <span id="loket-badge-text">Set Loket</span>
@@ -90,6 +94,15 @@
         </div>
       </div>
     </aside>
+
+    <!-- Modal Pilih Cabang -->
+    <div id="cabang-modal" class="modal-overlay" style="display:none">
+      <div class="modal-box">
+        <h3 style="margin:0 0 6px;font-size:16px;font-weight:600">Pilih Cabang Tugas</h3>
+        <p style="margin:0 0 16px;font-size:13px;color:var(--gray-500)">Pilih cabang tempat Anda bertugas hari ini.</p>
+        <div class="cabang-grid" id="cabang-grid"></div>
+      </div>
+    </div>
 
     <!-- Modal Pilih Loket -->
     <div id="loket-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeLoketModal()">
