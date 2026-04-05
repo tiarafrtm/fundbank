@@ -55,6 +55,29 @@
     .role-teller { background: var(--orange-soft);  color: var(--orange-dark); }
     .role-cs     { background: var(--blue-light);   color: var(--blue); }
 
+    /* ====== JADWAL ====== */
+    .jadwal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--gray-100); gap: 12px; flex-wrap: wrap; }
+    .jadwal-header h2 { font-size: 14px; font-weight: 700; color: var(--gray-800); }
+    .jadwal-picker { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .jadwal-picker label { font-size: 12px; font-weight: 600; color: var(--gray-500); }
+    .jadwal-grid { padding: 20px 24px; display: flex; flex-direction: column; gap: 0; }
+    .jadwal-row { display: grid; grid-template-columns: 100px 44px 1fr 1fr; align-items: center; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--gray-100); }
+    .jadwal-row:last-child { border-bottom: none; }
+    .jadwal-row.tutup .jadwal-time-col { opacity: .35; pointer-events: none; }
+    .jadwal-hari { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+    .jadwal-toggle { width: 36px; height: 20px; position: relative; }
+    .jadwal-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .jadwal-toggle-track { position: absolute; inset: 0; background: var(--gray-200); border-radius: 20px; cursor: pointer; transition: background .2s; }
+    .jadwal-toggle input:checked + .jadwal-toggle-track { background: var(--orange); }
+    .jadwal-toggle-track::after { content:''; position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .2s; }
+    .jadwal-toggle input:checked + .jadwal-toggle-track::after { transform: translateX(16px); }
+    .jadwal-time-col { display: flex; align-items: center; gap: 6px; }
+    .jadwal-time-col label { font-size: 10px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: .06em; width: 28px; }
+    .jadwal-time-col input[type="time"] { padding: 5px 8px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 12px; font-family: var(--font); color: var(--gray-800); background: var(--white); width: 110px; }
+    .jadwal-time-col input:focus { outline: none; border-color: var(--orange); }
+    .jadwal-footer { padding: 16px 24px; border-top: 1px solid var(--gray-100); display: flex; align-items: center; gap: 12px; justify-content: flex-end; background: var(--gray-50); }
+    .jadwal-info { font-size: 11.5px; color: var(--gray-400); flex: 1; }
+
     /* ====== MONITOR SLIDE PANEL ====== */
     .monitor-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,.35);
@@ -195,6 +218,17 @@
           <circle cx="12" cy="7" r="4"/>
         </svg>
         <span class="nav-label">Kelola Nasabah</span>
+      </button>
+
+      <button class="nav-item" data-page="jadwal">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          <line x1="8" y1="14" x2="8" y2="14" stroke-width="3" stroke-linecap="round"/>
+          <line x1="12" y1="14" x2="12" y2="14" stroke-width="3" stroke-linecap="round"/>
+          <line x1="16" y1="14" x2="16" y2="14" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <span class="nav-label">Kelola Jadwal</span>
       </button>
 
       <button class="nav-item" data-page="laporan">
@@ -402,6 +436,27 @@
                 <tr class="empty-row"><td colspan="6">Memuat...</td></tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ===================== PAGE: JADWAL ===================== -->
+      <div id="page-jadwal" class="sub-page">
+
+        <div class="panel-table">
+          <div class="jadwal-header">
+            <h2>Jadwal Operasional Cabang</h2>
+            <div class="jadwal-picker">
+              <label for="jadwal-cabang-sel">Pilih Cabang:</label>
+              <select id="jadwal-cabang-sel" class="select-input" style="width:auto;padding:6px 12px;font-size:12px" onchange="loadJadwal()">
+                <option value="">— pilih cabang —</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="jadwal-content">
+            <div style="padding:40px 24px;text-align:center;color:var(--gray-400);font-size:13px">Pilih cabang untuk melihat jadwal operasional.</div>
           </div>
         </div>
 
