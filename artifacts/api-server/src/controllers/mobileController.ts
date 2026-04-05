@@ -865,6 +865,81 @@ function escHtml(s: string): string {
 }
 
 // ============================================================
+// GET /api/mobile/jadwal?cabang_id=X
+// Publik — tidak perlu login
+// Mengembalikan jadwal operasional cabang + status buka hari ini
+// ============================================================
+export async function jadwalCabangMobile(req: Request, res: Response): Promise<void> {
+  const cabang_id = Number(req.query.cabang_id);
+  if (!cabang_id) {
+    res.status(400).json({ success: false, message: "cabang_id wajib diisi", data: {} });
+    return;
+  }
+
+  try {
+    const { data: jadwal, error } = await supabaseAdmin
+      .from("jadwal_operasional")
+      .select("hari, jam_buka, jam_tutup, is_buka")
+      .eq("cabang_id", cabang_id)
+      .order("hari");
+
+    if (error) throw error;
+
+    // Hitung hari ini (1=Senin … 7=Minggu, sama dengan isian admin)
+    const now   = new Date();
+    // getDay(): 0=Minggu,1=Senin,...,6=Sabtu → konversi ke 1=Senin,...,7=Minggu
+    const jsDay = now.getDay();
+    const hariIniNum = jsDay === 0 ? 7 : jsDay;
+
+    const jadwalHariIni = (jadwal ?? []).find(j => j.hari === hariIniNum) ?? null;
+
+    // Cek apakah sekarang dalam rentang jam buka–tutup
+    let sedang_buka = false;
+    if (jadwalHariIni?.is_buka && jadwalHariIni.jam_buka && jadwalHariIni.jam_tutup) {
+      const [bH, bM] = jadwalHariIni.jam_buka.split(":").map(Number);
+      const [tH, tM] = jadwalHariIni.jam_tutup.split(":").map(Number);
+      const nowMin   = now.getHours() * 60 + now.getMinutes();
+      const bukaMin  = bH * 60 + bM;
+      const tutupMin = tH * 60 + tM;
+      sedang_buka    = nowMin >= bukaMin && nowMin < tutupMin;
+    }
+
+    const NAMA_HARI = ["", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+
+    res.json({
+      success: true,
+      message: "Jadwal operasional berhasil diambil",
+      data: {
+        cabang_id,
+        sedang_buka,
+        hari_ini: jadwalHariIni
+          ? {
+              hari:      jadwalHariIni.hari,
+              nama_hari: NAMA_HARI[jadwalHariIni.hari] ?? "",
+              is_buka:   jadwalHariIni.is_buka,
+              jam_buka:  jadwalHariIni.jam_buka,
+              jam_tutup: jadwalHariIni.jam_tutup,
+            }
+          : null,
+        jadwal: (jadwal ?? []).map(j => ({
+          hari:      j.hari,
+          nama_hari: NAMA_HARI[j.hari] ?? "",
+          is_buka:   j.is_buka,
+          jam_buka:  j.jam_buka,
+          jam_tutup: j.jam_tutup,
+        })),
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengambil jadwal: " + (err?.message ?? ""),
+      data: {},
+    });
+  }
+}
+
+// ============================================================
 // GET /api/mobile/cabang — Daftar cabang aktif (tanpa auth — publik)
 // ============================================================
 export async function listCabangMobile(_req: Request, res: Response): Promise<void> {
