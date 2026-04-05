@@ -1139,29 +1139,36 @@ body {
 
 /* ===== LOKET GRID ===== */
 .loket-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
 }
 .loket-btn {
-  padding: 12px 6px; border-radius: 8px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 14px 6px; border-radius: 10px;
   border: 2px solid var(--gray-200);
   background: var(--gray-50);
-  font-family: var(--font); font-size: 13px; font-weight: 700;
+  font-family: var(--font);
   cursor: pointer; transition: all .15s;
-  color: var(--gray-700);
 }
-.loket-btn:hover { border-color: var(--orange); color: var(--orange); background: var(--orange-soft); }
+.loket-btn .loket-num {
+  font-size: 13px; font-weight: 700; color: var(--gray-700);
+}
+.loket-btn .loket-status {
+  font-size: 10px; font-weight: 600; color: var(--gray-400);
+}
+.loket-btn:hover { border-color: var(--orange); background: var(--orange-soft); }
+.loket-btn:hover .loket-num { color: var(--orange); }
+.loket-btn:hover .loket-status { color: var(--orange); }
 .loket-btn.active {
   border-color: var(--orange); background: var(--orange);
-  color: white;
 }
+.loket-btn.active .loket-num { color: white; }
+.loket-btn.active .loket-status { color: rgba(255,255,255,0.8); }
 .loket-btn.occupied {
-  border-color: var(--gray-200); background: var(--gray-50);
-  color: var(--gray-300); cursor: default; position: relative;
+  border-color: var(--gray-200); background: var(--gray-100);
+  cursor: default; opacity: 0.6;
 }
-.loket-btn.occupied::after {
-  content: 'Terpakai'; position: absolute; bottom: 2px; left: 0; right: 0;
-  font-size: 9px; font-weight: 600; color: var(--gray-400);
-}
+.loket-btn.occupied .loket-num { color: var(--gray-400); }
+.loket-btn.occupied .loket-status { color: var(--gray-400); }
 
 /* ===== DOCS API (inline sub-page) ===== */
 .docs-section-block { margin-bottom: 6px; }
