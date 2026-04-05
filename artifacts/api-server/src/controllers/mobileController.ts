@@ -679,7 +679,7 @@ export async function tiketAntrian(req: Request, res: Response): Promise<void> {
   const user = (req as any).user;
   const { id } = req.params;
   const meta = user.user_metadata ?? {};
-  const userEmail: string = user.email ?? "";
+
   const { data: antrian } = await supabaseAdmin
     .from("antrian")
     .select(`*, profiles (nama, no_hp)`)
@@ -690,6 +690,21 @@ export async function tiketAntrian(req: Request, res: Response): Promise<void> {
   if (!antrian) {
     res.status(404).json({ success: false, message: "Tiket tidak ditemukan", data: {} });
     return;
+  }
+
+  // Ambil info cabang jika ada
+  let cabangNama = "";
+  let cabangAlamat = "";
+  if (antrian.cabang_id) {
+    const { data: cabang } = await supabaseAdmin
+      .from("cabang")
+      .select("nama, alamat, kode")
+      .eq("id", antrian.cabang_id)
+      .single();
+    if (cabang) {
+      cabangNama   = cabang.nama   ?? "";
+      cabangAlamat = cabang.alamat ?? "";
+    }
   }
 
   const profile = antrian.profiles as any;
@@ -704,10 +719,11 @@ export async function tiketAntrian(req: Request, res: Response): Promise<void> {
     layanan: antrian.layanan,
     keperluan: antrian.keperluan ?? null,
     nama,
-    email: userEmail,
     waktu,
     status: antrian.status,
     antrianId: antrian.id,
+    cabangNama,
+    cabangAlamat,
   });
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -717,94 +733,128 @@ export async function tiketAntrian(req: Request, res: Response): Promise<void> {
 // ============================================================
 // HTML tiket yang dapat dicetak / disimpan sebagai PDF
 // ============================================================
-function generateTiketHTML({ nomor, layanan, keperluan, nama, email, waktu, status, antrianId }: {
-  nomor: number; layanan: string; keperluan: string | null; nama: string; email: string;
+function generateTiketHTML({ nomor, layanan, keperluan, nama, waktu, status, antrianId, cabangNama, cabangAlamat }: {
+  nomor: number; layanan: string; keperluan: string | null; nama: string;
   waktu: string; status: string; antrianId: string;
+  cabangNama: string; cabangAlamat: string;
 }) {
-  const layananLabel = layanan === "CS" ? "Customer Service" : layanan;
-  const statusKelas = { menunggu: "chip-orange", dipanggil: "chip-blue", selesai: "chip-green", batal: "chip-red" }[status] ?? "chip-orange";
-  const statusLabel = { menunggu: "Menunggu", dipanggil: "Dipanggil", selesai: "Selesai", batal: "Dibatalkan" }[status] ?? status;
+  const nomorStr     = String(nomor).padStart(3, "0");
+  const layananLabel = layanan === "CS" ? "Customer Service" : "Teller";
+  const statusMap    = { menunggu: ["Menunggu", "chip-orange"], dipanggil: ["Dipanggil", "chip-blue"], selesai: ["Selesai", "chip-green"], batal: ["Dibatalkan", "chip-red"] } as Record<string, string[]>;
+  const [statusLabel, statusKelas] = statusMap[status] ?? [status, "chip-orange"];
 
   return `<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Tiket Antrian ${nomor} — ${layananLabel}</title>
+  <title>Tiket Antrian ${nomorStr} — FUND BANK</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Poppins',sans-serif;background:#f5f5f4;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-    .wrap{background:#fff;border-radius:20px;padding:36px 28px;max-width:360px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.1);position:relative;overflow:hidden}
-    .wrap::before{content:'';position:absolute;top:-40px;right:-40px;width:140px;height:140px;border-radius:50%;background:#FFF7ED;pointer-events:none}
-    .logo-box{width:52px;height:52px;background:#F97316;border-radius:13px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
-    .bank{font-size:17px;font-weight:700;color:#292524;text-align:center}
-    .sub{font-size:11px;color:#a8a29e;text-align:center;margin-bottom:28px}
-    hr{border:none;border-top:1px dashed #e7e5e4;margin:20px 0}
-    .label-sm{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#a8a29e;margin-bottom:6px;text-align:center}
-    .number{font-size:84px;font-weight:800;color:#F97316;line-height:1;letter-spacing:-5px;text-align:center}
-    .chip{display:inline-block;padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700}
+    body{font-family:'Poppins',sans-serif;background:#fff7f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{background:#fff;border-radius:24px;padding:36px 28px 32px;max-width:360px;width:100%;box-shadow:0 8px 40px rgba(249,115,22,.10);text-align:center;position:relative;overflow:hidden}
+    .card::before{content:'';position:absolute;top:-48px;right:-48px;width:160px;height:160px;border-radius:50%;background:#fff7f0;pointer-events:none}
+
+    /* Logo */
+    .logo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:24px}
+    .logo-img{width:64px;height:64px;object-fit:contain;margin-bottom:10px}
+    .bank-name{font-size:17px;font-weight:700;color:#292524;letter-spacing:.02em}
+    .bank-sub{font-size:10.5px;color:#a8a29e;margin-top:2px;letter-spacing:.04em;text-transform:uppercase}
+
+    /* Nomor */
+    .nomor-label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#a8a29e;margin-bottom:6px}
+    .nomor{font-size:80px;font-weight:800;color:#F97316;line-height:1;letter-spacing:-3px}
+    .chips-row{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;flex-wrap:wrap}
+    .chip{display:inline-flex;align-items:center;padding:4px 13px;border-radius:20px;font-size:11px;font-weight:700}
     .chip-orange{background:#FFF7ED;color:#EA580C}
     .chip-blue{background:#EFF6FF;color:#2563EB}
     .chip-green{background:#F0FDF4;color:#16A34A}
     .chip-red{background:#FEF2F2;color:#DC2626}
-    .center{text-align:center;margin-bottom:6px}
-    .info{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
-    .info-item .lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#a8a29e;margin-bottom:3px}
-    .info-item .val{font-size:13px;font-weight:600;color:#292524;word-break:break-all}
-    .note{font-size:11.5px;color:#78716c;text-align:center;line-height:1.7;margin-top:4px}
-    .btn-print{display:block;width:100%;margin-top:20px;padding:13px;background:#F97316;color:#fff;border:none;border-radius:10px;font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.01em}
-    .btn-print:hover{background:#EA580C}
+
+    /* Divider */
+    hr{border:none;border-top:1.5px dashed #f0e8e1;margin:22px 0}
+
+    /* Info rows */
+    .info{display:flex;flex-direction:column;gap:0;text-align:left}
+    .info-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:10px 0;border-bottom:1px solid #fdf5f0}
+    .info-row.single{grid-template-columns:1fr}
+    .info-row:last-child{border-bottom:none}
+    .lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#a8a29e;margin-bottom:3px}
+    .val{font-size:12.5px;font-weight:600;color:#292524;line-height:1.45}
+    .val-small{font-size:11px;font-weight:400;color:#78716c;margin-top:2px}
+
+    /* Footer */
+    .note{font-size:11.5px;color:#78716c;line-height:1.7;margin-top:4px}
+    .ticket-id{font-size:9px;color:#d6d3d1;margin-top:10px;letter-spacing:.05em}
+
     @media print{
       body{background:#fff;padding:0}
-      .wrap{box-shadow:none;border-radius:0;max-width:none}
-      .btn-print{display:none}
+      .card{box-shadow:none;border-radius:0;max-width:none}
     }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="logo-box">
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2">
-      <rect x="2" y="7" width="20" height="14" rx="2"/>
-      <path d="M16 7V5a2 2 0 0 0-4 0v2"/>
-      <path d="M12 12v4"/><path d="M9 12h6"/>
-    </svg>
-  </div>
-  <p class="bank">FUND BANK</p>
-  <p class="sub">Tiket Antrian</p>
+<div class="card">
 
-  <p class="label-sm">Nomor Antrian Anda</p>
-  <p class="number">${nomor}</p>
-  <div class="center" style="margin-top:8px">
+  <!-- Logo -->
+  <div class="logo-wrap">
+    <img src="/images/logo.png" alt="FUND BANK" class="logo-img"/>
+    <div class="bank-name">FUND BANK</div>
+    <div class="bank-sub">Tiket Antrian</div>
+  </div>
+
+  <!-- Nomor -->
+  <div class="nomor-label">Nomor Antrian Anda</div>
+  <div class="nomor">${nomorStr}</div>
+  <div class="chips-row">
     <span class="chip chip-orange">${layananLabel}</span>
-    ${keperluan ? `<span class="chip chip-blue" style="margin-left:6px">${escHtml(keperluan)}</span>` : ""}
+    ${keperluan ? `<span class="chip chip-blue">${escHtml(keperluan)}</span>` : ""}
+    <span class="chip ${statusKelas}">${statusLabel}</span>
   </div>
 
   <hr/>
 
+  <!-- Info -->
   <div class="info">
-    <div class="info-item">
-      <div class="lbl">Nama</div>
-      <div class="val">${escHtml(nama)}</div>
+    <div class="info-row">
+      <div>
+        <div class="lbl">Nama</div>
+        <div class="val">${escHtml(nama)}</div>
+      </div>
+      <div>
+        <div class="lbl">Layanan</div>
+        <div class="val">${layananLabel}</div>
+      </div>
     </div>
-    <div class="info-item">
-      <div class="lbl">Keperluan</div>
-      <div class="val">${escHtml(keperluan ?? "-")}</div>
-    </div>
-    <div class="info-item">
-      <div class="lbl">Waktu Ambil</div>
-      <div class="val">${waktu}</div>
-    </div>
-    <div class="info-item">
-      <div class="lbl">Status</div>
-      <div><span class="chip ${statusKelas}">${statusLabel}</span></div>
+    ${keperluan ? `
+    <div class="info-row single">
+      <div>
+        <div class="lbl">Keperluan</div>
+        <div class="val">${escHtml(keperluan)}</div>
+      </div>
+    </div>` : ""}
+    ${cabangNama ? `
+    <div class="info-row single">
+      <div>
+        <div class="lbl">Cabang</div>
+        <div class="val">${escHtml(cabangNama)}</div>
+        ${cabangAlamat ? `<div class="val-small">${escHtml(cabangAlamat)}</div>` : ""}
+      </div>
+    </div>` : ""}
+    <div class="info-row single">
+      <div>
+        <div class="lbl">Waktu Ambil</div>
+        <div class="val">${waktu}</div>
+      </div>
     </div>
   </div>
 
   <hr/>
-  <p class="note">Harap menunggu di ruang tunggu bank.<br/>Notifikasi WhatsApp akan dikirim saat giliran Anda mendekati.</p>
-  <button class="btn-print" onclick="window.print()">🖨&nbsp; Cetak Tiket</button>
+
+  <p class="note">Harap menunggu di ruang tunggu bank.<br/>Notifikasi akan dikirim saat giliran Anda mendekati.</p>
+  <p class="ticket-id">${antrianId}</p>
+
 </div>
 </body>
 </html>`;
