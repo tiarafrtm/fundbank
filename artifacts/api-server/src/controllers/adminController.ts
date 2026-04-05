@@ -231,11 +231,31 @@ export async function updateAdminStaff(req: Request, res: Response): Promise<voi
   const { id } = req.params;
   const { nama, role, cabang_id, no_hp } = req.body;
 
+  // Ambil data lama untuk cek apakah cabang atau role berubah
+  const { data: existing } = await supabaseAdmin
+    .from("profiles")
+    .select("cabang_id, role, loket_number")
+    .eq("id", id)
+    .maybeSingle();
+
   const profileUpdate: Record<string, any> = {};
   if (nama    !== undefined) profileUpdate.nama    = nama;
   if (no_hp   !== undefined) profileUpdate.no_hp   = no_hp;
-  if (role    !== undefined && ["teller", "cs"].includes(role)) profileUpdate.role = role;
-  if (cabang_id !== undefined) profileUpdate.cabang_id = cabang_id ? Number(cabang_id) : null;
+
+  const newRole     = role !== undefined && ["teller", "cs"].includes(role) ? role : undefined;
+  const newCabangId = cabang_id !== undefined ? (cabang_id ? Number(cabang_id) : null) : undefined;
+
+  if (newRole     !== undefined) profileUpdate.role     = newRole;
+  if (newCabangId !== undefined) profileUpdate.cabang_id = newCabangId;
+
+  // Reset loket_number jika cabang atau role berubah —
+  // loket lama tidak valid lagi di cabang/jabatan baru
+  const cabangBerubah = newCabangId !== undefined && newCabangId !== (existing?.cabang_id ?? null);
+  const roleBerubah   = newRole     !== undefined && newRole     !== (existing?.role ?? null);
+  if ((cabangBerubah || roleBerubah) && existing?.loket_number != null) {
+    profileUpdate.loket_number = null;
+    profileUpdate.layanan      = null;
+  }
 
   if (Object.keys(profileUpdate).length === 0) {
     res.status(400).json({ success: false, message: "Tidak ada data yang diubah", data: {} });
