@@ -46,7 +46,7 @@ function navigateTo(page) {
   if (pageEl) pageEl.classList.add('active');
 
   // Update topbar title
-  const titles = { dashboard: 'Dashboard', cabang: 'Kelola Cabang', staff: 'Kelola Staff', nasabah: 'Kelola Nasabah', laporan: 'Laporan', docs: 'Docs API' };
+  const titles = { dashboard: 'Dashboard', cabang: 'Kelola Cabang', staff: 'Kelola Staff', nasabah: 'Kelola Nasabah', jadwal: 'Kelola Jadwal', laporan: 'Laporan', docs: 'Docs API' };
   const titleEl = document.getElementById('topbar-page-title');
   if (titleEl) titleEl.textContent = titles[page] ?? 'Admin';
 
@@ -55,6 +55,7 @@ function navigateTo(page) {
   else if (page === 'cabang')  loadCabang();
   else if (page === 'staff')   loadStaff();
   else if (page === 'nasabah') loadNasabah();
+  else if (page === 'jadwal')  initJadwal();
   else if (page === 'laporan') initLaporan();
   else if (page === 'docs')    initDocs();
 }
@@ -1146,6 +1147,121 @@ function docsSearch(q) {
 
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ===========================
+// KELOLA JADWAL
+// ===========================
+const HARI_NAMES = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+const DEFAULT_JADWAL = [
+  { hari: 1, jam_buka: '08:00', jam_tutup: '15:00', is_buka: true  },
+  { hari: 2, jam_buka: '08:00', jam_tutup: '15:00', is_buka: true  },
+  { hari: 3, jam_buka: '08:00', jam_tutup: '15:00', is_buka: true  },
+  { hari: 4, jam_buka: '08:00', jam_tutup: '15:00', is_buka: true  },
+  { hari: 5, jam_buka: '08:00', jam_tutup: '15:00', is_buka: true  },
+  { hari: 6, jam_buka: '08:00', jam_tutup: '12:00', is_buka: false },
+  { hari: 7, jam_buka: '08:00', jam_tutup: '12:00', is_buka: false },
+];
+
+async function initJadwal() {
+  if (!cabangList.length) {
+    try {
+      const r = await api('GET', '/admin/cabang');
+      cabangList = r.data?.cabang ?? [];
+    } catch { /* biarkan kosong */ }
+  }
+
+  const sel = document.getElementById('jadwal-cabang-sel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— pilih cabang —</option>' +
+    cabangList.map(cb => `<option value="${cb.id}">${escHtml(cb.nama)}</option>`).join('');
+
+  if (!cabangList.length) {
+    document.getElementById('jadwal-content').innerHTML =
+      `<div style="padding:40px 24px;text-align:center;color:var(--gray-400);font-size:13px">Belum ada cabang. Tambahkan cabang terlebih dahulu.</div>`;
+    return;
+  }
+
+  if (cabangList.length === 1) {
+    sel.value = cabangList[0].id;
+    loadJadwal();
+  }
+}
+
+async function loadJadwal() {
+  const cabang_id = document.getElementById('jadwal-cabang-sel').value;
+  const content   = document.getElementById('jadwal-content');
+  if (!cabang_id) {
+    content.innerHTML = `<div style="padding:40px 24px;text-align:center;color:var(--gray-400);font-size:13px">Pilih cabang untuk melihat jadwal operasional.</div>`;
+    return;
+  }
+
+  content.innerHTML = `<div style="padding:30px 24px;text-align:center;color:var(--gray-400);font-size:13px">Memuat jadwal...</div>`;
+
+  try {
+    const result = await api('GET', `/admin/jadwal?cabang_id=${cabang_id}`);
+    const dataMap = {};
+    (result.data ?? []).forEach(j => { dataMap[j.hari] = j; });
+
+    const rows = DEFAULT_JADWAL.map(def => {
+      const d   = dataMap[def.hari] ?? def;
+      const buka = d.is_buka;
+      return `
+        <div class="jadwal-row${buka ? '' : ' tutup'}" id="jadwal-row-${d.hari}">
+          <div class="jadwal-hari">${HARI_NAMES[d.hari]}</div>
+          <label class="jadwal-toggle">
+            <input type="checkbox" id="jadwal-buka-${d.hari}" ${buka ? 'checked' : ''}
+              onchange="toggleJadwalRow(${d.hari})"/>
+            <span class="jadwal-toggle-track"></span>
+          </label>
+          <div class="jadwal-time-col">
+            <label>Buka</label>
+            <input type="time" id="jadwal-open-${d.hari}" value="${d.jam_buka ?? '08:00'}"/>
+          </div>
+          <div class="jadwal-time-col">
+            <label>Tutup</label>
+            <input type="time" id="jadwal-close-${d.hari}" value="${d.jam_tutup ?? '15:00'}"/>
+          </div>
+        </div>`;
+    }).join('');
+
+    content.innerHTML = `
+      <div class="jadwal-grid">${rows}</div>
+      <div class="jadwal-footer">
+        <span class="jadwal-info">Toggle untuk hari libur/tidak buka. Perubahan berlaku setelah disimpan.</span>
+        <button class="btn btn-outline btn-sm" onclick="loadJadwal()">↺ Reset</button>
+        <button class="btn btn-primary" onclick="saveJadwal()">Simpan Jadwal</button>
+      </div>`;
+  } catch {
+    content.innerHTML = `<div style="padding:30px 24px;text-align:center;color:var(--danger);font-size:13px">Gagal memuat jadwal.</div>`;
+  }
+}
+
+function toggleJadwalRow(hari) {
+  const cb  = document.getElementById(`jadwal-buka-${hari}`);
+  const row = document.getElementById(`jadwal-row-${hari}`);
+  if (!cb || !row) return;
+  row.classList.toggle('tutup', !cb.checked);
+}
+
+async function saveJadwal() {
+  const cabang_id = document.getElementById('jadwal-cabang-sel').value;
+  if (!cabang_id) return;
+
+  const jadwal = DEFAULT_JADWAL.map(def => ({
+    hari:      def.hari,
+    is_buka:   document.getElementById(`jadwal-buka-${def.hari}`)?.checked ?? def.is_buka,
+    jam_buka:  document.getElementById(`jadwal-open-${def.hari}`)?.value  ?? def.jam_buka,
+    jam_tutup: document.getElementById(`jadwal-close-${def.hari}`)?.value ?? def.jam_tutup,
+  }));
+
+  try {
+    const result = await api('PUT', `/admin/jadwal/${cabang_id}`, { jadwal });
+    if (result.success) showToast('Jadwal berhasil disimpan', 'success');
+    else showToast(result.message ?? 'Gagal menyimpan jadwal', 'error');
+  } catch {
+    showToast('Terjadi kesalahan. Coba lagi.', 'error');
+  }
 }
 
 // Sidebar toggle
