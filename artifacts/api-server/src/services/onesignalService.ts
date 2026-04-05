@@ -12,9 +12,11 @@ export async function sendPushNotification(
   nomorAntrian: number,
   tipe: NotifTipe = "normal",
   layanan?: string,                    // untuk pesan "dipanggil" yang lebih spesifik
+  loketNumber?: number | null,         // nomor loket — dikirim ke Android via additional data
 ): Promise<boolean> {
   try {
     const layananLabel = layanan === "CS" ? "Customer Service" : (layanan ?? "Loket");
+    const loketLabel   = loketNumber != null ? `Loket ${loketNumber}` : "loket";
 
     const config: Record<NotifTipe, { heading: string; content: string }> = {
       normal: {
@@ -23,7 +25,7 @@ export async function sendPushNotification(
       },
       dipanggil: {
         heading : "🔔 Giliran Anda Sekarang!",
-        content : `Nomor antrian ${nomorAntrian} sedang dipanggil di ${layananLabel}. Segera menuju loket!`,
+        content : `Nomor antrian ${nomorAntrian} dipanggil ke ${loketLabel}. Segera menuju ${layananLabel}!`,
       },
       skip: {
         heading : "Antrian Anda Dilewati",
@@ -42,7 +44,8 @@ export async function sendPushNotification(
       data: {
         tipe,
         nomor_antrian : nomorAntrian,
-        layanan       : layanan ?? null,
+        layanan       : layanan       ?? null,
+        loket_number  : loketNumber   ?? null,   // ← Android baca ini untuk tampilkan nomor loket
       },
       priority : 10,
       ttl      : tipe === "dipanggil" ? 120 : 60,  // "dipanggil" lebih lama: 2 menit
