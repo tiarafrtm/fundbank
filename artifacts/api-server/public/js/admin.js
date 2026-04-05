@@ -1188,6 +1188,38 @@ async function initJadwal() {
   }
 }
 
+// Buat select jam (00-23) dan menit (00,15,30,45)
+function buildTimeSelects(prefix, timeStr) {
+  const parts   = (timeStr ?? '08:00').split(':');
+  const selHour = parseInt(parts[0] ?? '8', 10);
+  const selMin  = parseInt(parts[1] ?? '0', 10);
+
+  const hourOpts = Array.from({ length: 24 }, (_, h) => {
+    const v = String(h).padStart(2, '0');
+    return `<option value="${v}" ${h === selHour ? 'selected' : ''}>${v}</option>`;
+  }).join('');
+
+  const mins = [0, 15, 30, 45];
+  const minOpts = mins.map(m => {
+    const v = String(m).padStart(2, '0');
+    return `<option value="${v}" ${m === selMin ? 'selected' : ''}>${v}</option>`;
+  }).join('');
+
+  return `
+    <div class="jadwal-time-sel">
+      <select id="${prefix}-h">${hourOpts}</select>
+      <span class="jadwal-time-sep">:</span>
+      <select id="${prefix}-m">${minOpts}</select>
+    </div>`;
+}
+
+// Baca nilai jam dari select → format "HH:MM"
+function readTimeSelects(prefix) {
+  const h = document.getElementById(`${prefix}-h`)?.value ?? '08';
+  const m = document.getElementById(`${prefix}-m`)?.value ?? '00';
+  return `${h}:${m}`;
+}
+
 async function loadJadwal() {
   const cabang_id = document.getElementById('jadwal-cabang-sel').value;
   const content   = document.getElementById('jadwal-content');
@@ -1204,7 +1236,7 @@ async function loadJadwal() {
     (result.data ?? []).forEach(j => { dataMap[j.hari] = j; });
 
     const rows = DEFAULT_JADWAL.map(def => {
-      const d   = dataMap[def.hari] ?? def;
+      const d    = dataMap[def.hari] ?? def;
       const buka = d.is_buka;
       return `
         <div class="jadwal-row${buka ? '' : ' tutup'}" id="jadwal-row-${d.hari}">
@@ -1216,11 +1248,11 @@ async function loadJadwal() {
           </label>
           <div class="jadwal-time-col">
             <label>Buka</label>
-            <input type="time" id="jadwal-open-${d.hari}" value="${d.jam_buka ?? '08:00'}"/>
+            ${buildTimeSelects(`jopen-${d.hari}`, d.jam_buka ?? '08:00')}
           </div>
           <div class="jadwal-time-col">
             <label>Tutup</label>
-            <input type="time" id="jadwal-close-${d.hari}" value="${d.jam_tutup ?? '15:00'}"/>
+            ${buildTimeSelects(`jclose-${d.hari}`, d.jam_tutup ?? '15:00')}
           </div>
         </div>`;
     }).join('');
@@ -1251,8 +1283,8 @@ async function saveJadwal() {
   const jadwal = DEFAULT_JADWAL.map(def => ({
     hari:      def.hari,
     is_buka:   document.getElementById(`jadwal-buka-${def.hari}`)?.checked ?? def.is_buka,
-    jam_buka:  document.getElementById(`jadwal-open-${def.hari}`)?.value  ?? def.jam_buka,
-    jam_tutup: document.getElementById(`jadwal-close-${def.hari}`)?.value ?? def.jam_tutup,
+    jam_buka:  readTimeSelects(`jopen-${def.hari}`)  || def.jam_buka,
+    jam_tutup: readTimeSelects(`jclose-${def.hari}`) || def.jam_tutup,
   }));
 
   try {
