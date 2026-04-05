@@ -10,15 +10,16 @@ import {
 } from "../services/waService";
 
 export async function testPushNotif(req: Request, res: Response): Promise<void> {
-  const { player_id, nomor_antrian, title, body } = req.body;
+  // user_id = Supabase UUID nasabah (External User ID di OneSignal)
+  const { user_id, nomor_antrian } = req.body;
 
-  if (!player_id) {
-    res.status(400).json({ success: false, message: "player_id wajib diisi", data: {} });
+  if (!user_id) {
+    res.status(400).json({ success: false, message: "user_id wajib diisi (Supabase UUID nasabah)", data: {} });
     return;
   }
 
   const nomorForNotif = nomor_antrian ?? 0;
-  const berhasil = await sendPushNotification(player_id, Number(nomorForNotif));
+  const berhasil = await sendPushNotification(user_id, Number(nomorForNotif));
 
   res.json({
     success: berhasil,
