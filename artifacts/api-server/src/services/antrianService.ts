@@ -160,6 +160,7 @@ export async function panggilBerikutnya(
         currentAntrian.nomor_antrian,
         "dipanggil",
         currentAntrian.layanan,
+        loketNumber,   // ← kirim nomor loket ke Android
       );
       logger.info({ nomor: currentAntrian.nomor_antrian }, "Push 'dipanggil' terkirim ke nasabah");
     } catch (e: any) {
