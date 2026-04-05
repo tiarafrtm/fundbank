@@ -209,12 +209,13 @@ function openLoketModal(occupiedLokets = []) {
   const modal = document.getElementById('loket-modal');
   const grid = document.getElementById('loket-grid');
   if (!modal || !grid) return;
-  grid.innerHTML = Array.from({length: 10}, (_, i) => i + 1).map(n => {
+  grid.innerHTML = Array.from({length: 4}, (_, i) => i + 1).map(n => {
     const isOccupied = occupiedLokets.includes(n) && n !== myLoketNumber;
     const isActive   = n === myLoketNumber;
     const cls = isOccupied ? 'loket-btn occupied' : isActive ? 'loket-btn active' : 'loket-btn';
     const onclick = isOccupied ? '' : `onclick="setMyLoket(${n})"`;
-    return `<button class="${cls}" ${onclick}>${n}</button>`;
+    const statusLabel = isOccupied ? '<span class="loket-status">Terpakai</span>' : isActive ? '<span class="loket-status">Aktif</span>' : '<span class="loket-status">Kosong</span>';
+    return `<button class="${cls}" ${onclick}><span class="loket-num">Loket ${n}</span>${statusLabel}</button>`;
   }).join('');
   modal.style.display = 'flex';
 }
