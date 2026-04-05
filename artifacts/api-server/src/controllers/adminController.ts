@@ -689,3 +689,64 @@ export async function bootstrapAdmin(req: Request, res: Response): Promise<void>
     data: { id: authData.user.id, email, nama, role: "admin" },
   });
 }
+
+// ===========================================================
+// GET /api/admin/jadwal?cabang_id=X
+// ===========================================================
+export async function getJadwal(req: Request, res: Response): Promise<void> {
+  const cabang_id = req.query.cabang_id ? Number(req.query.cabang_id) : null;
+
+  try {
+    let query = supabaseAdmin
+      .from("jadwal_operasional")
+      .select("id, cabang_id, hari, jam_buka, jam_tutup, is_buka")
+      .order("hari");
+
+    if (cabang_id) query = query.eq("cabang_id", cabang_id);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    res.json({ success: true, data: data ?? [] });
+  } catch (e: any) {
+    logger.error(e, "[ADMIN] getJadwal error");
+    res.status(500).json({ success: false, message: e.message });
+  }
+}
+
+// ===========================================================
+// PUT /api/admin/jadwal/:cabang_id  — upsert jadwal 7 hari
+// body: { jadwal: [{ hari, jam_buka, jam_tutup, is_buka }] }
+// ===========================================================
+export async function upsertJadwal(req: Request, res: Response): Promise<void> {
+  const cabang_id = Number(req.params.cabang_id);
+  const { jadwal } = req.body as { jadwal: { hari: number; jam_buka: string; jam_tutup: string; is_buka: boolean }[] };
+
+  if (!cabang_id || !Array.isArray(jadwal) || jadwal.length === 0) {
+    res.status(400).json({ success: false, message: "Data tidak lengkap" });
+    return;
+  }
+
+  try {
+    const rows = jadwal.map(j => ({
+      cabang_id,
+      hari: j.hari,
+      jam_buka: j.jam_buka,
+      jam_tutup: j.jam_tutup,
+      is_buka: j.is_buka,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabaseAdmin
+      .from("jadwal_operasional")
+      .upsert(rows, { onConflict: "cabang_id,hari" });
+
+    if (error) throw error;
+
+    actLog(req, "upsertJadwal", { cabang_id });
+    res.json({ success: true, message: "Jadwal berhasil disimpan" });
+  } catch (e: any) {
+    logger.error(e, "[ADMIN] upsertJadwal error");
+    res.status(500).json({ success: false, message: e.message });
+  }
+}
