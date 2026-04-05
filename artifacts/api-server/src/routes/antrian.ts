@@ -9,7 +9,6 @@ import {
   restoreAntrian,
   getStatistik,
   setLoket,
-  setCabang,
 } from "../controllers/antrianController";
 import { listCabang } from "../controllers/cabangController";
 import {
@@ -28,7 +27,6 @@ router.put("/selesai/:id",      anyStaffMiddleware, selesaiAntrian);
 router.put("/batal/:id",        anyStaffMiddleware, batalAntrian);
 router.put("/restore/:id",      anyStaffMiddleware, restoreAntrian);
 router.put("/loket",            anyStaffMiddleware, setLoket);
-router.put("/cabang",           anyStaffMiddleware, setCabang);   // Staff pilih cabang tugas
 router.get("/cabang",           anyStaffMiddleware, listCabang);  // Daftar cabang untuk staff
 
 export default router;
