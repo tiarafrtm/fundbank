@@ -521,7 +521,7 @@ export async function batalAntrian(req: Request, res: Response): Promise<void> {
 
       const { data: profile } = await supabaseAdmin
         .from("profiles")
-        .select("nama, no_hp, onesignal_player_id")
+        .select("nama, no_hp")
         .eq("id", antrian.user_id)
         .maybeSingle();
 
@@ -529,9 +529,10 @@ export async function batalAntrian(req: Request, res: Response): Promise<void> {
       const noHp           = profile?.no_hp ?? antrian.no_hp_nasabah;
       const layananDisplay = antrian.layanan === "CS" ? "Customer Service" : antrian.layanan;
 
-      if (profile?.onesignal_player_id) {
+      // Kirim push pakai External User ID (Supabase UUID) bukan player_id
+      if (antrian.user_id) {
         try {
-          await sendPushNotification(profile.onesignal_player_id, antrian.nomor_antrian, "skip");
+          await sendPushNotification(antrian.user_id, antrian.nomor_antrian, "skip");
           logger.info({ nomor: antrian.nomor_antrian }, "Push skip terkirim");
         } catch (e: any) {
           logger.warn({ error: e?.message }, "Push skip gagal");
