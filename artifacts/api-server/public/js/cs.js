@@ -69,6 +69,7 @@ let layaniTimerStart    = null;
 let layaniTimerInterval = null;
 let currentLayaniId     = null;
 let myLoketNumber       = null;  // Nomor loket CS yang sedang login
+let myCabangId          = null;  // ID cabang CS yang sedang bertugas
 let _firstQueueLoad     = true;  // Flag untuk buka modal setelah data pertama kali dimuat
 
 const pageTitles = {
@@ -217,6 +218,60 @@ document.getElementById('loket-select-btn')?.addEventListener('click', () => {
 });
 
 // ===========================
+// CABANG MODAL
+// ===========================
+function updateCabangBtn(cabangNama) {
+  const btn  = document.getElementById('cabang-select-btn');
+  const text = document.getElementById('cabang-badge-text');
+  if (text) text.textContent = cabangNama ? cabangNama : 'Pilih Cabang';
+  if (btn)  btn.classList.toggle('cabang-set', !!cabangNama);
+}
+
+async function openCabangModal() {
+  const modal = document.getElementById('cabang-modal');
+  const grid  = document.getElementById('cabang-grid');
+  if (!modal || !grid) return;
+  grid.innerHTML = '<p style="color:var(--gray-400);text-align:center;padding:16px 0">Memuat daftar cabang…</p>';
+  modal.style.display = 'flex';
+  try {
+    const result = await api('GET', '/antrian/cabang');
+    const cabangList = result?.data?.cabang ?? [];
+    if (!cabangList.length) {
+      grid.innerHTML = '<p style="color:var(--gray-400);text-align:center">Tidak ada cabang tersedia.</p>';
+      return;
+    }
+    grid.innerHTML = cabangList.map(cb => {
+      const isActive = cb.id === myCabangId;
+      return `<button class="cabang-btn${isActive ? ' active' : ''}" onclick="setMyCabang(${cb.id}, '${cb.nama}')">
+        <span class="cabang-kode">${cb.kode}</span>
+        <span class="cabang-nama">${cb.nama}</span>
+        <span class="cabang-alamat">${cb.alamat || ''}</span>
+      </button>`;
+    }).join('');
+  } catch { grid.innerHTML = '<p style="color:var(--red)">Gagal memuat cabang.</p>'; }
+}
+
+async function setMyCabang(id, nama) {
+  try {
+    const result = await api('PUT', '/antrian/cabang', { cabang_id: id });
+    if (result.success) {
+      myCabangId    = id;
+      myLoketNumber = null;  // reset loket karena pindah cabang
+      updateCabangBtn(nama);
+      updateLoketBadge();
+      document.getElementById('cabang-modal').style.display = 'none';
+      showToast(`Berpindah ke ${nama}`, 'success');
+      setTimeout(() => openLoketModal([]), 300);
+      loadAntrian();
+    } else {
+      showToast(result.message || 'Gagal menyimpan cabang', 'error');
+    }
+  } catch { showToast('Gagal terhubung ke server', 'error'); }
+}
+
+document.getElementById('cabang-select-btn')?.addEventListener('click', openCabangModal);
+
+// ===========================
 // QUEUE DATA
 // ===========================
 async function loadQueueData() {
@@ -234,6 +289,12 @@ async function loadQueueData() {
 
     updateCabangBadge(my_cabang);
 
+    // Sync cabang dari server
+    if (my_cabang && !myCabangId) {
+      myCabangId = my_cabang.id;
+      updateCabangBtn(my_cabang.nama);
+    }
+
     // Sync loket number dari server
     if (my_loket_number && !myLoketNumber) {
       myLoketNumber = my_loket_number;
@@ -244,10 +305,12 @@ async function loadQueueData() {
     window._loketAktifMap = semua_loket_aktif || {};
     window._loketTerpakai = loket_terpakai    || [];
 
-    // Kalau ini load pertama dan loket belum dipilih → tampilkan modal
+    // Kalau ini load pertama → cek cabang dulu, lalu loket
     if (_firstQueueLoad) {
       _firstQueueLoad = false;
-      if (!myLoketNumber) {
+      if (!myCabangId) {
+        setTimeout(() => openCabangModal(), 300);
+      } else if (!myLoketNumber) {
         setTimeout(() => openLoketModal(window._loketTerpakai), 300);
       }
     }
