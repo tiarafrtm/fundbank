@@ -1125,52 +1125,6 @@ body {
 }
 .sidebar.collapsed .loket-select-btn { display: none; }
 
-/* ===== CABANG SELECT BUTTON ===== */
-.cabang-select-btn {
-  display: flex; align-items: center; gap: 7px;
-  width: calc(100% - 24px); margin: 0 12px 6px;
-  padding: 7px 12px;
-  background: rgba(37,99,235,0.1);
-  border: 1.5px solid rgba(37,99,235,0.25);
-  border-radius: var(--radius-sm);
-  color: var(--blue);
-  font-family: var(--font); font-size: 11px; font-weight: 600;
-  cursor: pointer; transition: all .15s; text-align: left;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.cabang-select-btn:hover { background: rgba(37,99,235,0.18); }
-.cabang-select-btn.cabang-set {
-  background: rgba(37,99,235,0.15);
-  border-color: var(--blue);
-}
-.sidebar.collapsed .cabang-select-btn { display: none; }
-
-/* ===== CABANG GRID ===== */
-.cabang-grid {
-  display: flex; flex-direction: column; gap: 8px;
-  max-height: 360px; overflow-y: auto;
-}
-.cabang-btn {
-  display: flex; flex-direction: column; align-items: flex-start;
-  gap: 2px; padding: 12px 14px; border-radius: 10px;
-  border: 1.5px solid var(--gray-200);
-  background: var(--gray-50);
-  cursor: pointer; transition: all .15s; text-align: left; width: 100%;
-}
-.cabang-btn:hover { border-color: var(--blue); background: var(--blue-light); }
-.cabang-btn.active { border-color: var(--blue); background: var(--blue-light); }
-.cabang-btn .cabang-kode {
-  font-size: 10px; font-weight: 700; color: var(--blue);
-  background: rgba(37,99,235,0.12); padding: 1px 6px; border-radius: 4px;
-  letter-spacing: 0.5px;
-}
-.cabang-btn .cabang-nama {
-  font-size: 13px; font-weight: 600; color: var(--gray-800); margin-top: 4px;
-}
-.cabang-btn .cabang-alamat {
-  font-size: 11px; color: var(--gray-400);
-}
-
 /* ===== MODAL OVERLAY ===== */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 9999;
@@ -1188,33 +1142,43 @@ body {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
 }
 .loket-btn {
+  position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 4px; padding: 14px 6px; border-radius: 10px;
+  gap: 4px; padding: 18px 6px 14px; border-radius: 12px;
   border: 2px solid var(--gray-200);
-  background: var(--gray-50);
+  background: white;
   font-family: var(--font);
   cursor: pointer; transition: all .15s;
 }
 .loket-btn .loket-num {
-  font-size: 13px; font-weight: 700; color: var(--gray-700);
+  font-size: 26px; font-weight: 800; color: var(--gray-700); line-height: 1;
 }
-.loket-btn .loket-status {
-  font-size: 10px; font-weight: 600; color: var(--gray-400);
+.loket-btn .loket-label {
+  font-size: 10px; font-weight: 600; color: var(--gray-400); letter-spacing: 0.02em;
 }
 .loket-btn:hover { border-color: var(--orange); background: var(--orange-soft); }
 .loket-btn:hover .loket-num { color: var(--orange); }
-.loket-btn:hover .loket-status { color: var(--orange); }
+.loket-btn:hover .loket-label { color: var(--orange-mid); }
+
+/* Loket aktif (milik saya) */
 .loket-btn.active {
   border-color: var(--orange); background: var(--orange);
 }
 .loket-btn.active .loket-num { color: white; }
-.loket-btn.active .loket-status { color: rgba(255,255,255,0.8); }
+.loket-btn.active .loket-label { color: rgba(255,255,255,0.85); }
+
+/* Loket terpakai orang lain */
 .loket-btn.occupied {
-  border-color: var(--gray-200); background: var(--gray-100);
-  cursor: default; opacity: 0.6;
+  border-color: #FCA5A5; background: #FFF5F5;
+  cursor: not-allowed;
 }
-.loket-btn.occupied .loket-num { color: var(--gray-400); }
-.loket-btn.occupied .loket-status { color: var(--gray-400); }
+.loket-btn.occupied .loket-num { color: #9CA3AF; }
+.loket-btn.occupied .loket-label { color: #F87171; font-weight: 700; }
+.loket-occupied-dot {
+  position: absolute; top: 8px; right: 10px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #EF4444;
+}
 
 /* ===== DOCS API (inline sub-page) ===== */
 .docs-section-block { margin-bottom: 6px; }
