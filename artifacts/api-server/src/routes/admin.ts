@@ -16,6 +16,8 @@ import {
   toggleNasabah,
   resetPasswordNasabah,
   bootstrapAdmin,
+  getJadwal,
+  upsertJadwal,
 } from "../controllers/adminController";
 import { adminMiddleware } from "../middleware/authMiddleware";
 
@@ -40,5 +42,7 @@ router.get("/nasabah/:id/riwayat",           adminMiddleware, getNasabahRiwayat)
 router.put("/nasabah/:id/toggle",            adminMiddleware, toggleNasabah);
 router.post("/nasabah/:id/reset-password",   adminMiddleware, resetPasswordNasabah);
 router.get("/laporan",                       adminMiddleware, getLaporan);
+router.get("/jadwal",                        adminMiddleware, getJadwal);
+router.put("/jadwal/:cabang_id",             adminMiddleware, upsertJadwal);
 
 export default router;
