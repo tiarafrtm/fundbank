@@ -9,6 +9,7 @@ import {
   riwayatAntrianMobile,
   tiketAntrian,
   listCabangMobile,
+  jadwalCabangMobile,
 } from "../controllers/mobileController";
 import { nasabahMiddleware } from "../middleware/authMiddleware";
 
@@ -18,8 +19,9 @@ const router: IRouter = Router();
 router.post("/daftar", daftar);
 router.post("/masuk",  masuk);
 
-// Cabang publik — tidak perlu login (untuk dropdown pilih cabang saat ambil antrian)
-router.get("/cabang", listCabangMobile);
+// Endpoint publik — tidak perlu login
+router.get("/cabang",  listCabangMobile);
+router.get("/jadwal",  jadwalCabangMobile);
 
 // Endpoint yang butuh login nasabah
 router.get("/saya",                   nasabahMiddleware, getSaya);
